@@ -22,7 +22,7 @@ include = ["../slop-rdf", "src", "src/rules"]
 
 [verify]
 sources = ["src"]
-include = ["src", "../slop-rdf"]
+include = ["src", "src/rules", "../slop-rdf"]
 pattern = "*.slop"
 timeout = 5000
 

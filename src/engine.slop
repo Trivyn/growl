@@ -8,7 +8,7 @@
   (@doc "Parallel fixpoint rule engine with fork-join pattern")
 
   (import rdf (Term Triple triple-eq))
-  (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size))
+  (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match))
   (import thread (chan-buffered send recv spawn join))
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
@@ -59,6 +59,7 @@
 
       ;; Main fixpoint loop
       (while (and (not done) (< (. state iteration) (. config max-iterations)))
+        (@loop-invariant {(. state iteration) <= (. config max-iterations)})
         (match (engine-run-iteration arena state)
           ((ok new-state)
             (if (delta-is-empty (. new-state delta))
