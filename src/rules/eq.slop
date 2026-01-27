@@ -1,0 +1,580 @@
+;; ============================================================
+;; OWL 2 RL Table 4: Equality Rules (eq-*)
+;;
+;; These rules handle owl:sameAs semantics including reflexivity,
+;; symmetry, transitivity, and replacement.
+;;
+;; Reference: https://www.w3.org/TR/owl2-profiles/#OWL_2_RL
+;; ============================================================
+
+(module eq
+  (@doc "OWL 2 RL equality rules with formally verified contracts")
+
+  (import rdf (Term Triple term-eq triple-eq make-iri make-triple
+               triple-subject triple-predicate triple-object))
+  (import index (IndexedGraph indexed-graph-match indexed-graph-contains indexed-graph-size
+                 indexed-graph-create indexed-graph-add))
+  (import vocab (OWL_SAME_AS OWL_DIFFERENT_FROM))
+  (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
+
+  (export
+    apply-eq-rules
+    eq-sym
+    eq-trans
+    eq-rep-s
+    eq-rep-p
+    eq-rep-o
+    eq-diff1
+    eq-diff2
+    eq-diff3)
+
+  ;; ============================================================
+  ;; Test Fixture URIs (for @example annotations)
+  ;; ============================================================
+
+  (const EX_ALICE String "http://example.org/alice")
+  (const EX_ALICIA String "http://example.org/alicia")
+  (const EX_BOB String "http://example.org/bob")
+  (const EX_ROBERT String "http://example.org/robert")
+  (const EX_CAROL String "http://example.org/carol")
+  (const EX_A String "http://example.org/a")
+  (const EX_B String "http://example.org/b")
+  (const EX_C String "http://example.org/c")
+  (const EX_KNOWS String "http://example.org/knows")
+  (const EX_ACQUAINTED_WITH String "http://example.org/acquaintedWith")
+
+  ;; ============================================================
+  ;; Test Fixture Builders
+  ;; ============================================================
+
+  ;; Graph with (alice sameAs alicia)
+  (fn fixture-g-same-as ((arena Arena))
+    (@intent "Create test graph: alice sameAs alicia")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (alice (make-iri arena EX_ALICE))
+          (alicia (make-iri arena EX_ALICIA)))
+      (indexed-graph-add arena g (make-triple arena alice same-as alicia))
+      g))
+
+  ;; Graph with (a sameAs b), (b sameAs c)
+  (fn fixture-g-trans ((arena Arena))
+    (@intent "Create test graph: transitive sameAs chain")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (a (make-iri arena EX_A))
+          (b (make-iri arena EX_B))
+          (c (make-iri arena EX_C)))
+      (indexed-graph-add arena g (make-triple arena a same-as b))
+      (indexed-graph-add arena g (make-triple arena b same-as c))
+      g))
+
+  ;; Graph with (alice sameAs alicia), (alice knows bob)
+  (fn fixture-g-rep-s ((arena Arena))
+    (@intent "Create test graph: subject replacement scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (knows (make-iri arena EX_KNOWS))
+          (alice (make-iri arena EX_ALICE))
+          (alicia (make-iri arena EX_ALICIA))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena alice same-as alicia))
+      (indexed-graph-add arena g (make-triple arena alice knows bob))
+      g))
+
+  ;; Graph with (knows sameAs acquaintedWith), (alice knows bob)
+  (fn fixture-g-rep-p ((arena Arena))
+    (@intent "Create test graph: predicate replacement scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (knows (make-iri arena EX_KNOWS))
+          (acquainted (make-iri arena EX_ACQUAINTED_WITH))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena knows same-as acquainted))
+      (indexed-graph-add arena g (make-triple arena alice knows bob))
+      g))
+
+  ;; Graph with (bob sameAs robert), (alice knows bob)
+  (fn fixture-g-rep-o ((arena Arena))
+    (@intent "Create test graph: object replacement scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (knows (make-iri arena EX_KNOWS))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB))
+          (robert (make-iri arena EX_ROBERT)))
+      (indexed-graph-add arena g (make-triple arena bob same-as robert))
+      (indexed-graph-add arena g (make-triple arena alice knows bob))
+      g))
+
+  ;; Graph with (alice sameAs bob), (alice differentFrom bob) - contradiction
+  (fn fixture-g-contradiction ((arena Arena))
+    (@intent "Create test graph: sameAs/differentFrom contradiction")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (diff-from (make-iri arena OWL_DIFFERENT_FROM))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena alice same-as bob))
+      (indexed-graph-add arena g (make-triple arena alice diff-from bob))
+      g))
+
+  ;; Graph with (alice sameAs bob), (alice differentFrom carol) - no contradiction
+  (fn fixture-g-no-contradiction ((arena Arena))
+    (@intent "Create test graph: no contradiction")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (diff-from (make-iri arena OWL_DIFFERENT_FROM))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB))
+          (carol (make-iri arena EX_CAROL)))
+      (indexed-graph-add arena g (make-triple arena alice same-as bob))
+      (indexed-graph-add arena g (make-triple arena alice diff-from carol))
+      g))
+
+  ;; Graph with (alice sameAs bob), (bob differentFrom alice) - symmetric contradiction
+  (fn fixture-g-sym-contradiction ((arena Arena))
+    (@intent "Create test graph: symmetric sameAs/differentFrom contradiction")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (diff-from (make-iri arena OWL_DIFFERENT_FROM))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena alice same-as bob))
+      (indexed-graph-add arena g (make-triple arena bob diff-from alice))
+      g))
+
+  ;; Delta with sameAs triple for triggering
+  (fn fixture-delta-same-as ((arena Arena))
+    (@intent "Create delta: alice sameAs alicia")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (alice (make-iri arena EX_ALICE))
+          (alicia (make-iri arena EX_ALICIA)))
+      (delta-add arena d (make-triple arena alice same-as alicia))
+      d))
+
+  ;; Delta with (b sameAs c) for transitive test
+  (fn fixture-delta-trans ((arena Arena))
+    (@intent "Create delta: b sameAs c")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (b (make-iri arena EX_B))
+          (c (make-iri arena EX_C)))
+      (delta-add arena d (make-triple arena b same-as c))
+      d))
+
+  ;; Empty delta
+  (fn fixture-delta-empty ((arena Arena))
+    (@intent "Create empty delta")
+    (@spec ((Arena) -> Delta))
+    (make-delta arena 0))
+
+  ;; ============================================================
+  ;; Rule Dispatcher
+  ;; ============================================================
+
+  (fn apply-eq-rules ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Apply all equality rules (Table 4)")
+    (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((ok d) {(. d iteration) == (+ (. delta iteration) 1)})
+             ((error _) true)))
+    (let ((next-iter (+ (. delta iteration) 1))
+          (mut result (make-delta arena next-iter)))
+
+      ;; Symmetry and transitivity
+      (for-each (t (eq-sym arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (eq-trans arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Replacement rules
+      (for-each (t (eq-rep-s arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (eq-rep-p arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (eq-rep-o arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Inconsistency checks: sameAs + differentFrom
+      (match (eq-diff1 arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+      (match (eq-diff2 arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+      (match (eq-diff3 arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+
+      (ok result)))
+
+  ;; ============================================================
+  ;; eq-sym: Symmetry of owl:sameAs
+  ;;
+  ;; If (?x owl:sameAs ?y)
+  ;; then (?y owl:sameAs ?x)
+  ;; ============================================================
+
+  (fn eq-sym ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer symmetric sameAs assertion")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    ;; All results have owl:sameAs as predicate
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    ;; Symmetry property: if we infer (y sameAs x), there must be (x sameAs y) in g
+    (@example
+      ;; Graph: (alice sameAs alicia)
+      ;; Result: (alicia sameAs alice)
+      (arena (fixture-g-same-as arena) (fixture-delta-same-as arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICIA) (make-iri arena OWL_SAME_AS) (make-iri arena EX_ALICE))))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) same-as)
+          (let ((x (triple-subject dt))
+                (y (triple-object dt))
+                (inferred (make-triple arena y same-as x)))
+            (when (not (indexed-graph-contains g inferred))
+              (list-push result inferred)))))
+
+      result))
+
+  ;; ============================================================
+  ;; eq-trans: Transitivity of owl:sameAs
+  ;;
+  ;; If (?x owl:sameAs ?y) and (?y owl:sameAs ?z)
+  ;; then (?x owl:sameAs ?z)
+  ;; ============================================================
+
+  (fn eq-trans ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer transitive sameAs closure")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@example
+      ;; Graph: (a sameAs b), (b sameAs c)
+      ;; Delta: (b sameAs c)
+      ;; Result: (a sameAs c)
+      (arena (fixture-g-trans arena) (fixture-delta-trans arena))
+      -> (list (make-triple arena (make-iri arena EX_A) (make-iri arena OWL_SAME_AS) (make-iri arena EX_C))))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) same-as)
+          (let ((x (triple-subject dt))
+                (y (triple-object dt)))
+            ;; Find y sameAs z (y as subject)
+            (let ((y-objects (indexed-graph-match arena g (some y) (some same-as) no-term)))
+              (for-each (yo-triple y-objects)
+                (let ((z (triple-object yo-triple))
+                      (inferred (make-triple arena x same-as z)))
+                  (when (and (not (term-eq x z))
+                             (not (indexed-graph-contains g inferred)))
+                    (list-push result inferred)))))
+
+            ;; Find w sameAs x (x as object)
+            (let ((x-subjects (indexed-graph-match arena g no-term (some same-as) (some x))))
+              (for-each (xs-triple x-subjects)
+                (let ((w (triple-subject xs-triple))
+                      (inferred (make-triple arena w same-as y)))
+                  (when (and (not (term-eq w y))
+                             (not (indexed-graph-contains g inferred)))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; eq-rep-s: Subject Replacement under sameAs
+  ;;
+  ;; If (?s owl:sameAs ?s') and (?s ?p ?o)
+  ;; then (?s' ?p ?o)
+  ;; ============================================================
+
+  (fn eq-rep-s ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Replace subject with sameAs equivalent")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (alice sameAs alicia), (alice knows bob)
+      ;; Result: (alicia knows bob)
+      (arena (fixture-g-rep-s arena) (fixture-delta-same-as arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICIA) (make-iri arena EX_KNOWS) (make-iri arena EX_BOB))))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each sameAs assertion in delta
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) same-as)
+          (let ((s (triple-subject dt))
+                (s-prime (triple-object dt)))
+            ;; Find all triples with s as subject
+            (let ((s-triples (indexed-graph-match arena g (some s) no-term no-term)))
+              (for-each (s-triple s-triples)
+                (let ((p (triple-predicate s-triple))
+                      (o (triple-object s-triple)))
+                  ;; Don't duplicate sameAs triples themselves
+                  (when (not (term-eq p same-as))
+                    (let ((inferred (make-triple arena s-prime p o)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred))))))))))
+
+      ;; Also check: for new triples, find sameAs for their subjects
+      (for-each (dt (. delta triples))
+        (when (not (term-eq (triple-predicate dt) same-as))
+          (let ((s (triple-subject dt))
+                (p (triple-predicate dt))
+                (o (triple-object dt)))
+            ;; Find s sameAs s'
+            (let ((same-triples (indexed-graph-match arena g (some s) (some same-as) no-term)))
+              (for-each (same-triple same-triples)
+                (let ((s-prime (triple-object same-triple))
+                      (inferred (make-triple arena s-prime p o)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; eq-rep-p: Predicate Replacement under sameAs
+  ;;
+  ;; If (?p owl:sameAs ?p') and (?s ?p ?o)
+  ;; then (?s ?p' ?o)
+  ;;
+  ;; Note: Property sameAs is rare but valid in OWL 2 RL
+  ;; ============================================================
+
+  (fn eq-rep-p ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Replace predicate with sameAs equivalent")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (knows sameAs acquaintedWith), (alice knows bob)
+      ;; Result: (alice acquaintedWith bob)
+      (arena (fixture-g-rep-p arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena EX_ACQUAINTED_WITH) (make-iri arena EX_BOB))))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each sameAs assertion in delta (where subject/object could be properties)
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) same-as)
+          (let ((p (triple-subject dt))
+                (p-prime (triple-object dt)))
+            ;; Find all triples with p as predicate
+            (let ((p-triples (indexed-graph-match arena g no-term (some p) no-term)))
+              (for-each (p-triple p-triples)
+                (let ((s (triple-subject p-triple))
+                      (o (triple-object p-triple))
+                      (inferred (make-triple arena s p-prime o)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; eq-rep-o: Object Replacement under sameAs
+  ;;
+  ;; If (?o owl:sameAs ?o') and (?s ?p ?o)
+  ;; then (?s ?p ?o')
+  ;; ============================================================
+
+  (fn eq-rep-o ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Replace object with sameAs equivalent")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (bob sameAs robert), (alice knows bob)
+      ;; Result: (alice knows robert)
+      (arena (fixture-g-rep-o arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena EX_KNOWS) (make-iri arena EX_ROBERT))))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each sameAs assertion in delta
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) same-as)
+          (let ((o (triple-subject dt))
+                (o-prime (triple-object dt)))
+            ;; Find all triples with o as object
+            (let ((o-triples (indexed-graph-match arena g no-term no-term (some o))))
+              (for-each (o-triple o-triples)
+                (let ((s (triple-subject o-triple))
+                      (p (triple-predicate o-triple)))
+                  ;; Don't duplicate sameAs triples themselves
+                  (when (not (term-eq p same-as))
+                    (let ((inferred (make-triple arena s p o-prime)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred))))))))))
+
+      ;; Also check: for new triples, find sameAs for their objects
+      (for-each (dt (. delta triples))
+        (when (not (term-eq (triple-predicate dt) same-as))
+          (let ((s (triple-subject dt))
+                (p (triple-predicate dt))
+                (o (triple-object dt)))
+            ;; Find o sameAs o'
+            (let ((same-triples (indexed-graph-match arena g (some o) (some same-as) no-term)))
+              (for-each (same-triple same-triples)
+                (let ((o-prime (triple-object same-triple))
+                      (inferred (make-triple arena s p o-prime)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; eq-diff1: sameAs + differentFrom Inconsistency (Direct)
+  ;;
+  ;; If (?x owl:sameAs ?y) and (?x owl:differentFrom ?y)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn eq-diff1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect direct sameAs/differentFrom contradiction")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@example
+      ;; Graph: (alice sameAs bob), (alice differentFrom bob)
+      ;; Result: inconsistency
+      (arena (fixture-g-contradiction arena) (fixture-delta-empty arena))
+      -> (some (InconsistencyReport "eq-diff1: x sameAs y and x differentFrom y" _)))
+    (@example
+      ;; Graph: (alice sameAs bob), (alice differentFrom carol)
+      ;; Result: none (no contradiction)
+      (arena (fixture-g-no-contradiction arena) (fixture-delta-empty arena))
+      -> (none))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (different-from (make-iri arena OWL_DIFFERENT_FROM)))
+
+      ;; For each sameAs in delta, check for differentFrom
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) same-as)
+          (let ((x (triple-subject dt))
+                (y (triple-object dt))
+                (diff-triple (make-triple arena x different-from y)))
+            (when (indexed-graph-contains g diff-triple)
+              (return (some (record-new InconsistencyReport
+                (reason "eq-diff1: x sameAs y and x differentFrom y")
+                (witnesses (list Triple dt diff-triple)))))))))
+
+      ;; For each differentFrom in delta, check for sameAs
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) different-from)
+          (let ((x (triple-subject dt))
+                (y (triple-object dt))
+                (same-triple (make-triple arena x same-as y)))
+            (when (indexed-graph-contains g same-triple)
+              (return (some (record-new InconsistencyReport
+                (reason "eq-diff1: x sameAs y and x differentFrom y")
+                (witnesses (list Triple dt same-triple)))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; eq-diff2: sameAs + differentFrom Inconsistency (Symmetric 1)
+  ;;
+  ;; If (?x owl:sameAs ?y) and (?y owl:differentFrom ?x)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn eq-diff2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect symmetric sameAs/differentFrom contradiction (variant 1)")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@example
+      ;; Graph: (alice sameAs bob), (bob differentFrom alice)
+      ;; Result: inconsistency
+      (arena (fixture-g-sym-contradiction arena) (fixture-delta-empty arena))
+      -> (some (InconsistencyReport "eq-diff2: x sameAs y and y differentFrom x" _)))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (different-from (make-iri arena OWL_DIFFERENT_FROM)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) same-as)
+          (let ((x (triple-subject dt))
+                (y (triple-object dt))
+                (diff-triple (make-triple arena y different-from x)))
+            (when (indexed-graph-contains g diff-triple)
+              (return (some (record-new InconsistencyReport
+                (reason "eq-diff2: x sameAs y and y differentFrom x")
+                (witnesses (list Triple dt diff-triple)))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; eq-diff3: sameAs + differentFrom Inconsistency (Symmetric 2)
+  ;;
+  ;; If (?y owl:sameAs ?x) and (?x owl:differentFrom ?y)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn eq-diff3 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect symmetric sameAs/differentFrom contradiction (variant 2)")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (different-from (make-iri arena OWL_DIFFERENT_FROM)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) different-from)
+          (let ((x (triple-subject dt))
+                (y (triple-object dt))
+                ;; Check y sameAs x
+                (same-triple (make-triple arena y same-as x)))
+            (when (indexed-graph-contains g same-triple)
+              (return (some (record-new InconsistencyReport
+                (reason "eq-diff3: y sameAs x and x differentFrom y")
+                (witnesses (list Triple dt same-triple)))))))))
+
+      (none))))

@@ -1,0 +1,1064 @@
+;; ============================================================
+;; OWL 2 RL Table 6: Class Expression Rules (cls-*)
+;;
+;; These rules handle complex class expressions including
+;; intersection, union, restrictions, and cardinality.
+;;
+;; Reference: https://www.w3.org/TR/owl2-profiles/#OWL_2_RL
+;; ============================================================
+
+(module cls
+  (@doc "OWL 2 RL class expression rules with formally verified contracts")
+
+  (import rdf (Term Triple term-eq triple-eq make-iri make-triple make-blank
+               triple-subject triple-predicate triple-object))
+  (import index (IndexedGraph indexed-graph-match indexed-graph-contains indexed-graph-size
+                  indexed-graph-create indexed-graph-add))
+  (import vocab (RDF_TYPE RDF_FIRST RDF_REST RDF_NIL
+                 OWL_NOTHING OWL_INTERSECTION_OF OWL_UNION_OF OWL_COMPLEMENT_OF
+                 OWL_SOME_VALUES_FROM OWL_ALL_VALUES_FROM OWL_HAS_VALUE OWL_ON_PROPERTY
+                 OWL_MAX_CARDINALITY OWL_MAX_QUALIFIED_CARDINALITY OWL_ON_CLASS
+                 OWL_ONE_OF OWL_SAME_AS))
+  (import list (rdf-list-elements-indexed))
+  (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
+
+  (export
+    apply-cls-rules
+    cls-nothing2
+    cls-int1
+    cls-int2
+    cls-uni
+    cls-com
+    cls-svf1
+    cls-svf2
+    cls-avf
+    cls-hv1
+    cls-hv2
+    cls-maxc1
+    cls-maxc2
+    cls-oo)
+
+  ;; ============================================================
+  ;; Test Fixture URIs (internal)
+  ;; ============================================================
+
+  ;; Individuals
+  (const EX_ALICE String "http://example.org/alice")
+  (const EX_BOB String "http://example.org/bob")
+  (const EX_FIDO String "http://example.org/fido")
+  (const EX_MARY String "http://example.org/mary")
+  (const EX_MARIA String "http://example.org/maria")
+  (const EX_USA String "http://example.org/USA")
+  (const EX_MONDAY String "http://example.org/Monday")
+  (const EX_TUESDAY String "http://example.org/Tuesday")
+  (const EX_WEDNESDAY String "http://example.org/Wednesday")
+
+  ;; Classes
+  (const EX_PERSON String "http://example.org/Person")
+  (const EX_FEMALE String "http://example.org/Female")
+  (const EX_PARENT String "http://example.org/Parent")
+  (const EX_FEMALE_PARENT String "http://example.org/FemaleParent")
+  (const EX_MAN String "http://example.org/Man")
+  (const EX_WOMAN String "http://example.org/Woman")
+  (const EX_NOT_PARENT String "http://example.org/NotParent")
+  (const EX_DOG String "http://example.org/Dog")
+  (const EX_DOG_OWNER String "http://example.org/DogOwner")
+  (const EX_HUMAN String "http://example.org/Human")
+  (const EX_PERSON_WITH_HUMAN_CHILDREN String "http://example.org/PersonWithOnlyHumanChildren")
+  (const EX_US_CITIZEN String "http://example.org/USCitizen")
+  (const EX_HAS_ONE_MOTHER String "http://example.org/HasOneMother")
+  (const EX_DAYS_OF_WEEK String "http://example.org/DaysOfWeek")
+
+  ;; Properties
+  (const EX_HAS_PET String "http://example.org/hasPet")
+  (const EX_HAS_CHILD String "http://example.org/hasChild")
+  (const EX_CITIZENSHIP String "http://example.org/citizenship")
+  (const EX_HAS_MOTHER String "http://example.org/hasMother")
+
+  ;; ============================================================
+  ;; Test Fixture Builders (internal)
+  ;; ============================================================
+
+  ;; Helper: build an RDF list with two elements
+  (fn fixture-build-list2 ((arena Arena) (g IndexedGraph) (e1 Term) (e2 Term))
+    (@intent "Build an RDF list with two elements, return list head")
+    (@spec ((Arena IndexedGraph Term Term) -> Term))
+    (let ((first-pred (make-iri arena RDF_FIRST))
+          (rest-pred (make-iri arena RDF_REST))
+          (nil-term (make-iri arena RDF_NIL))
+          (node1 (make-blank arena 1))
+          (node2 (make-blank arena 2)))
+      ;; (node1 first e1), (node1 rest node2)
+      (indexed-graph-add arena g (make-triple arena node1 first-pred e1))
+      (indexed-graph-add arena g (make-triple arena node1 rest-pred node2))
+      ;; (node2 first e2), (node2 rest nil)
+      (indexed-graph-add arena g (make-triple arena node2 first-pred e2))
+      (indexed-graph-add arena g (make-triple arena node2 rest-pred nil-term))
+      node1))
+
+  ;; Helper: build an RDF list with three elements
+  (fn fixture-build-list3 ((arena Arena) (g IndexedGraph) (e1 Term) (e2 Term) (e3 Term))
+    (@intent "Build an RDF list with three elements, return list head")
+    (@spec ((Arena IndexedGraph Term Term Term) -> Term))
+    (let ((first-pred (make-iri arena RDF_FIRST))
+          (rest-pred (make-iri arena RDF_REST))
+          (nil-term (make-iri arena RDF_NIL))
+          (node1 (make-blank arena 1))
+          (node2 (make-blank arena 2))
+          (node3 (make-blank arena 3)))
+      (indexed-graph-add arena g (make-triple arena node1 first-pred e1))
+      (indexed-graph-add arena g (make-triple arena node1 rest-pred node2))
+      (indexed-graph-add arena g (make-triple arena node2 first-pred e2))
+      (indexed-graph-add arena g (make-triple arena node2 rest-pred node3))
+      (indexed-graph-add arena g (make-triple arena node3 first-pred e3))
+      (indexed-graph-add arena g (make-triple arena node3 rest-pred nil-term))
+      node1))
+
+  ;; Fixture: graph with alice typed as owl:Nothing (for cls-nothing2)
+  (fn fixture-g-nothing ((arena Arena))
+    (@intent "Create graph where alice is typed as owl:Nothing")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (nothing (make-iri arena OWL_NOTHING))
+          (alice (make-iri arena EX_ALICE)))
+      (indexed-graph-add arena g (make-triple arena alice type-pred nothing))
+      g))
+
+  ;; Fixture: delta with alice typed as owl:Nothing
+  (fn fixture-delta-nothing ((arena Arena))
+    (@intent "Create delta with alice typed as owl:Nothing")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (nothing (make-iri arena OWL_NOTHING))
+          (alice (make-iri arena EX_ALICE)))
+      (delta-add arena d (make-triple arena alice type-pred nothing))))
+
+  ;; Fixture: graph with intersection class (FemaleParent = Female AND Parent)
+  ;; alice is typed as Female and Parent
+  (fn fixture-g-intersection ((arena Arena))
+    (@intent "Create graph with intersection class definition")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (int-pred (make-iri arena OWL_INTERSECTION_OF))
+          (female-parent (make-iri arena EX_FEMALE_PARENT))
+          (female (make-iri arena EX_FEMALE))
+          (parent (make-iri arena EX_PARENT))
+          (alice (make-iri arena EX_ALICE)))
+      ;; Build intersection list [Female, Parent]
+      (let ((list-head (fixture-build-list2 arena g female parent)))
+        (indexed-graph-add arena g (make-triple arena female-parent int-pred list-head)))
+      ;; alice type Female, alice type Parent
+      (indexed-graph-add arena g (make-triple arena alice type-pred female))
+      (indexed-graph-add arena g (make-triple arena alice type-pred parent))
+      g))
+
+  ;; Fixture: delta with alice typed as Female (triggers cls-int1)
+  (fn fixture-delta-intersection ((arena Arena))
+    (@intent "Create delta with alice typed as Female")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (female (make-iri arena EX_FEMALE))
+          (alice (make-iri arena EX_ALICE)))
+      (delta-add arena d (make-triple arena alice type-pred female))))
+
+  ;; Fixture: graph with intersection and alice typed as FemaleParent (for cls-int2)
+  (fn fixture-g-intersection2 ((arena Arena))
+    (@intent "Create graph with intersection and alice typed as intersection class")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (int-pred (make-iri arena OWL_INTERSECTION_OF))
+          (female-parent (make-iri arena EX_FEMALE_PARENT))
+          (female (make-iri arena EX_FEMALE))
+          (parent (make-iri arena EX_PARENT))
+          (alice (make-iri arena EX_ALICE)))
+      (let ((list-head (fixture-build-list2 arena g female parent)))
+        (indexed-graph-add arena g (make-triple arena female-parent int-pred list-head)))
+      (indexed-graph-add arena g (make-triple arena alice type-pred female-parent))
+      g))
+
+  ;; Fixture: delta with alice typed as FemaleParent (triggers cls-int2)
+  (fn fixture-delta-int2 ((arena Arena))
+    (@intent "Create delta with alice typed as FemaleParent")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (female-parent (make-iri arena EX_FEMALE_PARENT))
+          (alice (make-iri arena EX_ALICE)))
+      (delta-add arena d (make-triple arena alice type-pred female-parent))))
+
+  ;; Fixture: graph with union class (Person = Man OR Woman)
+  (fn fixture-g-union ((arena Arena))
+    (@intent "Create graph with union class definition")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (union-pred (make-iri arena OWL_UNION_OF))
+          (person (make-iri arena EX_PERSON))
+          (man (make-iri arena EX_MAN))
+          (woman (make-iri arena EX_WOMAN))
+          (alice (make-iri arena EX_ALICE)))
+      (let ((list-head (fixture-build-list2 arena g man woman)))
+        (indexed-graph-add arena g (make-triple arena person union-pred list-head)))
+      (indexed-graph-add arena g (make-triple arena alice type-pred woman))
+      g))
+
+  ;; Fixture: delta with alice typed as Woman (triggers cls-uni)
+  (fn fixture-delta-union ((arena Arena))
+    (@intent "Create delta with alice typed as Woman")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (woman (make-iri arena EX_WOMAN))
+          (alice (make-iri arena EX_ALICE)))
+      (delta-add arena d (make-triple arena alice type-pred woman))))
+
+  ;; Fixture: graph with complement violation (alice in both Parent and NotParent)
+  (fn fixture-g-complement-violation ((arena Arena))
+    (@intent "Create graph with complement class violation")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (comp-pred (make-iri arena OWL_COMPLEMENT_OF))
+          (parent (make-iri arena EX_PARENT))
+          (not-parent (make-iri arena EX_NOT_PARENT))
+          (alice (make-iri arena EX_ALICE)))
+      ;; NotParent complementOf Parent
+      (indexed-graph-add arena g (make-triple arena not-parent comp-pred parent))
+      ;; alice type Parent (already in graph)
+      (indexed-graph-add arena g (make-triple arena alice type-pred parent))
+      g))
+
+  ;; Fixture: delta with alice typed as NotParent (triggers cls-com violation)
+  (fn fixture-delta-complement ((arena Arena))
+    (@intent "Create delta with alice typed as NotParent")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (not-parent (make-iri arena EX_NOT_PARENT))
+          (alice (make-iri arena EX_ALICE)))
+      (delta-add arena d (make-triple arena alice type-pred not-parent))))
+
+  ;; Fixture: graph with someValuesFrom restriction (DogOwner someValuesFrom Dog on hasPet)
+  (fn fixture-g-svf ((arena Arena))
+    (@intent "Create graph with someValuesFrom restriction")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (svf-pred (make-iri arena OWL_SOME_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (dog-owner (make-iri arena EX_DOG_OWNER))
+          (dog (make-iri arena EX_DOG))
+          (has-pet (make-iri arena EX_HAS_PET))
+          (alice (make-iri arena EX_ALICE))
+          (fido (make-iri arena EX_FIDO)))
+      ;; DogOwner someValuesFrom Dog on hasPet
+      (indexed-graph-add arena g (make-triple arena dog-owner svf-pred dog))
+      (indexed-graph-add arena g (make-triple arena dog-owner on-prop-pred has-pet))
+      ;; alice hasPet fido
+      (indexed-graph-add arena g (make-triple arena alice has-pet fido))
+      ;; fido type Dog (in graph, delta will assert it)
+      (indexed-graph-add arena g (make-triple arena fido type-pred dog))
+      g))
+
+  ;; Fixture: delta with fido typed as Dog (triggers cls-svf2)
+  (fn fixture-delta-svf ((arena Arena))
+    (@intent "Create delta with fido typed as Dog")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (dog (make-iri arena EX_DOG))
+          (fido (make-iri arena EX_FIDO)))
+      (delta-add arena d (make-triple arena fido type-pred dog))))
+
+  ;; Fixture: graph with allValuesFrom restriction
+  (fn fixture-g-avf ((arena Arena))
+    (@intent "Create graph with allValuesFrom restriction")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (avf-pred (make-iri arena OWL_ALL_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (person-hc (make-iri arena EX_PERSON_WITH_HUMAN_CHILDREN))
+          (human (make-iri arena EX_HUMAN))
+          (has-child (make-iri arena EX_HAS_CHILD))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      ;; PersonWithOnlyHumanChildren allValuesFrom Human on hasChild
+      (indexed-graph-add arena g (make-triple arena person-hc avf-pred human))
+      (indexed-graph-add arena g (make-triple arena person-hc on-prop-pred has-child))
+      ;; alice type PersonWithOnlyHumanChildren
+      (indexed-graph-add arena g (make-triple arena alice type-pred person-hc))
+      ;; alice hasChild bob
+      (indexed-graph-add arena g (make-triple arena alice has-child bob))
+      g))
+
+  ;; Fixture: delta with alice typed as PersonWithOnlyHumanChildren (triggers cls-avf)
+  (fn fixture-delta-avf ((arena Arena))
+    (@intent "Create delta with alice typed as PersonWithOnlyHumanChildren")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (person-hc (make-iri arena EX_PERSON_WITH_HUMAN_CHILDREN))
+          (alice (make-iri arena EX_ALICE)))
+      (delta-add arena d (make-triple arena alice type-pred person-hc))))
+
+  ;; Fixture: graph with hasValue restriction (USCitizen hasValue USA on citizenship)
+  (fn fixture-g-hv ((arena Arena))
+    (@intent "Create graph with hasValue restriction")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (hv-pred (make-iri arena OWL_HAS_VALUE))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (us-citizen (make-iri arena EX_US_CITIZEN))
+          (usa (make-iri arena EX_USA))
+          (citizenship (make-iri arena EX_CITIZENSHIP))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      ;; USCitizen hasValue USA on citizenship
+      (indexed-graph-add arena g (make-triple arena us-citizen hv-pred usa))
+      (indexed-graph-add arena g (make-triple arena us-citizen on-prop-pred citizenship))
+      ;; alice type USCitizen (for cls-hv1)
+      (indexed-graph-add arena g (make-triple arena alice type-pred us-citizen))
+      ;; bob citizenship USA (for cls-hv2)
+      (indexed-graph-add arena g (make-triple arena bob citizenship usa))
+      g))
+
+  ;; Fixture: delta with alice typed as USCitizen (triggers cls-hv1)
+  (fn fixture-delta-hv1 ((arena Arena))
+    (@intent "Create delta with alice typed as USCitizen")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (us-citizen (make-iri arena EX_US_CITIZEN))
+          (alice (make-iri arena EX_ALICE)))
+      (delta-add arena d (make-triple arena alice type-pred us-citizen))))
+
+  ;; Fixture: delta with bob citizenship USA (triggers cls-hv2)
+  (fn fixture-delta-hv2 ((arena Arena))
+    (@intent "Create delta with bob having USA citizenship")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (citizenship (make-iri arena EX_CITIZENSHIP))
+          (usa (make-iri arena EX_USA))
+          (bob (make-iri arena EX_BOB)))
+      (delta-add arena d (make-triple arena bob citizenship usa))))
+
+  ;; Fixture: graph with maxCardinality 1 restriction
+  (fn fixture-g-maxc1 ((arena Arena))
+    (@intent "Create graph with maxCardinality 1 restriction")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (maxc-pred (make-iri arena OWL_MAX_CARDINALITY))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (has-one-mother (make-iri arena EX_HAS_ONE_MOTHER))
+          (has-mother (make-iri arena EX_HAS_MOTHER))
+          (alice (make-iri arena EX_ALICE))
+          (mary (make-iri arena EX_MARY))
+          (maria (make-iri arena EX_MARIA))
+          ;; Note: cardinality value should be literal "1" but we use IRI for simplicity
+          (one (make-iri arena "http://example.org/1")))
+      ;; HasOneMother maxCardinality 1 on hasMother
+      (indexed-graph-add arena g (make-triple arena has-one-mother maxc-pred one))
+      (indexed-graph-add arena g (make-triple arena has-one-mother on-prop-pred has-mother))
+      ;; alice type HasOneMother
+      (indexed-graph-add arena g (make-triple arena alice type-pred has-one-mother))
+      ;; alice hasMother mary, alice hasMother maria
+      (indexed-graph-add arena g (make-triple arena alice has-mother mary))
+      (indexed-graph-add arena g (make-triple arena alice has-mother maria))
+      g))
+
+  ;; Fixture: delta with alice having two mothers (triggers cls-maxc2)
+  (fn fixture-delta-maxc ((arena Arena))
+    (@intent "Create delta with alice having second mother")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (has-mother (make-iri arena EX_HAS_MOTHER))
+          (alice (make-iri arena EX_ALICE))
+          (maria (make-iri arena EX_MARIA)))
+      (delta-add arena d (make-triple arena alice has-mother maria))))
+
+  ;; Fixture: graph with oneOf enumeration
+  (fn fixture-g-one-of ((arena Arena))
+    (@intent "Create graph with oneOf enumeration class")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (one-of-pred (make-iri arena OWL_ONE_OF))
+          (days (make-iri arena EX_DAYS_OF_WEEK))
+          (monday (make-iri arena EX_MONDAY))
+          (tuesday (make-iri arena EX_TUESDAY))
+          (wednesday (make-iri arena EX_WEDNESDAY)))
+      (let ((list-head (fixture-build-list3 arena g monday tuesday wednesday)))
+        (indexed-graph-add arena g (make-triple arena days one-of-pred list-head)))
+      g))
+
+  ;; Fixture: delta with oneOf definition (triggers cls-oo)
+  (fn fixture-delta-one-of ((arena Arena))
+    (@intent "Create delta with oneOf enumeration definition")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (one-of-pred (make-iri arena OWL_ONE_OF))
+          (first-pred (make-iri arena RDF_FIRST))
+          (rest-pred (make-iri arena RDF_REST))
+          (nil-term (make-iri arena RDF_NIL))
+          (days (make-iri arena EX_DAYS_OF_WEEK))
+          (monday (make-iri arena EX_MONDAY))
+          (tuesday (make-iri arena EX_TUESDAY))
+          (wednesday (make-iri arena EX_WEDNESDAY))
+          (node1 (make-blank arena 10))
+          (node2 (make-blank arena 11))
+          (node3 (make-blank arena 12)))
+      ;; Build list in delta (for oneOf trigger)
+      (delta-add arena d (make-triple arena days one-of-pred node1))
+      (delta-add arena d (make-triple arena node1 first-pred monday))
+      (delta-add arena d (make-triple arena node1 rest-pred node2))
+      (delta-add arena d (make-triple arena node2 first-pred tuesday))
+      (delta-add arena d (make-triple arena node2 rest-pred node3))
+      (delta-add arena d (make-triple arena node3 first-pred wednesday))
+      (delta-add arena d (make-triple arena node3 rest-pred nil-term))))
+
+  ;; ============================================================
+  ;; Rule Dispatcher
+  ;; ============================================================
+
+  (fn apply-cls-rules ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Apply all class expression rules (Table 6)")
+    (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((ok d) {(. d iteration) == (+ (. delta iteration) 1)})
+             ((error _) true)))
+    (let ((next-iter (+ (. delta iteration) 1))
+          (mut result (make-delta arena next-iter)))
+
+      ;; Check for owl:Nothing membership (immediate inconsistency)
+      (match (cls-nothing2 arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+
+      ;; Intersection rules
+      (for-each (t (cls-int1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (cls-int2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Union membership
+      (for-each (t (cls-uni arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Complement (inconsistency check)
+      (match (cls-com arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+
+      ;; Restriction rules
+      (for-each (t (cls-svf1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (cls-svf2 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (cls-avf arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (cls-hv1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (cls-hv2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Cardinality rules
+      (for-each (t (cls-maxc1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (cls-maxc2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; OneOf enumeration
+      (for-each (t (cls-oo arena g delta))
+        (set! result (delta-add arena result t)))
+
+      (ok result)))
+
+  ;; ============================================================
+  ;; cls-nothing2: Membership in owl:Nothing is Inconsistent
+  ;;
+  ;; If (?x rdf:type owl:Nothing)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn cls-nothing2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect membership in owl:Nothing (always inconsistent)")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@example
+      ;; Graph: (alice type owl:Nothing)
+      ;; Result: inconsistency (owl:Nothing is the empty class)
+      (arena (fixture-g-nothing arena) (fixture-delta-nothing arena))
+      -> (some (InconsistencyReport _ _)))
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (nothing (make-iri arena OWL_NOTHING)))
+
+      (for-each (dt (. delta triples))
+        (when (and (term-eq (triple-predicate dt) type-pred)
+                   (term-eq (triple-object dt) nothing))
+          (return (some (record-new InconsistencyReport
+            (reason "cls-nothing2: individual is instance of owl:Nothing")
+            (witnesses (list Triple dt)))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; cls-int1: Intersection Membership (Individual in All Components)
+  ;;
+  ;; If (?c owl:intersectionOf ?x) and LIST(?x, ?c1, ..., ?cn) and
+  ;;    (?y rdf:type ?c1) and ... and (?y rdf:type ?cn)
+  ;; then (?y rdf:type ?c)
+  ;; ============================================================
+
+  (fn cls-int1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer intersection class membership when all components satisfied")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (FemaleParent intersectionOf [Female Parent])
+      ;;        (alice type Female), (alice type Parent)
+      ;; Result: (alice type FemaleParent)
+      (arena (fixture-g-intersection arena) (fixture-delta-intersection arena))
+      -> (list _))
+    (let ((intersection-pred (make-iri arena OWL_INTERSECTION_OF))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find all intersection class definitions
+      (let ((int-triples (indexed-graph-match arena g no-term (some intersection-pred) no-term)))
+        (for-each (int-triple int-triples)
+          (let ((int-class (triple-subject int-triple))
+                (list-head (triple-object int-triple))
+                (component-classes (rdf-list-elements-indexed arena g list-head)))
+            ;; For each type assertion in delta
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) type-pred)
+                (let ((individual (triple-subject dt))
+                      (asserted-class (triple-object dt)))
+                  ;; Check if asserted class is in the intersection components
+                  (let ((mut is-component false))
+                    (for-each (comp component-classes)
+                      (when (term-eq comp asserted-class)
+                        (set! is-component true)))
+                    ;; If it is, check if individual is in ALL components
+                    (when is-component
+                      (let ((mut all-satisfied true))
+                        (for-each (comp component-classes)
+                          (let ((type-triple (make-triple arena individual type-pred comp)))
+                            (when (not (indexed-graph-contains g type-triple))
+                              (set! all-satisfied false))))
+                        (when all-satisfied
+                          (let ((inferred (make-triple arena individual type-pred int-class)))
+                            (when (not (indexed-graph-contains g inferred))
+                              (list-push result inferred)))))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cls-int2: Intersection Implies Component Membership
+  ;;
+  ;; If (?c owl:intersectionOf ?x) and LIST(?x, ?c1, ..., ?cn) and
+  ;;    (?y rdf:type ?c)
+  ;; then (?y rdf:type ?c1) and ... and (?y rdf:type ?cn)
+  ;; ============================================================
+
+  (fn cls-int2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer component class membership from intersection membership")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (FemaleParent intersectionOf [Female Parent]), (alice type FemaleParent)
+      ;; Result: (alice type Female), (alice type Parent)
+      (arena (fixture-g-intersection2 arena) (fixture-delta-int2 arena))
+      -> (list _ _))
+    (let ((intersection-pred (make-iri arena OWL_INTERSECTION_OF))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find intersection definitions
+      (let ((int-triples (indexed-graph-match arena g no-term (some intersection-pred) no-term)))
+        (for-each (int-triple int-triples)
+          (let ((int-class (triple-subject int-triple))
+                (list-head (triple-object int-triple))
+                (component-classes (rdf-list-elements-indexed arena g list-head)))
+            ;; For each type assertion in delta where object is the intersection class
+            (for-each (dt (. delta triples))
+              (when (and (term-eq (triple-predicate dt) type-pred)
+                         (term-eq (triple-object dt) int-class))
+                (let ((individual (triple-subject dt)))
+                  ;; Infer membership in each component
+                  (for-each (comp component-classes)
+                    (let ((inferred (make-triple arena individual type-pred comp)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cls-uni: Union Component Implies Union Membership
+  ;;
+  ;; If (?c owl:unionOf ?x) and LIST(?x, ?c1, ..., ?cn) and
+  ;;    (?y rdf:type ?ci) for some i
+  ;; then (?y rdf:type ?c)
+  ;; ============================================================
+
+  (fn cls-uni ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer union class membership from component membership")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (Person unionOf [Man Woman]), (alice type Woman)
+      ;; Result: (alice type Person)
+      (arena (fixture-g-union arena) (fixture-delta-union arena))
+      -> (list _))
+    (let ((union-pred (make-iri arena OWL_UNION_OF))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find all union definitions
+      (let ((union-triples (indexed-graph-match arena g no-term (some union-pred) no-term)))
+        (for-each (union-triple union-triples)
+          (let ((union-class (triple-subject union-triple))
+                (list-head (triple-object union-triple))
+                (component-classes (rdf-list-elements-indexed arena g list-head)))
+            ;; For each type assertion in delta
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) type-pred)
+                (let ((individual (triple-subject dt))
+                      (asserted-class (triple-object dt)))
+                  ;; Check if asserted class is a union component
+                  (for-each (comp component-classes)
+                    (when (term-eq comp asserted-class)
+                      (let ((inferred (make-triple arena individual type-pred union-class)))
+                        (when (not (indexed-graph-contains g inferred))
+                          (list-push result inferred)))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cls-com: Complement Inconsistency
+  ;;
+  ;; If (?c1 owl:complementOf ?c2) and (?x rdf:type ?c1) and (?x rdf:type ?c2)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn cls-com ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect membership in both a class and its complement")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@example
+      ;; Graph: (NotParent complementOf Parent), (alice type Parent), (alice type NotParent)
+      ;; Result: inconsistency
+      (arena (fixture-g-complement-violation arena) (fixture-delta-complement arena))
+      -> (some (InconsistencyReport _ _)))
+    (let ((complement-pred (make-iri arena OWL_COMPLEMENT_OF))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none)))
+
+      ;; Find complement definitions
+      (let ((comp-triples (indexed-graph-match arena g no-term (some complement-pred) no-term)))
+        (for-each (comp-triple comp-triples)
+          (let ((c1 (triple-subject comp-triple))
+                (c2 (triple-object comp-triple)))
+            ;; For each type assertion in delta
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) type-pred)
+                (let ((individual (triple-subject dt))
+                      (asserted-class (triple-object dt)))
+                  ;; Check if type is c1, then check for c2
+                  (when (term-eq asserted-class c1)
+                    (let ((c2-type (make-triple arena individual type-pred c2)))
+                      (when (indexed-graph-contains g c2-type)
+                        (return (some (record-new InconsistencyReport
+                          (reason "cls-com: individual in both class and its complement")
+                          (witnesses (list Triple dt c2-type comp-triple))))))))
+                  ;; Check if type is c2, then check for c1
+                  (when (term-eq asserted-class c2)
+                    (let ((c1-type (make-triple arena individual type-pred c1)))
+                      (when (indexed-graph-contains g c1-type)
+                        (return (some (record-new InconsistencyReport
+                          (reason "cls-com: individual in both class and its complement")
+                          (witnesses (list Triple dt c1-type comp-triple))))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; cls-svf1: someValuesFrom (Type Propagation)
+  ;;
+  ;; If (?x owl:someValuesFrom ?y) and (?x owl:onProperty ?p) and
+  ;;    (?u rdf:type ?x)
+  ;; then exists ?v: (?u ?p ?v) and (?v rdf:type ?y)
+  ;;
+  ;; Note: This is existential - we don't infer, but can use for checks
+  ;; In OWL 2 RL, we use the converse direction (cls-svf2)
+  ;; ============================================================
+
+  (fn cls-svf1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Handle someValuesFrom restrictions (forward direction - limited in RL)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    ;; In OWL 2 RL, svf1 has limited applicability
+    ;; We return empty - the inference happens in svf2
+    (list-new arena Triple))
+
+  ;; ============================================================
+  ;; cls-svf2: someValuesFrom (Class Membership)
+  ;;
+  ;; If (?x owl:someValuesFrom ?y) and (?x owl:onProperty ?p) and
+  ;;    (?u ?p ?v) and (?v rdf:type ?y)
+  ;; then (?u rdf:type ?x)
+  ;; ============================================================
+
+  (fn cls-svf2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer restriction class membership from someValuesFrom")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (DogOwner someValuesFrom Dog on hasPet), (alice hasPet fido), (fido type Dog)
+      ;; Result: (alice type DogOwner)
+      (arena (fixture-g-svf arena) (fixture-delta-svf arena))
+      -> (list _))
+    (let ((svf-pred (make-iri arena OWL_SOME_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find someValuesFrom restrictions
+      (let ((svf-triples (indexed-graph-match arena g no-term (some svf-pred) no-term)))
+        (for-each (svf-triple svf-triples)
+          (let ((restriction (triple-subject svf-triple))
+                (value-class (triple-object svf-triple)))
+            ;; Find the onProperty for this restriction
+            (let ((prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
+              (for-each (prop-triple prop-triples)
+                (let ((property (triple-object prop-triple)))
+                  ;; For each type assertion in delta where type is value-class
+                  (for-each (dt (. delta triples))
+                    (when (and (term-eq (triple-predicate dt) type-pred)
+                               (term-eq (triple-object dt) value-class))
+                      (let ((v (triple-subject dt)))
+                        ;; Find u such that (u property v)
+                        (let ((usage-triples (indexed-graph-match arena g no-term (some property) (some v))))
+                          (for-each (usage-triple usage-triples)
+                            (let ((u (triple-subject usage-triple))
+                                  (inferred (make-triple arena u type-pred restriction)))
+                              (when (not (indexed-graph-contains g inferred))
+                                (list-push result inferred))))))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cls-avf: allValuesFrom (Type Propagation)
+  ;;
+  ;; If (?x owl:allValuesFrom ?y) and (?x owl:onProperty ?p) and
+  ;;    (?u rdf:type ?x) and (?u ?p ?v)
+  ;; then (?v rdf:type ?y)
+  ;; ============================================================
+
+  (fn cls-avf ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer type from allValuesFrom restriction")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (PersonWithOnlyHumanChildren allValuesFrom Human on hasChild)
+      ;;        (alice type PersonWithOnlyHumanChildren), (alice hasChild bob)
+      ;; Result: (bob type Human)
+      (arena (fixture-g-avf arena) (fixture-delta-avf arena))
+      -> (list _))
+    (let ((avf-pred (make-iri arena OWL_ALL_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find allValuesFrom restrictions
+      (let ((avf-triples (indexed-graph-match arena g no-term (some avf-pred) no-term)))
+        (for-each (avf-triple avf-triples)
+          (let ((restriction (triple-subject avf-triple))
+                (value-class (triple-object avf-triple)))
+            ;; Find the onProperty
+            (let ((prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
+              (for-each (prop-triple prop-triples)
+                (let ((property (triple-object prop-triple)))
+                  ;; For each type assertion in delta where type is the restriction
+                  (for-each (dt (. delta triples))
+                    (when (and (term-eq (triple-predicate dt) type-pred)
+                               (term-eq (triple-object dt) restriction))
+                      (let ((u (triple-subject dt)))
+                        ;; Find all (u property v) and infer (v type value-class)
+                        (let ((usage-triples (indexed-graph-match arena g (some u) (some property) no-term)))
+                          (for-each (usage-triple usage-triples)
+                            (let ((v (triple-object usage-triple))
+                                  (inferred (make-triple arena v type-pred value-class)))
+                              (when (not (indexed-graph-contains g inferred))
+                                (list-push result inferred))))))))
+                  ;; Also: for new property assertions, check if subject is in restriction
+                  (for-each (dt (. delta triples))
+                    (when (term-eq (triple-predicate dt) property)
+                      (let ((u (triple-subject dt))
+                            (v (triple-object dt))
+                            (u-type (make-triple arena u type-pred restriction)))
+                        (when (indexed-graph-contains g u-type)
+                          (let ((inferred (make-triple arena v type-pred value-class)))
+                            (when (not (indexed-graph-contains g inferred))
+                              (list-push result inferred)))))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cls-hv1: hasValue (Class to Property)
+  ;;
+  ;; If (?x owl:hasValue ?y) and (?x owl:onProperty ?p) and (?u rdf:type ?x)
+  ;; then (?u ?p ?y)
+  ;; ============================================================
+
+  (fn cls-hv1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer property assertion from hasValue restriction membership")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (USCitizen hasValue USA on citizenship), (alice type USCitizen)
+      ;; Result: (alice citizenship USA)
+      (arena (fixture-g-hv arena) (fixture-delta-hv1 arena))
+      -> (list _))
+    (let ((hv-pred (make-iri arena OWL_HAS_VALUE))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find hasValue restrictions
+      (let ((hv-triples (indexed-graph-match arena g no-term (some hv-pred) no-term)))
+        (for-each (hv-triple hv-triples)
+          (let ((restriction (triple-subject hv-triple))
+                (value (triple-object hv-triple)))
+            ;; Find the onProperty
+            (let ((prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
+              (for-each (prop-triple prop-triples)
+                (let ((property (triple-object prop-triple)))
+                  ;; For each type assertion where type is the restriction
+                  (for-each (dt (. delta triples))
+                    (when (and (term-eq (triple-predicate dt) type-pred)
+                               (term-eq (triple-object dt) restriction))
+                      (let ((u (triple-subject dt))
+                            (inferred (make-triple arena u property value)))
+                        (when (not (indexed-graph-contains g inferred))
+                          (list-push result inferred)))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cls-hv2: hasValue (Property to Class)
+  ;;
+  ;; If (?x owl:hasValue ?y) and (?x owl:onProperty ?p) and (?u ?p ?y)
+  ;; then (?u rdf:type ?x)
+  ;; ============================================================
+
+  (fn cls-hv2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer restriction class membership from hasValue")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (USCitizen hasValue USA on citizenship), (bob citizenship USA)
+      ;; Result: (bob type USCitizen)
+      (arena (fixture-g-hv arena) (fixture-delta-hv2 arena))
+      -> (list _))
+    (let ((hv-pred (make-iri arena OWL_HAS_VALUE))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find hasValue restrictions
+      (let ((hv-triples (indexed-graph-match arena g no-term (some hv-pred) no-term)))
+        (for-each (hv-triple hv-triples)
+          (let ((restriction (triple-subject hv-triple))
+                (value (triple-object hv-triple)))
+            ;; Find the onProperty
+            (let ((prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
+              (for-each (prop-triple prop-triples)
+                (let ((property (triple-object prop-triple)))
+                  ;; For each property assertion in delta with matching value
+                  (for-each (dt (. delta triples))
+                    (when (and (term-eq (triple-predicate dt) property)
+                               (term-eq (triple-object dt) value))
+                      (let ((u (triple-subject dt))
+                            (inferred (make-triple arena u type-pred restriction)))
+                        (when (not (indexed-graph-contains g inferred))
+                          (list-push result inferred)))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cls-maxc1: Max Cardinality 0
+  ;;
+  ;; If (?x owl:maxCardinality 0) and (?x owl:onProperty ?p) and
+  ;;    (?u rdf:type ?x) and (?u ?p ?y)
+  ;; then INCONSISTENT (handled elsewhere)
+  ;;
+  ;; In OWL 2 RL, we infer: nothing (it's a constraint)
+  ;; ============================================================
+
+  (fn cls-maxc1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Handle maxCardinality 0 (constraint, limited inference)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    ;; maxCardinality 0 is a constraint - no positive inference
+    (list-new arena Triple))
+
+  ;; ============================================================
+  ;; cls-maxc2: Max Cardinality 1 (Functional-like)
+  ;;
+  ;; If (?x owl:maxCardinality 1) and (?x owl:onProperty ?p) and
+  ;;    (?u rdf:type ?x) and (?u ?p ?y1) and (?u ?p ?y2)
+  ;; then (?y1 owl:sameAs ?y2)
+  ;; ============================================================
+
+  (fn cls-maxc2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer sameAs from maxCardinality 1 restriction")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@example
+      ;; Graph: (HasOneMother maxCardinality 1 on hasMother),
+      ;;        (alice type HasOneMother), (alice hasMother mary), (alice hasMother maria)
+      ;; Result: (mary sameAs maria)
+      (arena (fixture-g-maxc1 arena) (fixture-delta-maxc arena))
+      -> (list _))
+    (let ((maxc-pred (make-iri arena OWL_MAX_CARDINALITY))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find all maxCardinality restrictions
+      ;; Note: In OWL 2 RL, we only handle maxCardinality 0 or 1
+      ;; The cardinality value is a literal - for now we assume any restriction found
+      ;; could be cardinality 1 and let the ontology designer ensure correctness
+      (let ((maxc-triples (indexed-graph-match arena g no-term (some maxc-pred) no-term)))
+        (for-each (maxc-triple maxc-triples)
+          (let ((restriction (triple-subject maxc-triple)))
+            ;; Get the property for this restriction
+            (let ((prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
+              (for-each (prop-triple prop-triples)
+                (let ((property (triple-object prop-triple)))
+                  ;; Find all individuals of this restriction type
+                  (let ((type-triples (indexed-graph-match arena g no-term (some type-pred) (some restriction))))
+                    (for-each (type-triple type-triples)
+                      (let ((individual (triple-subject type-triple)))
+                        ;; Find all values for this individual via the property
+                        (let ((value-triples (indexed-graph-match arena g (some individual) (some property) no-term)))
+                          ;; If there are 2+ values, infer sameAs between them
+                          (when (> (list-len value-triples) 1)
+                            ;; Get first value
+                            (match (list-get value-triples 0)
+                              ((some first-triple)
+                                (let ((first-val (triple-object first-triple)))
+                                  ;; For each subsequent value, infer sameAs with first
+                                  (for (i 1 (list-len value-triples))
+                                    (match (list-get value-triples i)
+                                      ((some other-triple)
+                                        (let ((other-val (triple-object other-triple))
+                                              (inferred (make-triple arena first-val same-as other-val)))
+                                          (when (not (indexed-graph-contains g inferred))
+                                            (list-push result inferred))))
+                                      ((none) (do))))))
+                              ((none) (do))))))))))))))
+      result))
+
+  ;; ============================================================
+  ;; cls-oo: oneOf Enumeration
+  ;;
+  ;; If (?c owl:oneOf ?x) and LIST(?x, ?a1, ..., ?an)
+  ;; then (?a1 rdf:type ?c) and ... and (?an rdf:type ?c)
+  ;; ============================================================
+
+  (fn cls-oo ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer type membership for oneOf enumeration members")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (DaysOfWeek oneOf [Monday Tuesday Wednesday])
+      ;; Result: (Monday type DaysOfWeek), (Tuesday type DaysOfWeek), (Wednesday type DaysOfWeek)
+      (arena (fixture-g-one-of arena) (fixture-delta-one-of arena))
+      -> (list _ _ _))
+    (let ((one-of-pred (make-iri arena OWL_ONE_OF))
+          (type-pred (make-iri arena RDF_TYPE))
+          (mut result (list-new arena Triple)))
+
+      ;; Find oneOf definitions in delta (new enumerations)
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) one-of-pred)
+          (let ((enum-class (triple-subject dt))
+                (list-head (triple-object dt))
+                (members (rdf-list-elements-indexed arena g list-head)))
+            ;; Each member is an instance of the enumeration class
+            (for-each (member members)
+              (let ((inferred (make-triple arena member type-pred enum-class)))
+                (when (not (indexed-graph-contains g inferred))
+                  (list-push result inferred)))))))
+
+      result)))

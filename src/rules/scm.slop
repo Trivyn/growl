@@ -1,0 +1,645 @@
+;; ============================================================
+;; OWL 2 RL Table 9: Schema Vocabulary Rules (scm-*)
+;;
+;; These rules derive implicit schema-level consequences like
+;; transitivity of subclass/subproperty and constraint propagation.
+;;
+;; Reference: https://www.w3.org/TR/owl2-profiles/#OWL_2_RL
+;; ============================================================
+
+(module scm
+  (@doc "OWL 2 RL schema vocabulary rules with formally verified contracts")
+
+  (import rdf (Term Triple term-eq triple-eq make-iri make-triple
+               triple-subject triple-predicate triple-object))
+  (import index (IndexedGraph indexed-graph-match indexed-graph-contains indexed-graph-size
+                 indexed-graph-create indexed-graph-add))
+  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF RDFS_DOMAIN RDFS_RANGE
+                 OWL_CLASS OWL_THING OWL_EQUIVALENT_CLASS OWL_EQUIVALENT_PROPERTY
+                 OWL_OBJECT_PROPERTY OWL_DATATYPE_PROPERTY
+                 OWL_HAS_VALUE OWL_SOME_VALUES_FROM OWL_ALL_VALUES_FROM
+                 OWL_ON_PROPERTY OWL_INTERSECTION_OF OWL_UNION_OF))
+  (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
+
+  (export
+    apply-scm-rules
+    scm-cls
+    scm-sco
+    scm-eqc1
+    scm-eqc2
+    scm-op
+    scm-dp
+    scm-spo
+    scm-eqp1
+    scm-eqp2
+    scm-dom1
+    scm-dom2
+    scm-rng1
+    scm-rng2)
+
+  ;; ============================================================
+  ;; Test Fixture URIs (for @example annotations)
+  ;; ============================================================
+
+  (const EX_PERSON String "http://example.org/Person")
+  (const EX_HUMAN String "http://example.org/Human")
+  (const EX_A String "http://example.org/A")
+  (const EX_B String "http://example.org/B")
+  (const EX_C String "http://example.org/C")
+  (const EX_HAS_PARENT String "http://example.org/hasParent")
+  (const EX_HAS_FATHER String "http://example.org/hasFather")
+  (const EX_HAS_ANCESTOR String "http://example.org/hasAncestor")
+
+  ;; ============================================================
+  ;; Test Fixture Builders
+  ;; ============================================================
+
+  ;; Graph with (Person type owl:Class)
+  (fn fixture-g-with-class ((arena Arena))
+    (@intent "Create test graph: Person is an owl:Class")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (class-type (make-iri arena OWL_CLASS))
+          (person (make-iri arena EX_PERSON)))
+      (indexed-graph-add arena g (make-triple arena person type-pred class-type))
+      g))
+
+  ;; Graph with subclass chain: A subClassOf B, B subClassOf C
+  (fn fixture-g-chain ((arena Arena))
+    (@intent "Create test graph: A subClassOf B subClassOf C")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (a (make-iri arena EX_A))
+          (b (make-iri arena EX_B))
+          (c (make-iri arena EX_C)))
+      (indexed-graph-add arena g (make-triple arena a subclass-pred b))
+      (indexed-graph-add arena g (make-triple arena b subclass-pred c))
+      g))
+
+  ;; Graph with (Human equivalentClass Person)
+  (fn fixture-g-equiv ((arena Arena))
+    (@intent "Create test graph: Human equivalentClass Person")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS))
+          (human (make-iri arena EX_HUMAN))
+          (person (make-iri arena EX_PERSON)))
+      (indexed-graph-add arena g (make-triple arena human equiv-pred person))
+      g))
+
+  ;; Graph with subproperty chain: hasFather subPropertyOf hasParent subPropertyOf hasAncestor
+  (fn fixture-g-prop-chain ((arena Arena))
+    (@intent "Create test graph: property subproperty chain")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (has-father (make-iri arena EX_HAS_FATHER))
+          (has-parent (make-iri arena EX_HAS_PARENT))
+          (has-ancestor (make-iri arena EX_HAS_ANCESTOR)))
+      (indexed-graph-add arena g (make-triple arena has-father subprop-pred has-parent))
+      (indexed-graph-add arena g (make-triple arena has-parent subprop-pred has-ancestor))
+      g))
+
+  ;; Graph with domain declaration: hasParent domain Person, hasFather subPropertyOf hasParent
+  (fn fixture-g-domain ((arena Arena))
+    (@intent "Create test graph: domain propagation scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (domain-pred (make-iri arena RDFS_DOMAIN))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (has-parent (make-iri arena EX_HAS_PARENT))
+          (has-father (make-iri arena EX_HAS_FATHER))
+          (person (make-iri arena EX_PERSON)))
+      (indexed-graph-add arena g (make-triple arena has-parent domain-pred person))
+      (indexed-graph-add arena g (make-triple arena has-father subprop-pred has-parent))
+      g))
+
+  ;; Delta with (B subClassOf C) - new link in chain
+  (fn fixture-delta-new-link ((arena Arena))
+    (@intent "Create delta: B subClassOf C")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (b (make-iri arena EX_B))
+          (c (make-iri arena EX_C)))
+      (delta-add arena d (make-triple arena b subclass-pred c))
+      d))
+
+  ;; Empty delta
+  (fn fixture-delta-empty ((arena Arena))
+    (@intent "Create empty delta")
+    (@spec ((Arena) -> Delta))
+    (make-delta arena 0))
+
+  ;; ============================================================
+  ;; Rule Dispatcher
+  ;; ============================================================
+
+  (fn apply-scm-rules ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Apply all schema vocabulary rules (Table 9)")
+    (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((ok d) {(. d iteration) == (+ (. delta iteration) 1)})
+             ((error _) true)))
+    (let ((next-iter (+ (. delta iteration) 1))
+          (mut result (make-delta arena next-iter)))
+
+      ;; Class schema rules
+      (for-each (t (scm-cls arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-sco arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-eqc1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-eqc2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Property schema rules
+      (for-each (t (scm-op arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-dp arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-spo arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-eqp1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-eqp2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Domain/range rules
+      (for-each (t (scm-dom1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-dom2 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-rng1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-rng2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      (ok result)))
+
+  ;; ============================================================
+  ;; scm-cls: Every class is subclass of itself and owl:Thing
+  ;;
+  ;; If (?c rdf:type owl:Class)
+  ;; then (?c rdfs:subClassOf ?c) and (?c rdfs:subClassOf owl:Thing)
+  ;; ============================================================
+
+  (fn scm-cls ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer reflexive subClassOf and subClassOf owl:Thing for classes")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@example
+      ;; Graph: (Person type owl:Class)
+      ;; Result: (Person subClassOf Person), (Person subClassOf owl:Thing)
+      (arena (fixture-g-with-class arena) (fixture-delta-empty arena))
+      -> (list _ _))
+    (let ((class-type (make-iri arena OWL_CLASS))
+          (type-pred (make-iri arena RDF_TYPE))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (thing (make-iri arena OWL_THING))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (and (term-eq (triple-predicate dt) type-pred)
+                   (term-eq (triple-object dt) class-type))
+          (let ((class (triple-subject dt)))
+            ;; Reflexive: c subClassOf c
+            (let ((reflexive (make-triple arena class subclass-pred class)))
+              (when (not (indexed-graph-contains g reflexive))
+                (list-push result reflexive)))
+            ;; c subClassOf owl:Thing
+            (let ((to-thing (make-triple arena class subclass-pred thing)))
+              (when (not (indexed-graph-contains g to-thing))
+                (list-push result to-thing))))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-sco: Transitivity of rdfs:subClassOf
+  ;;
+  ;; If (?c1 rdfs:subClassOf ?c2) and (?c2 rdfs:subClassOf ?c3)
+  ;; then (?c1 rdfs:subClassOf ?c3)
+  ;; ============================================================
+
+  (fn scm-sco ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Compute transitive closure of subClassOf")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@example
+      ;; Graph: (A subClassOf B), (B subClassOf C)
+      ;; Delta: (B subClassOf C)
+      ;; Result: (A subClassOf C)
+      (arena (fixture-g-chain arena) (fixture-delta-new-link arena))
+      -> (list (make-triple arena (make-iri arena EX_A) (make-iri arena RDFS_SUBCLASS_OF) (make-iri arena EX_C))))
+    (let ((subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each subclass assertion in delta
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) subclass-pred)
+          (let ((c1 (triple-subject dt))
+                (c2 (triple-object dt)))
+            ;; Find c2 subClassOf c3 (c2 as subject)
+            (let ((c2-supers (indexed-graph-match arena g (some c2) (some subclass-pred) no-term)))
+              (for-each (super-triple c2-supers)
+                (let ((c3 (triple-object super-triple))
+                      (inferred (make-triple arena c1 subclass-pred c3)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred)))))
+
+            ;; Find c0 subClassOf c1 (c1 as object)
+            (let ((c1-subs (indexed-graph-match arena g no-term (some subclass-pred) (some c1))))
+              (for-each (sub-triple c1-subs)
+                (let ((c0 (triple-subject sub-triple))
+                      (inferred (make-triple arena c0 subclass-pred c2)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-eqc1: Equivalent class implies mutual subclass (1)
+  ;;
+  ;; If (?c1 owl:equivalentClass ?c2)
+  ;; then (?c1 rdfs:subClassOf ?c2)
+  ;; ============================================================
+
+  (fn scm-eqc1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from equivalentClass (c1 -> c2)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@example
+      ;; Graph: (Human equivalentClass Person)
+      ;; Result: (Human subClassOf Person)
+      (arena (fixture-g-equiv arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_HUMAN) (make-iri arena RDFS_SUBCLASS_OF) (make-iri arena EX_PERSON))))
+    (let ((equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) equiv-pred)
+          (let ((c1 (triple-subject dt))
+                (c2 (triple-object dt))
+                (inferred (make-triple arena c1 subclass-pred c2)))
+            (when (not (indexed-graph-contains g inferred))
+              (list-push result inferred)))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-eqc2: Equivalent class implies mutual subclass (2)
+  ;;
+  ;; If (?c1 owl:equivalentClass ?c2)
+  ;; then (?c2 rdfs:subClassOf ?c1)
+  ;; ============================================================
+
+  (fn scm-eqc2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from equivalentClass (c2 -> c1)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@example
+      ;; Graph: (Human equivalentClass Person)
+      ;; Result: (Person subClassOf Human)
+      (arena (fixture-g-equiv arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_PERSON) (make-iri arena RDFS_SUBCLASS_OF) (make-iri arena EX_HUMAN))))
+    (let ((equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) equiv-pred)
+          (let ((c1 (triple-subject dt))
+                (c2 (triple-object dt))
+                (inferred (make-triple arena c2 subclass-pred c1)))
+            (when (not (indexed-graph-contains g inferred))
+              (list-push result inferred)))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-op: Object property is subproperty of itself
+  ;;
+  ;; If (?p rdf:type owl:ObjectProperty)
+  ;; then (?p rdfs:subPropertyOf ?p)
+  ;; ============================================================
+
+  (fn scm-op ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer reflexive subPropertyOf for object properties")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBPROPERTY_OF))
+    (let ((op-type (make-iri arena OWL_OBJECT_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (and (term-eq (triple-predicate dt) type-pred)
+                   (term-eq (triple-object dt) op-type))
+          (let ((prop (triple-subject dt))
+                (reflexive (make-triple arena prop subprop-pred prop)))
+            (when (not (indexed-graph-contains g reflexive))
+              (list-push result reflexive)))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-dp: Datatype property is subproperty of itself
+  ;;
+  ;; If (?p rdf:type owl:DatatypeProperty)
+  ;; then (?p rdfs:subPropertyOf ?p)
+  ;; ============================================================
+
+  (fn scm-dp ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer reflexive subPropertyOf for datatype properties")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBPROPERTY_OF))
+    (let ((dp-type (make-iri arena OWL_DATATYPE_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (and (term-eq (triple-predicate dt) type-pred)
+                   (term-eq (triple-object dt) dp-type))
+          (let ((prop (triple-subject dt))
+                (reflexive (make-triple arena prop subprop-pred prop)))
+            (when (not (indexed-graph-contains g reflexive))
+              (list-push result reflexive)))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-spo: Transitivity of rdfs:subPropertyOf
+  ;;
+  ;; If (?p1 rdfs:subPropertyOf ?p2) and (?p2 rdfs:subPropertyOf ?p3)
+  ;; then (?p1 rdfs:subPropertyOf ?p3)
+  ;; ============================================================
+
+  (fn scm-spo ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Compute transitive closure of subPropertyOf")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBPROPERTY_OF))
+    (@example
+      ;; Graph: (hasFather subPropertyOf hasParent), (hasParent subPropertyOf hasAncestor)
+      ;; Result: (hasFather subPropertyOf hasAncestor)
+      (arena (fixture-g-prop-chain arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_HAS_FATHER) (make-iri arena RDFS_SUBPROPERTY_OF) (make-iri arena EX_HAS_ANCESTOR))))
+    (let ((subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) subprop-pred)
+          (let ((p1 (triple-subject dt))
+                (p2 (triple-object dt)))
+            ;; Find p2 subPropertyOf p3
+            (let ((p2-supers (indexed-graph-match arena g (some p2) (some subprop-pred) no-term)))
+              (for-each (super-triple p2-supers)
+                (let ((p3 (triple-object super-triple))
+                      (inferred (make-triple arena p1 subprop-pred p3)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred)))))
+
+            ;; Find p0 subPropertyOf p1
+            (let ((p1-subs (indexed-graph-match arena g no-term (some subprop-pred) (some p1))))
+              (for-each (sub-triple p1-subs)
+                (let ((p0 (triple-subject sub-triple))
+                      (inferred (make-triple arena p0 subprop-pred p2)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-eqp1: Equivalent property implies mutual subproperty (1)
+  ;;
+  ;; If (?p1 owl:equivalentProperty ?p2)
+  ;; then (?p1 rdfs:subPropertyOf ?p2)
+  ;; ============================================================
+
+  (fn scm-eqp1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subPropertyOf from equivalentProperty (p1 -> p2)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBPROPERTY_OF))
+    (let ((equiv-pred (make-iri arena OWL_EQUIVALENT_PROPERTY))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) equiv-pred)
+          (let ((p1 (triple-subject dt))
+                (p2 (triple-object dt))
+                (inferred (make-triple arena p1 subprop-pred p2)))
+            (when (not (indexed-graph-contains g inferred))
+              (list-push result inferred)))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-eqp2: Equivalent property implies mutual subproperty (2)
+  ;;
+  ;; If (?p1 owl:equivalentProperty ?p2)
+  ;; then (?p2 rdfs:subPropertyOf ?p1)
+  ;; ============================================================
+
+  (fn scm-eqp2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subPropertyOf from equivalentProperty (p2 -> p1)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBPROPERTY_OF))
+    (let ((equiv-pred (make-iri arena OWL_EQUIVALENT_PROPERTY))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) equiv-pred)
+          (let ((p1 (triple-subject dt))
+                (p2 (triple-object dt))
+                (inferred (make-triple arena p2 subprop-pred p1)))
+            (when (not (indexed-graph-contains g inferred))
+              (list-push result inferred)))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-dom1: Domain inheritance via subproperty
+  ;;
+  ;; If (?p2 rdfs:domain ?c) and (?p1 rdfs:subPropertyOf ?p2)
+  ;; then (?p1 rdfs:domain ?c)
+  ;; ============================================================
+
+  (fn scm-dom1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Inherit domain from superproperty")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_DOMAIN))
+    (@example
+      ;; Graph: (hasParent domain Person), (hasFather subPropertyOf hasParent)
+      ;; Result: (hasFather domain Person)
+      (arena (fixture-g-domain arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_HAS_FATHER) (make-iri arena RDFS_DOMAIN) (make-iri arena EX_PERSON))))
+    (let ((domain-pred (make-iri arena RDFS_DOMAIN))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each new subPropertyOf assertion
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) subprop-pred)
+          (let ((p1 (triple-subject dt))
+                (p2 (triple-object dt)))
+            ;; Find domain of p2
+            (let ((domain-triples (indexed-graph-match arena g (some p2) (some domain-pred) no-term)))
+              (for-each (dom-triple domain-triples)
+                (let ((c (triple-object dom-triple))
+                      (inferred (make-triple arena p1 domain-pred c)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-dom2: Domain constraint via subclass
+  ;;
+  ;; If (?p rdfs:domain ?c1) and (?c1 rdfs:subClassOf ?c2)
+  ;; then (?p rdfs:domain ?c2)
+  ;; ============================================================
+
+  (fn scm-dom2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Propagate domain through subclass hierarchy")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_DOMAIN))
+    (let ((domain-pred (make-iri arena RDFS_DOMAIN))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each new subClassOf assertion
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) subclass-pred)
+          (let ((c1 (triple-subject dt))
+                (c2 (triple-object dt)))
+            ;; Find properties with domain c1
+            (let ((domain-triples (indexed-graph-match arena g no-term (some domain-pred) (some c1))))
+              (for-each (dom-triple domain-triples)
+                (let ((p (triple-subject dom-triple))
+                      (inferred (make-triple arena p domain-pred c2)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-rng1: Range inheritance via subproperty
+  ;;
+  ;; If (?p2 rdfs:range ?c) and (?p1 rdfs:subPropertyOf ?p2)
+  ;; then (?p1 rdfs:range ?c)
+  ;; ============================================================
+
+  (fn scm-rng1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Inherit range from superproperty")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_RANGE))
+    (let ((range-pred (make-iri arena RDFS_RANGE))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) subprop-pred)
+          (let ((p1 (triple-subject dt))
+                (p2 (triple-object dt)))
+            (let ((range-triples (indexed-graph-match arena g (some p2) (some range-pred) no-term)))
+              (for-each (rng-triple range-triples)
+                (let ((c (triple-object rng-triple))
+                      (inferred (make-triple arena p1 range-pred c)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-rng2: Range constraint via subclass
+  ;;
+  ;; If (?p rdfs:range ?c1) and (?c1 rdfs:subClassOf ?c2)
+  ;; then (?p rdfs:range ?c2)
+  ;; ============================================================
+
+  (fn scm-rng2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Propagate range through subclass hierarchy")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_RANGE))
+    (let ((range-pred (make-iri arena RDFS_RANGE))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) subclass-pred)
+          (let ((c1 (triple-subject dt))
+                (c2 (triple-object dt)))
+            (let ((range-triples (indexed-graph-match arena g no-term (some range-pred) (some c1))))
+              (for-each (rng-triple range-triples)
+                (let ((p (triple-subject rng-triple))
+                      (inferred (make-triple arena p range-pred c2)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result)))

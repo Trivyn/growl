@@ -1,0 +1,148 @@
+;; ============================================================
+;; Growl: OWL 2 RL Reasoner
+;;
+;; A Z3-verifiable OWL 2 RL profile reasoner implementing
+;; the W3C specification inference rules.
+;; ============================================================
+
+(module growl
+  (@doc "OWL 2 RL reasoner with formally verified inference rules")
+
+  (import rdf (Term Triple term-eq triple-eq make-iri make-triple))
+  (import index (IndexedGraph indexed-graph-create indexed-graph-add
+                 indexed-graph-match indexed-graph-contains indexed-graph-size))
+  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS OWL_DIFFERENT_FROM))
+  (import types (Delta EngineState ReasonerConfig ReasonerResult ReasonerSuccess
+                 InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
+  (import engine (engine-run))
+
+  (export
+    ;; Types (re-exported from types module)
+    Delta
+    EngineState
+    ReasonerConfig
+    ReasonerResult
+    ReasonerSuccess
+    InconsistencyReport
+    ;; Functions
+    default-config
+    reason
+    reason-with-config
+    is-consistent
+    get-types
+    get-same-as
+    get-inferred-count
+    ;; Delta operations (re-exported from types)
+    make-delta
+    delta-add
+    delta-merge
+    delta-is-empty)
+
+  ;; ============================================================
+  ;; Configuration
+  ;; ============================================================
+
+  (fn default-config ()
+    (@intent "Create default reasoner configuration")
+    (@spec (() -> ReasonerConfig))
+    (@pure)
+    (@post {(. $result worker-count) == 4})
+    (@post {(. $result channel-buffer) == 256})
+    (@post {(. $result max-iterations) == 1000})
+    (@example () -> (ReasonerConfig 4 256 1000))
+    :c-name "growl_default_config"
+    (record-new ReasonerConfig
+      (worker-count 4)
+      (channel-buffer 256)
+      (max-iterations 1000)))
+
+  ;; ============================================================
+  ;; Public API
+  ;; ============================================================
+
+  (fn reason ((arena Arena) (input IndexedGraph))
+    (@intent "Run OWL 2 RL reasoning to fixpoint with default config")
+    (@spec ((Arena IndexedGraph) -> ReasonerResult))
+    (@alloc arena)
+    (@pre {(indexed-graph-size input) >= 0})
+    (@post (match $result
+             ((reason-success s) {(. s inferred-count) >= 0})
+             ((reason-inconsistent _) true)))
+    :c-name "growl_reason"
+    (reason-with-config arena input (default-config)))
+
+  (fn reason-with-config ((arena Arena) (input IndexedGraph) (config ReasonerConfig))
+    (@intent "Run OWL 2 RL reasoning to fixpoint with custom config")
+    (@spec ((Arena IndexedGraph ReasonerConfig) -> ReasonerResult))
+    (@alloc arena)
+    (@pre {(indexed-graph-size input) >= 0})
+    (@pre {(. config worker-count) >= 1})
+    (@pre {(. config max-iterations) >= 1})
+    (@post (match $result
+             ((reason-success s) {(. s iterations) <= (. config max-iterations)})
+             ((reason-inconsistent _) true)))
+    :c-name "growl_reason_with_config"
+    (engine-run arena config input))
+
+  (fn is-consistent ((arena Arena) (input IndexedGraph))
+    (@intent "Quick consistency check - returns false if ontology is inconsistent")
+    (@spec ((Arena IndexedGraph) -> Bool))
+    (@alloc arena)
+    (@pre {(indexed-graph-size input) >= 0})
+    (@example (arena (indexed-graph-create arena)) -> true)
+    :c-name "growl_is_consistent"
+    (match (reason arena input)
+      ((reason-success _) true)
+      ((reason-inconsistent _) false)))
+
+  (fn get-types ((arena Arena) (g IndexedGraph) (individual Term))
+    (@intent "Get all rdf:type values for an individual after reasoning")
+    (@spec ((Arena IndexedGraph Term) -> (List Term)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    :c-name "growl_get_types"
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (matches (indexed-graph-match arena g (some individual) (some type-pred) no-term))
+          (mut result (list-new arena Term)))
+      (for-each (t matches)
+        (list-push result (. t object)))
+      result))
+
+  (fn get-same-as ((arena Arena) (g IndexedGraph) (individual Term))
+    (@intent "Get all individuals owl:sameAs to given individual")
+    (@spec ((Arena IndexedGraph Term) -> (List Term)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    :c-name "growl_get_same_as"
+    ;; sameAs is symmetric, so check both directions
+    (let ((same-pred (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (as-subject (indexed-graph-match arena g (some individual) (some same-pred) no-term))
+          (as-object (indexed-graph-match arena g no-term (some same-pred) (some individual)))
+          (mut result (list-new arena Term)))
+      ;; Add individual itself
+      (list-push result individual)
+      ;; Add objects where individual is subject
+      (for-each (t as-subject)
+        (list-push result (. t object)))
+      ;; Add subjects where individual is object
+      (for-each (t as-object)
+        (list-push result (. t subject)))
+      result))
+
+  (fn get-inferred-count ((result ReasonerResult))
+    (@intent "Get the number of inferred triples from a reasoning result")
+    (@spec ((ReasonerResult) -> (Int 0 ..)))
+    (@pure)
+    (@post {$result >= 0})
+    (@example ((reason-success (ReasonerSuccess g 42 3))) -> 42)
+    (@example ((reason-inconsistent (InconsistencyReport "conflict" ws))) -> 0)
+    :c-name "growl_get_inferred_count"
+    (match result
+      ((reason-success s) (. s inferred-count))
+      ((reason-inconsistent _) 0))))

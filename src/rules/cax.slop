@@ -1,0 +1,480 @@
+;; ============================================================
+;; OWL 2 RL Table 7: Class Axiom Rules (cax-*)
+;;
+;; These rules handle subclass relationships, class equivalence,
+;; and disjointness. All rules have Z3-verifiable contracts.
+;;
+;; Reference: https://www.w3.org/TR/owl2-profiles/#OWL_2_RL
+;; ============================================================
+
+(module cax
+  (@doc "OWL 2 RL class axiom rules with formally verified contracts")
+
+  (import rdf (Term Triple term-eq triple-eq make-iri make-triple make-blank
+               triple-subject triple-predicate triple-object))
+  (import index (IndexedGraph indexed-graph-match indexed-graph-contains indexed-graph-size
+                 indexed-graph-create indexed-graph-add))
+  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_EQUIVALENT_CLASS OWL_DISJOINT_WITH
+                 OWL_ALL_DISJOINT_CLASSES OWL_MEMBERS RDF_FIRST RDF_REST RDF_NIL))
+  (import list (rdf-list-elements-indexed))
+  (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
+
+  (export
+    apply-cax-rules
+    cax-sco
+    cax-eqc1
+    cax-eqc2
+    cax-dw
+    cax-adc)
+
+  ;; ============================================================
+  ;; Test Fixture URIs (for @example annotations)
+  ;; ============================================================
+
+  (const EX_ALICE String "http://example.org/alice")
+  (const EX_BOB String "http://example.org/bob")
+  (const EX_FIDO String "http://example.org/fido")
+  (const EX_PERSON String "http://example.org/Person")
+  (const EX_AGENT String "http://example.org/Agent")
+  (const EX_HUMAN String "http://example.org/Human")
+  (const EX_CAT String "http://example.org/Cat")
+  (const EX_DOG String "http://example.org/Dog")
+  (const EX_BIRD String "http://example.org/Bird")
+
+  ;; ============================================================
+  ;; Test Fixture Builders
+  ;; ============================================================
+
+  ;; Graph with (Person subClassOf Agent)
+  (fn fixture-g-with-subclass ((arena Arena))
+    (@intent "Create test graph: Person subClassOf Agent, alice type Person")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (type-pred (make-iri arena RDF_TYPE))
+          (person (make-iri arena EX_PERSON))
+          (agent (make-iri arena EX_AGENT))
+          (alice (make-iri arena EX_ALICE)))
+      (indexed-graph-add arena g (make-triple arena person subclass-pred agent))
+      (indexed-graph-add arena g (make-triple arena alice type-pred person))
+      g))
+
+  ;; Graph with (Human equivalentClass Person)
+  (fn fixture-g-with-equiv ((arena Arena))
+    (@intent "Create test graph: Human equivalentClass Person")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS))
+          (type-pred (make-iri arena RDF_TYPE))
+          (human (make-iri arena EX_HUMAN))
+          (person (make-iri arena EX_PERSON))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena human equiv-pred person))
+      (indexed-graph-add arena g (make-triple arena alice type-pred human))
+      (indexed-graph-add arena g (make-triple arena bob type-pred person))
+      g))
+
+  ;; Graph with disjoint class violation: fido is both Cat and Dog
+  (fn fixture-g-disjoint-violation ((arena Arena))
+    (@intent "Create test graph: Cat disjointWith Dog, fido type both")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (disjoint-pred (make-iri arena OWL_DISJOINT_WITH))
+          (type-pred (make-iri arena RDF_TYPE))
+          (cat (make-iri arena EX_CAT))
+          (dog (make-iri arena EX_DOG))
+          (fido (make-iri arena EX_FIDO)))
+      (indexed-graph-add arena g (make-triple arena cat disjoint-pred dog))
+      (indexed-graph-add arena g (make-triple arena fido type-pred cat))
+      (indexed-graph-add arena g (make-triple arena fido type-pred dog))
+      g))
+
+  ;; Graph that is consistent: fido is only Dog
+  (fn fixture-g-consistent ((arena Arena))
+    (@intent "Create test graph: Cat disjointWith Dog, fido type Dog only")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (disjoint-pred (make-iri arena OWL_DISJOINT_WITH))
+          (type-pred (make-iri arena RDF_TYPE))
+          (cat (make-iri arena EX_CAT))
+          (dog (make-iri arena EX_DOG))
+          (fido (make-iri arena EX_FIDO)))
+      (indexed-graph-add arena g (make-triple arena cat disjoint-pred dog))
+      (indexed-graph-add arena g (make-triple arena fido type-pred dog))
+      g))
+
+  ;; Delta with (alice type Person)
+  (fn fixture-delta-with-type ((arena Arena))
+    (@intent "Create delta: alice type Person")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (alice (make-iri arena EX_ALICE))
+          (person (make-iri arena EX_PERSON)))
+      (delta-add arena d (make-triple arena alice type-pred person))
+      d))
+
+  ;; Delta with (alice type Human)
+  (fn fixture-delta-with-human ((arena Arena))
+    (@intent "Create delta: alice type Human")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (alice (make-iri arena EX_ALICE))
+          (human (make-iri arena EX_HUMAN)))
+      (delta-add arena d (make-triple arena alice type-pred human))
+      d))
+
+  ;; Delta with (bob type Person)
+  (fn fixture-delta-with-person ((arena Arena))
+    (@intent "Create delta: bob type Person")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (type-pred (make-iri arena RDF_TYPE))
+          (bob (make-iri arena EX_BOB))
+          (person (make-iri arena EX_PERSON)))
+      (delta-add arena d (make-triple arena bob type-pred person))
+      d))
+
+  ;; Empty delta for consistency checks
+  (fn fixture-delta-empty ((arena Arena))
+    (@intent "Create empty delta")
+    (@spec ((Arena) -> Delta))
+    (make-delta arena 0))
+
+  ;; Graph with AllDisjointClasses [Cat, Dog, Bird] and fido in Cat and Dog
+  (fn fixture-g-all-disjoint ((arena Arena))
+    (@intent "Create test graph: AllDisjointClasses with violation")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (members-pred (make-iri arena OWL_MEMBERS))
+          (first-pred (make-iri arena RDF_FIRST))
+          (rest-pred (make-iri arena RDF_REST))
+          (nil-term (make-iri arena RDF_NIL))
+          (adc-class (make-iri arena OWL_ALL_DISJOINT_CLASSES))
+          (cat (make-iri arena EX_CAT))
+          (dog (make-iri arena EX_DOG))
+          (bird (make-iri arena EX_BIRD))
+          (fido (make-iri arena EX_FIDO))
+          ;; Blank nodes for the AllDisjointClasses and list structure
+          (adc-node (make-blank arena 1))
+          (list1 (make-blank arena 2))
+          (list2 (make-blank arena 3))
+          (list3 (make-blank arena 4)))
+      ;; AllDisjointClasses declaration
+      (indexed-graph-add arena g (make-triple arena adc-node type-pred adc-class))
+      (indexed-graph-add arena g (make-triple arena adc-node members-pred list1))
+      ;; RDF list: [Cat, Dog, Bird]
+      (indexed-graph-add arena g (make-triple arena list1 first-pred cat))
+      (indexed-graph-add arena g (make-triple arena list1 rest-pred list2))
+      (indexed-graph-add arena g (make-triple arena list2 first-pred dog))
+      (indexed-graph-add arena g (make-triple arena list2 rest-pred list3))
+      (indexed-graph-add arena g (make-triple arena list3 first-pred bird))
+      (indexed-graph-add arena g (make-triple arena list3 rest-pred nil-term))
+      ;; fido is both Cat and Dog (violation)
+      (indexed-graph-add arena g (make-triple arena fido type-pred cat))
+      (indexed-graph-add arena g (make-triple arena fido type-pred dog))
+      g))
+
+  ;; ============================================================
+  ;; Rule Dispatcher
+  ;; ============================================================
+
+  (fn apply-cax-rules ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Apply all class axiom rules (Table 7) and return inferred triples")
+    (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((ok d) {(. d iteration) == (+ (. delta iteration) 1)})
+             ((error _) true)))
+    (let ((next-iter (+ (. delta iteration) 1))
+          (mut result (make-delta arena next-iter)))
+
+      ;; cax-sco: subclass type propagation
+      (for-each (t (cax-sco arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; cax-eqc1/eqc2: equivalent class (bidirectional subclass)
+      (for-each (t (cax-eqc1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (cax-eqc2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; cax-dw: disjoint class violation detection
+      (match (cax-dw arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+
+      ;; cax-adc: AllDisjointClasses violation detection
+      (match (cax-adc arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+
+      (ok result)))
+
+  ;; ============================================================
+  ;; cax-sco: Subclass Type Propagation
+  ;;
+  ;; If (?c1 rdfs:subClassOf ?c2) and (?x rdf:type ?c1)
+  ;; then (?x rdf:type ?c2)
+  ;;
+  ;; This is the most important rule - enables type hierarchy inference.
+  ;; ============================================================
+
+  (fn cax-sco ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer types from subclass relationships")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    ;; Soundness: every inferred triple has form (?x rdf:type ?c2)
+    ;; where there exists (?x rdf:type ?c1) and (?c1 rdfs:subClassOf ?c2)
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (Person subClassOf Agent), (alice type Person)
+      ;; Delta contains: (alice type Person)
+      ;; Result: (alice type Agent)
+      (arena (fixture-g-with-subclass arena) (fixture-delta-with-type arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena RDF_TYPE) (make-iri arena EX_AGENT))))
+    (let ((subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Strategy: for each type assertion in delta, find superclasses
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) type-pred)
+          (let ((individual (triple-subject dt))
+                (class1 (triple-object dt)))
+            ;; Find all superclasses of class1
+            (let ((superclass-triples
+                    (indexed-graph-match arena g (some class1) (some subclass-pred) no-term)))
+              (for-each (sc-triple superclass-triples)
+                (let ((class2 (triple-object sc-triple))
+                      (inferred (make-triple arena individual type-pred class2)))
+                  ;; Don't add if already in graph
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      ;; Also check: for each new subclass assertion, propagate existing types
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) subclass-pred)
+          (let ((class1 (triple-subject dt))
+                (class2 (triple-object dt)))
+            ;; Find all instances of class1
+            (let ((type-triples
+                    (indexed-graph-match arena g no-term (some type-pred) (some class1))))
+              (for-each (t-triple type-triples)
+                (let ((individual (triple-subject t-triple))
+                      (inferred (make-triple arena individual type-pred class2)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cax-eqc1: Equivalent Class (Left to Right)
+  ;;
+  ;; If (?c1 owl:equivalentClass ?c2) and (?x rdf:type ?c1)
+  ;; then (?x rdf:type ?c2)
+  ;; ============================================================
+
+  (fn cax-eqc1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer type from equivalent class (c1 -> c2)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (Human equivalentClass Person), (alice type Human)
+      ;; Result: (alice type Person)
+      (arena (fixture-g-with-equiv arena) (fixture-delta-with-human arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena RDF_TYPE) (make-iri arena EX_PERSON))))
+    (let ((equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each type assertion in delta
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) type-pred)
+          (let ((individual (triple-subject dt))
+                (class1 (triple-object dt)))
+            ;; Find equivalent classes where class1 is subject
+            (let ((equiv-triples
+                    (indexed-graph-match arena g (some class1) (some equiv-pred) no-term)))
+              (for-each (eq-triple equiv-triples)
+                (let ((class2 (triple-object eq-triple))
+                      (inferred (make-triple arena individual type-pred class2)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cax-eqc2: Equivalent Class (Right to Left)
+  ;;
+  ;; If (?c1 owl:equivalentClass ?c2) and (?x rdf:type ?c2)
+  ;; then (?x rdf:type ?c1)
+  ;; ============================================================
+
+  (fn cax-eqc2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer type from equivalent class (c2 -> c1)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (Human equivalentClass Person), (bob type Person)
+      ;; Result: (bob type Human)
+      (arena (fixture-g-with-equiv arena) (fixture-delta-with-person arena))
+      -> (list (make-triple arena (make-iri arena EX_BOB) (make-iri arena RDF_TYPE) (make-iri arena EX_HUMAN))))
+    (let ((equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each type assertion in delta
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) type-pred)
+          (let ((individual (triple-subject dt))
+                (class2 (triple-object dt)))
+            ;; Find equivalent classes where class2 is object
+            (let ((equiv-triples
+                    (indexed-graph-match arena g no-term (some equiv-pred) (some class2))))
+              (for-each (eq-triple equiv-triples)
+                (let ((class1 (triple-subject eq-triple))
+                      (inferred (make-triple arena individual type-pred class1)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cax-dw: Disjoint Class Violation Detection
+  ;;
+  ;; If (?c1 owl:disjointWith ?c2) and (?x rdf:type ?c1) and (?x rdf:type ?c2)
+  ;; then INCONSISTENT
+  ;;
+  ;; An individual cannot be an instance of two disjoint classes.
+  ;; ============================================================
+
+  (fn cax-dw ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect disjoint class violations - individual in two disjoint classes")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    ;; Returns none if consistent, some if violation found
+    (@post (match $result
+             ((none) true)  ;; No violation
+             ((some report) {(string-len (. report reason)) > 0})))
+    (@example
+      ;; Graph: (Cat disjointWith Dog), (fido type Cat), (fido type Dog)
+      ;; Result: (some InconsistencyReport)
+      (arena (fixture-g-disjoint-violation arena) (fixture-delta-empty arena))
+      -> (some (InconsistencyReport "cax-dw: individual is instance of two disjoint classes" _)))
+    (@example
+      ;; Graph: (Cat disjointWith Dog), (fido type Dog)
+      ;; Result: (none) -- no violation
+      (arena (fixture-g-consistent arena) (fixture-delta-empty arena))
+      -> (none))
+    (let ((disjoint-pred (make-iri arena OWL_DISJOINT_WITH))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none)))
+
+      ;; For each type assertion in delta, check if individual is in a disjoint class
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) type-pred)
+          (let ((individual (triple-subject dt))
+                (class1 (triple-object dt)))
+            ;; Find classes disjoint with class1
+            (let ((disjoint-triples
+                    (indexed-graph-match arena g (some class1) (some disjoint-pred) no-term)))
+              (for-each (dj-triple disjoint-triples)
+                (let ((class2 (triple-object dj-triple))
+                      ;; Check if individual is also type class2
+                      (type2-triple (make-triple arena individual type-pred class2)))
+                  (when (indexed-graph-contains g type2-triple)
+                    (return (some (record-new InconsistencyReport
+                      (reason "cax-dw: individual is instance of two disjoint classes")
+                      (witnesses (list Triple dt type2-triple dj-triple))))))))))))
+
+      ;; Also check symmetric case: class2 disjointWith class1
+      (for-each (dt (. delta triples))
+        (when (term-eq (triple-predicate dt) type-pred)
+          (let ((individual (triple-subject dt))
+                (class2 (triple-object dt)))
+            (let ((disjoint-triples
+                    (indexed-graph-match arena g no-term (some disjoint-pred) (some class2))))
+              (for-each (dj-triple disjoint-triples)
+                (let ((class1 (triple-subject dj-triple))
+                      (type1-triple (make-triple arena individual type-pred class1)))
+                  (when (indexed-graph-contains g type1-triple)
+                    (return (some (record-new InconsistencyReport
+                      (reason "cax-dw: individual is instance of two disjoint classes")
+                      (witnesses (list Triple dt type1-triple dj-triple))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; cax-adc: AllDisjointClasses Violation Detection
+  ;;
+  ;; If (?x rdf:type owl:AllDisjointClasses) and
+  ;;    (?x owl:members ?list) and
+  ;;    ?list contains ?c1 and ?c2 (c1 != c2) and
+  ;;    (?y rdf:type ?c1) and (?y rdf:type ?c2)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn cax-adc ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect AllDisjointClasses violations")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some report) {(string-len (. report reason)) > 0})))
+    (@example
+      ;; Graph: AllDisjointClasses with members [Cat, Dog, Bird]
+      ;;        (fido type Cat), (fido type Dog)
+      ;; Result: inconsistency
+      (arena (fixture-g-all-disjoint arena) (fixture-delta-empty arena))
+      -> (some (InconsistencyReport "cax-adc: individual is instance of two classes in AllDisjointClasses" _)))
+    (let ((adc-class (make-iri arena OWL_ALL_DISJOINT_CLASSES))
+          (type-pred (make-iri arena RDF_TYPE))
+          (members-pred (make-iri arena OWL_MEMBERS))
+          (no-term (Option Term) (none)))
+
+      ;; Find all AllDisjointClasses declarations
+      (let ((adc-triples (indexed-graph-match arena g no-term (some type-pred) (some adc-class))))
+        (for-each (adc-triple adc-triples)
+          (let ((adc-node (triple-subject adc-triple)))
+            ;; Get the members list
+            (let ((members-triples (indexed-graph-match arena g (some adc-node) (some members-pred) no-term)))
+              (for-each (m-triple members-triples)
+                (let ((list-head (triple-object m-triple))
+                      (classes (rdf-list-elements-indexed arena g list-head)))
+                  ;; For each pair of classes in the list, check for shared instances
+                  (for-each (class-a classes)
+                    (for-each (class-b classes)
+                      (when (not (term-eq class-a class-b))
+                        ;; Find individuals that are instances of both class-a and class-b
+                        (let ((class-a-instances (indexed-graph-match arena g no-term (some type-pred) (some class-a))))
+                          (for-each (inst-triple class-a-instances)
+                            (let ((individual (triple-subject inst-triple))
+                                  (class-b-type-triple (make-triple arena individual type-pred class-b)))
+                              (when (indexed-graph-contains g class-b-type-triple)
+                                (return (some (record-new InconsistencyReport
+                                  (reason "cax-adc: individual is instance of two classes in AllDisjointClasses")
+                                  (witnesses (list Triple inst-triple class-b-type-triple adc-triple))))))))))))))))))
+
+      (none))))

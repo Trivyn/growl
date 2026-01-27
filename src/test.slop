@@ -1,0 +1,389 @@
+;; ============================================================
+;; Growl End-to-End Test Harness
+;;
+;; Tests the reasoner pipeline with hand-crafted ontologies
+;; that exercise key inference rules.
+;; ============================================================
+
+(module test
+  (@doc "End-to-end tests for growl reasoner")
+
+  (import rdf (Term Triple make-iri make-triple term-eq))
+  (import index (IndexedGraph indexed-graph-create indexed-graph-add
+                 indexed-graph-match indexed-graph-size))
+  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS OWL_DIFFERENT_FROM
+                 OWL_EQUIVALENT_CLASS OWL_DISJOINT_WITH))
+  (import growl (reason get-types get-same-as get-inferred-count
+                 ReasonerResult))
+
+  ;; ============================================================
+  ;; Test Utilities
+  ;; ============================================================
+
+  (fn assert-has-type ((arena Arena) (g IndexedGraph) (individual Term) (class Term))
+    (@intent "Assert that individual has the given type in graph")
+    (@spec ((Arena IndexedGraph Term Term) -> Bool))
+    (@alloc arena)
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (expected (make-triple arena individual type-pred class)))
+      (let ((matches (indexed-graph-match arena g (some individual) (some type-pred) (some class))))
+        (> (list-len matches) 0))))
+
+  (fn assert-same-as ((arena Arena) (g IndexedGraph) (a Term) (b Term))
+    (@intent "Assert that a owl:sameAs b in graph")
+    (@spec ((Arena IndexedGraph Term Term) -> Bool))
+    (@alloc arena)
+    (let ((same-pred (make-iri arena OWL_SAME_AS))
+          (forward (indexed-graph-match arena g (some a) (some same-pred) (some b)))
+          (backward (indexed-graph-match arena g (some b) (some same-pred) (some a))))
+      (or (> (list-len forward) 0) (> (list-len backward) 0))))
+
+  (fn print-test-result ((name String) (passed Bool))
+    (@intent "Print test result with pass/fail indicator")
+    (@spec ((String Bool) -> Unit))
+    (if passed
+      (do
+        (print "[PASS] ")
+        (println name))
+      (do
+        (print "[FAIL] ")
+        (println name))))
+
+  ;; ============================================================
+  ;; Test 1: Subclass Inference (cax-sco)
+  ;;
+  ;; Graph: Person subClassOf Agent
+  ;;        alice type Person
+  ;; Expected: alice type Agent (inferred)
+  ;; ============================================================
+
+  (fn test-subclass-inference ((arena Arena))
+    (@intent "Test cax-sco: subclass type propagation")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((mut g (indexed-graph-create arena))
+          (person (make-iri arena "http://ex.org/Person"))
+          (agent (make-iri arena "http://ex.org/Agent"))
+          (alice (make-iri arena "http://ex.org/alice"))
+          (type-pred (make-iri arena RDF_TYPE))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF)))
+
+      ;; Build graph
+      (set! g (indexed-graph-add arena g
+        (make-triple arena person subclass-pred agent)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena alice type-pred person)))
+
+      ;; Run reasoner
+      (match (reason arena g)
+        ((reason-success s)
+          ;; Check alice has type Agent
+          (assert-has-type arena (. s graph) alice agent))
+        ((reason-inconsistent _)
+          false))))
+
+  ;; ============================================================
+  ;; Test 2: Equivalent Class (cax-eqc1, cax-eqc2)
+  ;;
+  ;; Graph: Human equivalentClass Person
+  ;;        alice type Human
+  ;;        bob type Person
+  ;; Expected: alice type Person, bob type Human (inferred)
+  ;; ============================================================
+
+  (fn test-equivalent-class ((arena Arena))
+    (@intent "Test cax-eqc1/eqc2: equivalent class inference")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((mut g (indexed-graph-create arena))
+          (human (make-iri arena "http://ex.org/Human"))
+          (person (make-iri arena "http://ex.org/Person"))
+          (alice (make-iri arena "http://ex.org/alice"))
+          (bob (make-iri arena "http://ex.org/bob"))
+          (type-pred (make-iri arena RDF_TYPE))
+          (equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS)))
+
+      ;; Build graph
+      (set! g (indexed-graph-add arena g
+        (make-triple arena human equiv-pred person)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena alice type-pred human)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena bob type-pred person)))
+
+      ;; Run reasoner
+      (match (reason arena g)
+        ((reason-success s)
+          (let ((alice-has-person (assert-has-type arena (. s graph) alice person))
+                (bob-has-human (assert-has-type arena (. s graph) bob human)))
+            (and alice-has-person bob-has-human)))
+        ((reason-inconsistent _)
+          false))))
+
+  ;; ============================================================
+  ;; Test 3: sameAs Transitivity (eq-trans)
+  ;;
+  ;; Graph: alice sameAs bob
+  ;;        bob sameAs charlie
+  ;; Expected: alice sameAs charlie (inferred)
+  ;; ============================================================
+
+  (fn test-sameas-transitivity ((arena Arena))
+    (@intent "Test eq-trans: sameAs transitivity")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((mut g (indexed-graph-create arena))
+          (alice (make-iri arena "http://ex.org/alice"))
+          (bob (make-iri arena "http://ex.org/bob"))
+          (charlie (make-iri arena "http://ex.org/charlie"))
+          (same-pred (make-iri arena OWL_SAME_AS)))
+
+      ;; Build graph
+      (set! g (indexed-graph-add arena g
+        (make-triple arena alice same-pred bob)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena bob same-pred charlie)))
+
+      ;; Run reasoner
+      (match (reason arena g)
+        ((reason-success s)
+          (assert-same-as arena (. s graph) alice charlie))
+        ((reason-inconsistent _)
+          false))))
+
+  ;; ============================================================
+  ;; Test 4: sameAs Symmetry (eq-sym)
+  ;;
+  ;; Graph: alice sameAs bob
+  ;; Expected: bob sameAs alice (inferred)
+  ;; ============================================================
+
+  (fn test-sameas-symmetry ((arena Arena))
+    (@intent "Test eq-sym: sameAs symmetry")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((mut g (indexed-graph-create arena))
+          (alice (make-iri arena "http://ex.org/alice"))
+          (bob (make-iri arena "http://ex.org/bob"))
+          (same-pred (make-iri arena OWL_SAME_AS)))
+
+      ;; Build graph
+      (set! g (indexed-graph-add arena g
+        (make-triple arena alice same-pred bob)))
+
+      ;; Run reasoner
+      (match (reason arena g)
+        ((reason-success s)
+          ;; Check bob sameAs alice exists (reverse direction)
+          (let ((matches (indexed-graph-match arena (. s graph)
+                           (some bob) (some same-pred) (some alice))))
+            (> (list-len matches) 0)))
+        ((reason-inconsistent _)
+          false))))
+
+  ;; ============================================================
+  ;; Test 5: Disjoint Class Violation (cax-dw)
+  ;;
+  ;; Graph: Cat disjointWith Dog
+  ;;        fido type Cat
+  ;;        fido type Dog
+  ;; Expected: Inconsistency detected
+  ;; ============================================================
+
+  (fn test-disjoint-violation ((arena Arena))
+    (@intent "Test cax-dw: disjoint class inconsistency detection")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((mut g (indexed-graph-create arena))
+          (cat (make-iri arena "http://ex.org/Cat"))
+          (dog (make-iri arena "http://ex.org/Dog"))
+          (fido (make-iri arena "http://ex.org/fido"))
+          (type-pred (make-iri arena RDF_TYPE))
+          (disjoint-pred (make-iri arena OWL_DISJOINT_WITH)))
+
+      ;; Build graph with violation
+      (set! g (indexed-graph-add arena g
+        (make-triple arena cat disjoint-pred dog)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena fido type-pred cat)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena fido type-pred dog)))
+
+      ;; Run reasoner - should detect inconsistency
+      (match (reason arena g)
+        ((reason-success _)
+          false)  ;; Should have been inconsistent!
+        ((reason-inconsistent _)
+          true))))  ;; Correctly detected
+
+  ;; ============================================================
+  ;; Test 6: sameAs + differentFrom = Inconsistent (eq-diff1)
+  ;;
+  ;; Graph: alice sameAs bob
+  ;;        alice differentFrom bob
+  ;; Expected: Inconsistency detected
+  ;; ============================================================
+
+  (fn test-sameas-differentfrom-violation ((arena Arena))
+    (@intent "Test eq-diff1: sameAs and differentFrom inconsistency")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((mut g (indexed-graph-create arena))
+          (alice (make-iri arena "http://ex.org/alice"))
+          (bob (make-iri arena "http://ex.org/bob"))
+          (same-pred (make-iri arena OWL_SAME_AS))
+          (diff-pred (make-iri arena OWL_DIFFERENT_FROM)))
+
+      ;; Build graph with violation
+      (set! g (indexed-graph-add arena g
+        (make-triple arena alice same-pred bob)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena alice diff-pred bob)))
+
+      ;; Run reasoner - should detect inconsistency
+      (match (reason arena g)
+        ((reason-success _)
+          false)
+        ((reason-inconsistent _)
+          true))))
+
+  ;; ============================================================
+  ;; Test 7: Subclass Chain
+  ;;
+  ;; Graph: Student subClassOf Person
+  ;;        Person subClassOf Agent
+  ;;        alice type Student
+  ;; Expected: alice type Person, alice type Agent (inferred)
+  ;; ============================================================
+
+  (fn test-subclass-chain ((arena Arena))
+    (@intent "Test cax-sco with transitive subclass chain")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((mut g (indexed-graph-create arena))
+          (student (make-iri arena "http://ex.org/Student"))
+          (person (make-iri arena "http://ex.org/Person"))
+          (agent (make-iri arena "http://ex.org/Agent"))
+          (alice (make-iri arena "http://ex.org/alice"))
+          (type-pred (make-iri arena RDF_TYPE))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF)))
+
+      ;; Build graph
+      (set! g (indexed-graph-add arena g
+        (make-triple arena student subclass-pred person)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena person subclass-pred agent)))
+      (set! g (indexed-graph-add arena g
+        (make-triple arena alice type-pred student)))
+
+      ;; Run reasoner
+      (match (reason arena g)
+        ((reason-success s)
+          (let ((has-person (assert-has-type arena (. s graph) alice person))
+                (has-agent (assert-has-type arena (. s graph) alice agent)))
+            (and has-person has-agent)))
+        ((reason-inconsistent _)
+          false))))
+
+  ;; ============================================================
+  ;; Test 8: Empty Graph (edge case)
+  ;;
+  ;; Graph: (empty)
+  ;; Expected: Success with 0 inferred triples
+  ;; ============================================================
+
+  (fn test-empty-graph ((arena Arena))
+    (@intent "Test reasoning on empty graph")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((g (indexed-graph-create arena)))
+      (match (reason arena g)
+        ((reason-success s)
+          (== (. s inferred-count) 0))
+        ((reason-inconsistent _)
+          false))))
+
+  ;; ============================================================
+  ;; Main Test Runner
+  ;; ============================================================
+
+  (fn main ()
+    (@intent "Run all end-to-end tests")
+    (@spec (() -> Int))
+    :c-name "main"
+    (with-arena 131072
+      (let ((mut passed 0)
+            (mut failed 0))
+
+        (println "========================================")
+        (println "Growl End-to-End Tests")
+        (println "========================================")
+        (println "")
+
+        ;; Test 1: Subclass inference
+        (let ((result (test-subclass-inference arena)))
+          (print-test-result "cax-sco: subclass inference" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 2: Equivalent class
+        (let ((result (test-equivalent-class arena)))
+          (print-test-result "cax-eqc: equivalent class" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 3: sameAs transitivity
+        (let ((result (test-sameas-transitivity arena)))
+          (print-test-result "eq-trans: sameAs transitivity" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 4: sameAs symmetry
+        (let ((result (test-sameas-symmetry arena)))
+          (print-test-result "eq-sym: sameAs symmetry" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 5: Disjoint class violation
+        (let ((result (test-disjoint-violation arena)))
+          (print-test-result "cax-dw: disjoint violation" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 6: sameAs + differentFrom violation
+        (let ((result (test-sameas-differentfrom-violation arena)))
+          (print-test-result "eq-diff1: sameAs/differentFrom violation" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 7: Subclass chain
+        (let ((result (test-subclass-chain arena)))
+          (print-test-result "cax-sco: subclass chain" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 8: Empty graph
+        (let ((result (test-empty-graph arena)))
+          (print-test-result "edge case: empty graph" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Summary
+        (println "")
+        (println "========================================")
+        (print "Passed: ")
+        (println (int-to-string arena passed))
+        (print "Failed: ")
+        (println (int-to-string arena failed))
+        (println "========================================")
+
+        ;; Return 0 if all passed, 1 otherwise
+        (if (== failed 0) 0 1)))))

@@ -1,0 +1,862 @@
+;; ============================================================
+;; OWL 2 RL Table 5: Property Axiom Rules (prp-*)
+;;
+;; These rules handle property characteristics, domain/range
+;; inference, and property chains.
+;;
+;; Reference: https://www.w3.org/TR/owl2-profiles/#OWL_2_RL
+;; ============================================================
+
+(module prp
+  (@doc "OWL 2 RL property axiom rules with formally verified contracts")
+
+  (import rdf (Term Triple term-eq triple-eq make-iri make-triple make-literal
+               triple-subject triple-predicate triple-object))
+  (import index (IndexedGraph indexed-graph-match indexed-graph-contains indexed-graph-size
+                 indexed-graph-create indexed-graph-add))
+  (import vocab (RDF_TYPE RDFS_DOMAIN RDFS_RANGE RDFS_SUBPROPERTY_OF
+                 OWL_SAME_AS OWL_DIFFERENT_FROM OWL_EQUIVALENT_PROPERTY
+                 OWL_FUNCTIONAL_PROPERTY OWL_INVERSE_FUNCTIONAL_PROPERTY
+                 OWL_SYMMETRIC_PROPERTY OWL_ASYMMETRIC_PROPERTY
+                 OWL_TRANSITIVE_PROPERTY OWL_IRREFLEXIVE_PROPERTY
+                 OWL_INVERSE_OF OWL_PROPERTY_DISJOINT_WITH
+                 OWL_PROPERTY_CHAIN_AXIOM OWL_HAS_KEY
+                 OWL_NEGATIVE_PROPERTY_ASSERTION OWL_SOURCE_INDIVIDUAL
+                 OWL_ASSERTION_PROPERTY OWL_TARGET_INDIVIDUAL OWL_TARGET_VALUE))
+  (import list (rdf-list-elements))
+  (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
+
+  (export
+    apply-prp-rules
+    prp-dom
+    prp-rng
+    prp-fp
+    prp-ifp
+    prp-symp
+    prp-asyp
+    prp-trp
+    prp-irp
+    prp-spo1
+    prp-inv1
+    prp-inv2
+    prp-eqp1
+    prp-eqp2
+    prp-pdw)
+
+  ;; ============================================================
+  ;; Test Fixture URIs (for @example annotations)
+  ;; ============================================================
+
+  (const EX_ALICE String "http://example.org/alice")
+  (const EX_ALICIA String "http://example.org/alicia")
+  (const EX_BOB String "http://example.org/bob")
+  (const EX_MARY String "http://example.org/mary")
+  (const EX_MARIA String "http://example.org/maria")
+  (const EX_A String "http://example.org/a")
+  (const EX_B String "http://example.org/b")
+  (const EX_C String "http://example.org/c")
+  (const EX_PERSON String "http://example.org/Person")
+  (const EX_HAS_CHILD String "http://example.org/hasChild")
+  (const EX_HAS_PARENT String "http://example.org/hasParent")
+  (const EX_HAS_FATHER String "http://example.org/hasFather")
+  (const EX_HAS_MOTHER String "http://example.org/hasMother")
+  (const EX_ANCESTOR String "http://example.org/ancestor")
+  (const EX_KNOWS String "http://example.org/knows")
+  (const EX_LIKES String "http://example.org/likes")
+  (const EX_HATES String "http://example.org/hates")
+  (const EX_SSN String "http://example.org/ssn")
+
+  ;; ============================================================
+  ;; Test Fixture Builders
+  ;; ============================================================
+
+  ;; Graph with (hasChild domain Person), (alice hasChild bob)
+  (fn fixture-g-domain ((arena Arena))
+    (@intent "Create test graph: domain inference scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (domain-pred (make-iri arena RDFS_DOMAIN))
+          (has-child (make-iri arena EX_HAS_CHILD))
+          (person (make-iri arena EX_PERSON))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena has-child domain-pred person))
+      (indexed-graph-add arena g (make-triple arena alice has-child bob))
+      g))
+
+  ;; Graph with (hasChild range Person), (alice hasChild bob)
+  (fn fixture-g-range ((arena Arena))
+    (@intent "Create test graph: range inference scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (range-pred (make-iri arena RDFS_RANGE))
+          (has-child (make-iri arena EX_HAS_CHILD))
+          (person (make-iri arena EX_PERSON))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena has-child range-pred person))
+      (indexed-graph-add arena g (make-triple arena alice has-child bob))
+      g))
+
+  ;; Graph with functional property: (hasMother type FunctionalProperty)
+  (fn fixture-g-functional ((arena Arena))
+    (@intent "Create test graph: functional property scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (fp-type (make-iri arena OWL_FUNCTIONAL_PROPERTY))
+          (has-mother (make-iri arena EX_HAS_MOTHER))
+          (alice (make-iri arena EX_ALICE))
+          (mary (make-iri arena EX_MARY))
+          (maria (make-iri arena EX_MARIA)))
+      (indexed-graph-add arena g (make-triple arena has-mother type-pred fp-type))
+      (indexed-graph-add arena g (make-triple arena alice has-mother mary))
+      (indexed-graph-add arena g (make-triple arena alice has-mother maria))
+      g))
+
+  ;; Graph with inverse functional property
+  (fn fixture-g-ifp ((arena Arena))
+    (@intent "Create test graph: inverse functional property scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (ifp-type (make-iri arena OWL_INVERSE_FUNCTIONAL_PROPERTY))
+          (ssn (make-iri arena EX_SSN))
+          (alice (make-iri arena EX_ALICE))
+          (alicia (make-iri arena EX_ALICIA))
+          (ssn-val (make-literal arena "123" (none) (none))))
+      (indexed-graph-add arena g (make-triple arena ssn type-pred ifp-type))
+      (indexed-graph-add arena g (make-triple arena alice ssn ssn-val))
+      (indexed-graph-add arena g (make-triple arena alicia ssn ssn-val))
+      g))
+
+  ;; Graph with symmetric property
+  (fn fixture-g-symmetric ((arena Arena))
+    (@intent "Create test graph: symmetric property scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (sym-type (make-iri arena OWL_SYMMETRIC_PROPERTY))
+          (knows (make-iri arena EX_KNOWS))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena knows type-pred sym-type))
+      (indexed-graph-add arena g (make-triple arena alice knows bob))
+      g))
+
+  ;; Graph with asymmetric property violation
+  (fn fixture-g-asym-violation ((arena Arena))
+    (@intent "Create test graph: asymmetric property violation")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (asym-type (make-iri arena OWL_ASYMMETRIC_PROPERTY))
+          (has-parent (make-iri arena EX_HAS_PARENT))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena has-parent type-pred asym-type))
+      (indexed-graph-add arena g (make-triple arena alice has-parent bob))
+      (indexed-graph-add arena g (make-triple arena bob has-parent alice))
+      g))
+
+  ;; Graph with transitive property
+  (fn fixture-g-transitive ((arena Arena))
+    (@intent "Create test graph: transitive property scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (trans-type (make-iri arena OWL_TRANSITIVE_PROPERTY))
+          (ancestor (make-iri arena EX_ANCESTOR))
+          (a (make-iri arena EX_A))
+          (b (make-iri arena EX_B))
+          (c (make-iri arena EX_C)))
+      (indexed-graph-add arena g (make-triple arena ancestor type-pred trans-type))
+      (indexed-graph-add arena g (make-triple arena a ancestor b))
+      (indexed-graph-add arena g (make-triple arena b ancestor c))
+      g))
+
+  ;; Graph with irreflexive property violation
+  (fn fixture-g-irp-violation ((arena Arena))
+    (@intent "Create test graph: irreflexive property violation")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (type-pred (make-iri arena RDF_TYPE))
+          (irp-type (make-iri arena OWL_IRREFLEXIVE_PROPERTY))
+          (has-parent (make-iri arena EX_HAS_PARENT))
+          (alice (make-iri arena EX_ALICE)))
+      (indexed-graph-add arena g (make-triple arena has-parent type-pred irp-type))
+      (indexed-graph-add arena g (make-triple arena alice has-parent alice))
+      g))
+
+  ;; Graph with subproperty
+  (fn fixture-g-subprop ((arena Arena))
+    (@intent "Create test graph: subproperty inference scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (has-father (make-iri arena EX_HAS_FATHER))
+          (has-parent (make-iri arena EX_HAS_PARENT))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena has-father subprop-pred has-parent))
+      (indexed-graph-add arena g (make-triple arena alice has-father bob))
+      g))
+
+  ;; Graph with inverse properties
+  (fn fixture-g-inverse ((arena Arena))
+    (@intent "Create test graph: inverse property scenario")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (inverse-pred (make-iri arena OWL_INVERSE_OF))
+          (has-parent (make-iri arena EX_HAS_PARENT))
+          (has-child (make-iri arena EX_HAS_CHILD))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena has-parent inverse-pred has-child))
+      (indexed-graph-add arena g (make-triple arena alice has-parent bob))
+      (indexed-graph-add arena g (make-triple arena bob has-child alice))
+      g))
+
+  ;; Graph with property disjointness violation
+  (fn fixture-g-pdw-violation ((arena Arena))
+    (@intent "Create test graph: property disjoint violation")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (pdw-pred (make-iri arena OWL_PROPERTY_DISJOINT_WITH))
+          (likes (make-iri arena EX_LIKES))
+          (hates (make-iri arena EX_HATES))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (indexed-graph-add arena g (make-triple arena likes pdw-pred hates))
+      (indexed-graph-add arena g (make-triple arena alice likes bob))
+      (indexed-graph-add arena g (make-triple arena alice hates bob))
+      g))
+
+  ;; Delta with property usage for domain/range tests
+  (fn fixture-delta-usage ((arena Arena))
+    (@intent "Create delta: alice hasChild bob")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (has-child (make-iri arena EX_HAS_CHILD))
+          (alice (make-iri arena EX_ALICE))
+          (bob (make-iri arena EX_BOB)))
+      (delta-add arena d (make-triple arena alice has-child bob))
+      d))
+
+  ;; Empty delta
+  (fn fixture-delta-empty ((arena Arena))
+    (@intent "Create empty delta")
+    (@spec ((Arena) -> Delta))
+    (make-delta arena 0))
+
+  ;; ============================================================
+  ;; Rule Dispatcher
+  ;; ============================================================
+
+  (fn apply-prp-rules ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Apply all property axiom rules (Table 5)")
+    (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((ok d) {(. d iteration) == (+ (. delta iteration) 1)})
+             ((error _) true)))
+    (let ((next-iter (+ (. delta iteration) 1))
+          (mut result (make-delta arena next-iter)))
+
+      ;; Domain/range rules
+      (for-each (t (prp-dom arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (prp-rng arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Functional property rules
+      (for-each (t (prp-fp arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (prp-ifp arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Property characteristics
+      (for-each (t (prp-symp arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (prp-trp arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Inconsistency checks
+      (match (prp-asyp arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+      (match (prp-irp arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+      (match (prp-pdw arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
+
+      ;; Subproperty and equivalence
+      (for-each (t (prp-spo1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (prp-eqp1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (prp-eqp2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Inverse properties
+      (for-each (t (prp-inv1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (prp-inv2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      (ok result)))
+
+  ;; ============================================================
+  ;; prp-dom: Domain Inference
+  ;;
+  ;; If (?p rdfs:domain ?c) and (?x ?p ?y)
+  ;; then (?x rdf:type ?c)
+  ;; ============================================================
+
+  (fn prp-dom ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer type from property domain")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (hasChild domain Person), (alice hasChild bob)
+      ;; Result: (alice type Person)
+      (arena (fixture-g-domain arena) (fixture-delta-usage arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena RDF_TYPE) (make-iri arena EX_PERSON))))
+    (let ((domain-pred (make-iri arena RDFS_DOMAIN))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; For each triple in delta, check if its predicate has a domain
+      (for-each (dt (. delta triples))
+        (let ((x (triple-subject dt))
+              (p (triple-predicate dt)))
+          ;; Find domain declarations for p
+          (let ((domain-triples (indexed-graph-match arena g (some p) (some domain-pred) no-term)))
+            (for-each (dom-triple domain-triples)
+              (let ((c (triple-object dom-triple))
+                    (inferred (make-triple arena x type-pred c)))
+                (when (not (indexed-graph-contains g inferred))
+                  (list-push result inferred)))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-rng: Range Inference
+  ;;
+  ;; If (?p rdfs:range ?c) and (?x ?p ?y)
+  ;; then (?y rdf:type ?c)
+  ;; ============================================================
+
+  (fn prp-rng ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer type from property range")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (hasChild range Person), (alice hasChild bob)
+      ;; Result: (bob type Person)
+      (arena (fixture-g-range arena) (fixture-delta-usage arena))
+      -> (list (make-triple arena (make-iri arena EX_BOB) (make-iri arena RDF_TYPE) (make-iri arena EX_PERSON))))
+    (let ((range-pred (make-iri arena RDFS_RANGE))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (let ((y (triple-object dt))
+              (p (triple-predicate dt)))
+          ;; Only apply to non-literal objects
+          (let ((range-triples (indexed-graph-match arena g (some p) (some range-pred) no-term)))
+            (for-each (rng-triple range-triples)
+              (let ((c (triple-object rng-triple))
+                    (inferred (make-triple arena y type-pred c)))
+                (when (not (indexed-graph-contains g inferred))
+                  (list-push result inferred)))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-fp: Functional Property
+  ;;
+  ;; If (?p rdf:type owl:FunctionalProperty) and
+  ;;    (?x ?p ?y1) and (?x ?p ?y2)
+  ;; then (?y1 owl:sameAs ?y2)
+  ;; ============================================================
+
+  (fn prp-fp ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer sameAs from functional property")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@example
+      ;; Graph: (hasMother type FunctionalProperty), (alice hasMother mary), (alice hasMother maria)
+      ;; Result: (mary sameAs maria)
+      (arena (fixture-g-functional arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_MARY) (make-iri arena OWL_SAME_AS) (make-iri arena EX_MARIA))))
+    (let ((fp-type (make-iri arena OWL_FUNCTIONAL_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find all functional properties
+      (let ((fp-triples (indexed-graph-match arena g no-term (some type-pred) (some fp-type))))
+        (for-each (fp-triple fp-triples)
+          (let ((p (triple-subject fp-triple)))
+            ;; For each usage of p in delta
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p)
+                (let ((x (triple-subject dt))
+                      (y1 (triple-object dt)))
+                  ;; Find other values for same subject
+                  (let ((other-triples (indexed-graph-match arena g (some x) (some p) no-term)))
+                    (for-each (other-triple other-triples)
+                      (let ((y2 (triple-object other-triple)))
+                        (when (not (term-eq y1 y2))
+                          (let ((inferred (make-triple arena y1 same-as y2)))
+                            (when (not (indexed-graph-contains g inferred))
+                              (list-push result inferred)))))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-ifp: Inverse Functional Property
+  ;;
+  ;; If (?p rdf:type owl:InverseFunctionalProperty) and
+  ;;    (?x1 ?p ?y) and (?x2 ?p ?y)
+  ;; then (?x1 owl:sameAs ?x2)
+  ;; ============================================================
+
+  (fn prp-ifp ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer sameAs from inverse functional property")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@example
+      ;; Graph: (ssn type InverseFunctionalProperty), (alice ssn "123"), (alicia ssn "123")
+      ;; Result: (alice sameAs alicia)
+      (arena (fixture-g-ifp arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena OWL_SAME_AS) (make-iri arena EX_ALICIA))))
+    (let ((ifp-type (make-iri arena OWL_INVERSE_FUNCTIONAL_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (let ((ifp-triples (indexed-graph-match arena g no-term (some type-pred) (some ifp-type))))
+        (for-each (ifp-triple ifp-triples)
+          (let ((p (triple-subject ifp-triple)))
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p)
+                (let ((x1 (triple-subject dt))
+                      (y (triple-object dt)))
+                  ;; Find other subjects with same object
+                  (let ((other-triples (indexed-graph-match arena g no-term (some p) (some y))))
+                    (for-each (other-triple other-triples)
+                      (let ((x2 (triple-subject other-triple)))
+                        (when (not (term-eq x1 x2))
+                          (let ((inferred (make-triple arena x1 same-as x2)))
+                            (when (not (indexed-graph-contains g inferred))
+                              (list-push result inferred)))))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-symp: Symmetric Property
+  ;;
+  ;; If (?p rdf:type owl:SymmetricProperty) and (?x ?p ?y)
+  ;; then (?y ?p ?x)
+  ;; ============================================================
+
+  (fn prp-symp ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer symmetric property assertion")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (knows type SymmetricProperty), (alice knows bob)
+      ;; Result: (bob knows alice)
+      (arena (fixture-g-symmetric arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_BOB) (make-iri arena EX_KNOWS) (make-iri arena EX_ALICE))))
+    (let ((sym-type (make-iri arena OWL_SYMMETRIC_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (let ((sym-triples (indexed-graph-match arena g no-term (some type-pred) (some sym-type))))
+        (for-each (sym-triple sym-triples)
+          (let ((p (triple-subject sym-triple)))
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt))
+                      (inferred (make-triple arena y p x)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-asyp: Asymmetric Property Violation
+  ;;
+  ;; If (?p rdf:type owl:AsymmetricProperty) and (?x ?p ?y) and (?y ?p ?x)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn prp-asyp ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect asymmetric property violation")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@example
+      ;; Graph: (hasParent type AsymmetricProperty), (alice hasParent bob), (bob hasParent alice)
+      ;; Result: inconsistency
+      (arena (fixture-g-asym-violation arena) (fixture-delta-empty arena))
+      -> (some (InconsistencyReport "prp-asyp: asymmetric property violation" _)))
+    (let ((asym-type (make-iri arena OWL_ASYMMETRIC_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none)))
+
+      (let ((asym-triples (indexed-graph-match arena g no-term (some type-pred) (some asym-type))))
+        (for-each (asym-triple asym-triples)
+          (let ((p (triple-subject asym-triple)))
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt))
+                      (reverse (make-triple arena y p x)))
+                  (when (indexed-graph-contains g reverse)
+                    (return (some (record-new InconsistencyReport
+                      (reason "prp-asyp: asymmetric property used symmetrically")
+                      (witnesses (list Triple dt reverse asym-triple))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; prp-trp: Transitive Property
+  ;;
+  ;; If (?p rdf:type owl:TransitiveProperty) and (?x ?p ?y) and (?y ?p ?z)
+  ;; then (?x ?p ?z)
+  ;; ============================================================
+
+  (fn prp-trp ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer transitive property closure")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (ancestor type TransitiveProperty), (a ancestor b), (b ancestor c)
+      ;; Result: (a ancestor c)
+      (arena (fixture-g-transitive arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_A) (make-iri arena EX_ANCESTOR) (make-iri arena EX_C))))
+    (let ((trans-type (make-iri arena OWL_TRANSITIVE_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (let ((trans-triples (indexed-graph-match arena g no-term (some type-pred) (some trans-type))))
+        (for-each (trans-triple trans-triples)
+          (let ((p (triple-subject trans-triple)))
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt)))
+                  ;; Find y ?p ?z
+                  (let ((next-triples (indexed-graph-match arena g (some y) (some p) no-term)))
+                    (for-each (next-triple next-triples)
+                      (let ((z (triple-object next-triple))
+                            (inferred (make-triple arena x p z)))
+                        (when (not (indexed-graph-contains g inferred))
+                          (list-push result inferred)))))
+                  ;; Find ?w ?p ?x
+                  (let ((prev-triples (indexed-graph-match arena g no-term (some p) (some x))))
+                    (for-each (prev-triple prev-triples)
+                      (let ((w (triple-subject prev-triple))
+                            (inferred (make-triple arena w p y)))
+                        (when (not (indexed-graph-contains g inferred))
+                          (list-push result inferred)))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-irp: Irreflexive Property Violation
+  ;;
+  ;; If (?p rdf:type owl:IrreflexiveProperty) and (?x ?p ?x)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn prp-irp ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect irreflexive property violation (self-reference)")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@example
+      ;; Graph: (hasParent type IrreflexiveProperty), (alice hasParent alice)
+      ;; Result: inconsistency
+      (arena (fixture-g-irp-violation arena) (fixture-delta-empty arena))
+      -> (some (InconsistencyReport "prp-irp: irreflexive property violation" _)))
+    (let ((irp-type (make-iri arena OWL_IRREFLEXIVE_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none)))
+
+      (let ((irp-triples (indexed-graph-match arena g no-term (some type-pred) (some irp-type))))
+        (for-each (irp-triple irp-triples)
+          (let ((p (triple-subject irp-triple)))
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt)))
+                  (when (term-eq x y)
+                    (return (some (record-new InconsistencyReport
+                      (reason "prp-irp: irreflexive property used reflexively")
+                      (witnesses (list Triple dt irp-triple))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; prp-spo1: Subproperty Propagation
+  ;;
+  ;; If (?p1 rdfs:subPropertyOf ?p2) and (?x ?p1 ?y)
+  ;; then (?x ?p2 ?y)
+  ;; ============================================================
+
+  (fn prp-spo1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Propagate property assertion through subproperty hierarchy")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (hasFather subPropertyOf hasParent), (alice hasFather bob)
+      ;; Result: (alice hasParent bob)
+      (arena (fixture-g-subprop arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena EX_HAS_PARENT) (make-iri arena EX_BOB))))
+    (let ((subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (for-each (dt (. delta triples))
+        (let ((x (triple-subject dt))
+              (p1 (triple-predicate dt))
+              (y (triple-object dt)))
+          ;; Find superproperties of p1
+          (let ((super-triples (indexed-graph-match arena g (some p1) (some subprop-pred) no-term)))
+            (for-each (super-triple super-triples)
+              (let ((p2 (triple-object super-triple))
+                    (inferred (make-triple arena x p2 y)))
+                (when (not (indexed-graph-contains g inferred))
+                  (list-push result inferred)))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-inv1: Inverse Property (Forward)
+  ;;
+  ;; If (?p1 owl:inverseOf ?p2) and (?x ?p1 ?y)
+  ;; then (?y ?p2 ?x)
+  ;; ============================================================
+
+  (fn prp-inv1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer inverse property assertion (forward direction)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (hasParent inverseOf hasChild), (alice hasParent bob)
+      ;; Result: (bob hasChild alice)
+      (arena (fixture-g-inverse arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_BOB) (make-iri arena EX_HAS_CHILD) (make-iri arena EX_ALICE))))
+    (let ((inverse-pred (make-iri arena OWL_INVERSE_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find p1 inverseOf p2 declarations
+      (let ((inv-triples (indexed-graph-match arena g no-term (some inverse-pred) no-term)))
+        (for-each (inv-triple inv-triples)
+          (let ((p1 (triple-subject inv-triple))
+                (p2 (triple-object inv-triple)))
+            ;; For each usage of p1 in delta
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p1)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt))
+                      (inferred (make-triple arena y p2 x)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-inv2: Inverse Property (Backward)
+  ;;
+  ;; If (?p1 owl:inverseOf ?p2) and (?x ?p2 ?y)
+  ;; then (?y ?p1 ?x)
+  ;; ============================================================
+
+  (fn prp-inv2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer inverse property assertion (backward direction)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@example
+      ;; Graph: (hasParent inverseOf hasChild), (bob hasChild alice)
+      ;; Result: (alice hasParent bob)
+      (arena (fixture-g-inverse arena) (fixture-delta-empty arena))
+      -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena EX_HAS_PARENT) (make-iri arena EX_BOB))))
+    (let ((inverse-pred (make-iri arena OWL_INVERSE_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (let ((inv-triples (indexed-graph-match arena g no-term (some inverse-pred) no-term)))
+        (for-each (inv-triple inv-triples)
+          (let ((p1 (triple-subject inv-triple))
+                (p2 (triple-object inv-triple)))
+            ;; For each usage of p2 in delta
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p2)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt))
+                      (inferred (make-triple arena y p1 x)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-eqp1: Equivalent Property (Forward)
+  ;;
+  ;; If (?p1 owl:equivalentProperty ?p2) and (?x ?p1 ?y)
+  ;; then (?x ?p2 ?y)
+  ;; ============================================================
+
+  (fn prp-eqp1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Propagate property assertion through equivalentProperty (forward)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (let ((equiv-pred (make-iri arena OWL_EQUIVALENT_PROPERTY))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (let ((equiv-triples (indexed-graph-match arena g no-term (some equiv-pred) no-term)))
+        (for-each (equiv-triple equiv-triples)
+          (let ((p1 (triple-subject equiv-triple))
+                (p2 (triple-object equiv-triple)))
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p1)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt))
+                      (inferred (make-triple arena x p2 y)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-eqp2: Equivalent Property (Backward)
+  ;;
+  ;; If (?p1 owl:equivalentProperty ?p2) and (?x ?p2 ?y)
+  ;; then (?x ?p1 ?y)
+  ;; ============================================================
+
+  (fn prp-eqp2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Propagate property assertion through equivalentProperty (backward)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (let ((equiv-pred (make-iri arena OWL_EQUIVALENT_PROPERTY))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      (let ((equiv-triples (indexed-graph-match arena g no-term (some equiv-pred) no-term)))
+        (for-each (equiv-triple equiv-triples)
+          (let ((p1 (triple-subject equiv-triple))
+                (p2 (triple-object equiv-triple)))
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p2)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt))
+                      (inferred (make-triple arena x p1 y)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-pdw: Property Disjointness Violation
+  ;;
+  ;; If (?p1 owl:propertyDisjointWith ?p2) and (?x ?p1 ?y) and (?x ?p2 ?y)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn prp-pdw ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect property disjointness violation")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@example
+      ;; Graph: (likes propertyDisjointWith hates), (alice likes bob), (alice hates bob)
+      ;; Result: inconsistency
+      (arena (fixture-g-pdw-violation arena) (fixture-delta-empty arena))
+      -> (some (InconsistencyReport "prp-pdw: property disjoint with violation" _)))
+    (let ((pdw-pred (make-iri arena OWL_PROPERTY_DISJOINT_WITH))
+          (no-term (Option Term) (none)))
+
+      (let ((pdw-triples (indexed-graph-match arena g no-term (some pdw-pred) no-term)))
+        (for-each (pdw-triple pdw-triples)
+          (let ((p1 (triple-subject pdw-triple))
+                (p2 (triple-object pdw-triple)))
+            ;; Check if delta has p1 assertions
+            (for-each (dt (. delta triples))
+              (when (term-eq (triple-predicate dt) p1)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt))
+                      (conflict (make-triple arena x p2 y)))
+                  (when (indexed-graph-contains g conflict)
+                    (return (some (record-new InconsistencyReport
+                      (reason "prp-pdw: disjoint properties both asserted")
+                      (witnesses (list Triple dt conflict pdw-triple))))))))
+              ;; Also check symmetric case
+              (when (term-eq (triple-predicate dt) p2)
+                (let ((x (triple-subject dt))
+                      (y (triple-object dt))
+                      (conflict (make-triple arena x p1 y)))
+                  (when (indexed-graph-contains g conflict)
+                    (return (some (record-new InconsistencyReport
+                      (reason "prp-pdw: disjoint properties both asserted")
+                      (witnesses (list Triple dt conflict pdw-triple))))))))))))
+
+      (none))))

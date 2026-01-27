@@ -1,0 +1,139 @@
+;; ============================================================
+;; Growl Core Types
+;;
+;; Shared type definitions used by both growl and engine modules.
+;; This module breaks the circular dependency.
+;; ============================================================
+
+(module types
+  (@doc "Core type definitions for the growl reasoner")
+
+  (import rdf (Triple triple-eq triple-predicate Term IRI))
+  (import index (IndexedGraph))
+
+  (export
+    Delta
+    EngineState
+    ReasonerConfig
+    ReasonerResult
+    ReasonerSuccess
+    InconsistencyReport
+    make-delta
+    delta-add
+    delta-merge
+    delta-is-empty
+    all-triples-have-predicate)
+
+  ;; ============================================================
+  ;; Core Types
+  ;; ============================================================
+
+  ;; Delta represents new triples from an iteration
+  ;; Designed for future extension to differential dataflow
+  (type Delta (record
+    (triples (List Triple))
+    (iteration (Int 0 ..))))
+
+  ;; Configuration for the reasoner
+  (type ReasonerConfig (record
+    (worker-count (Int 1 .. 64))
+    (channel-buffer (Int 64 .. 4096))
+    (max-iterations (Int 1 .. 10000))))
+
+  ;; Engine state during fixpoint computation
+  (type EngineState (record
+    (graph IndexedGraph)
+    (delta Delta)
+    (iteration (Int 0 ..))
+    (config ReasonerConfig)))
+
+  ;; Successful reasoning result
+  (type ReasonerSuccess (record
+    (graph IndexedGraph)
+    (inferred-count (Int 0 ..))
+    (iterations (Int 0 ..))))
+
+  ;; Inconsistency detected during reasoning
+  (type InconsistencyReport (record
+    (reason String)
+    (witnesses (List Triple))))
+
+  ;; Final result of reasoning
+  (type ReasonerResult (union
+    (reason-success ReasonerSuccess)
+    (reason-inconsistent InconsistencyReport)))
+
+  ;; ============================================================
+  ;; Delta Operations
+  ;; ============================================================
+
+  (fn make-delta ((arena Arena) (iteration (Int 0 ..)))
+    (@intent "Create an empty delta for a given iteration")
+    (@spec ((Arena (Int 0 ..)) -> Delta))
+    (@alloc arena)
+    (@pure)
+    (@pre {iteration >= 0})
+    (@post {(. $result iteration) == iteration})
+    (@post {(list-len (. $result triples)) == 0})
+    (@example (arena 0) -> (Delta (list Triple) 0))
+    (@example (arena 5) -> (Delta (list Triple) 5))
+    (record-new Delta
+      (triples (list-new arena Triple))
+      (iteration iteration)))
+
+  (fn delta-add ((arena Arena) (d Delta) (t Triple))
+    (@intent "Add a triple to delta if not already present")
+    (@spec ((Arena Delta Triple) -> Delta))
+    (@alloc arena)
+    (@pre {(. d iteration) >= 0})
+    ;;(@post {(list-len (. $result triples)) >= (list-len (. d triples))})
+    (@post {(. $result iteration) == (. d iteration)})
+    (let ((mut found false))
+      (for-each (existing (. d triples))
+        (when (triple-eq existing t)
+          (set! found true)))
+      (if found
+        d
+        (do
+          (list-push (. d triples) t)
+          d))))
+
+  (fn delta-merge ((arena Arena) (d1 Delta) (d2 Delta))
+    (@intent "Merge two deltas, deduplicating triples")
+    (@spec ((Arena Delta Delta) -> Delta))
+    (@alloc arena)
+    (@pre {(. d1 iteration) == (. d2 iteration)})
+    (@post {(. $result iteration) == (. d1 iteration)})
+    (let ((mut result d1))
+      (for-each (t (. d2 triples))
+        (set! result (delta-add arena result t)))
+      result))
+
+  (fn delta-is-empty ((d Delta))
+    (@intent "Check if delta contains no triples")
+    (@spec ((Delta) -> Bool))
+    (@pure)
+    (@post {$result == ((list-len (. d triples)) == 0)})
+    (@example ((Delta (list Triple) 0)) -> true)
+    (== (list-len (. d triples)) 0))
+
+  ;; ============================================================
+  ;; Contract Helpers
+  ;; ============================================================
+
+  (fn all-triples-have-predicate ((triples (List Triple)) (pred-iri String))
+    (@intent "Check if all triples in list have the given predicate IRI")
+    (@spec (((List Triple) String) -> Bool))
+    (@pure)
+    ;; Postcondition: empty list => returns true (vacuous truth)
+    ;; (or {list not empty} $result) is equivalent to: empty list => $result
+    (@post (or {(list-len triples) > 0} $result))
+    (let ((mut result true))
+      (for-each (t triples)
+        (let ((pred (triple-predicate t)))
+          (match pred
+            ((term-iri iri)
+              (when (not (string-eq (. iri value) pred-iri))
+                (set! result false)))
+            (_ (set! result false)))))
+      result)))
