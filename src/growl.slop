@@ -140,8 +140,8 @@
     (@spec ((ReasonerResult) -> (Int 0 ..)))
     (@pure)
     (@post {$result >= 0})
-    (@example ((reason-success (ReasonerSuccess g 42 3))) -> 42)
-    (@example ((reason-inconsistent (InconsistencyReport "conflict" ws))) -> 0)
+    (@example ((reason-success (ReasonerSuccess _ 42 3))) -> 42)
+    (@example ((reason-inconsistent (InconsistencyReport "conflict" _))) -> 0)
     :c-name "growl_get_inferred_count"
     (match result
       ((reason-success s) (. s inferred-count))
