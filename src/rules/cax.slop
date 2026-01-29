@@ -256,6 +256,22 @@
     ;; Soundness: every inferred triple has form (?x rdf:type ?c2)
     ;; where there exists (?x rdf:type ?c1) and (?c1 rdfs:subClassOf ?c2)
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (or
+              ;; Path 1: delta (x type c1), graph (c1 subClassOf c2) → (x type c2)
+              (and (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+                   (term-eq (triple-subject t) (triple-subject dt))
+                   (indexed-graph-contains g
+                     (make-triple arena (triple-object dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
+              ;; Path 2: delta (c1 subClassOf c2), graph (x type c1) → (x type c2)
+              (and (term-eq (triple-predicate dt) (make-iri arena RDFS_SUBCLASS_OF))
+                   (term-eq (triple-object t) (triple-object dt))
+                   (indexed-graph-contains g
+                     (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject dt)))))))))
     (@example
       ;; Graph: (Person subClassOf Agent), (alice type Person)
       ;; Delta contains: (alice type Person)
@@ -269,6 +285,20 @@
 
       ;; Strategy: for each type assertion in delta, find superclasses
       (for-each (dt (. delta triples))
+        (@loop-invariant
+          (forall (t result)
+            (exists (src-dt (. delta triples))
+              (and
+                (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                (or
+                  (and (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                       (term-eq (triple-subject t) (triple-subject src-dt))
+                       (indexed-graph-contains g
+                         (make-triple arena (triple-object src-dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
+                  (and (term-eq (triple-predicate src-dt) (make-iri arena RDFS_SUBCLASS_OF))
+                       (term-eq (triple-object t) (triple-object src-dt))
+                       (indexed-graph-contains g
+                         (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject src-dt)))))))))
         (when (term-eq (triple-predicate dt) type-pred)
           (let ((individual (triple-subject dt))
                 (class1 (triple-object dt)))
@@ -276,6 +306,20 @@
             (let ((superclass-triples
                     (indexed-graph-match arena g (some class1) (some subclass-pred) no-term)))
               (for-each (sc-triple superclass-triples)
+                (@loop-invariant
+                  (forall (t result)
+                    (exists (src-dt (. delta triples))
+                      (and
+                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                        (or
+                          (and (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                               (term-eq (triple-subject t) (triple-subject src-dt))
+                               (indexed-graph-contains g
+                                 (make-triple arena (triple-object src-dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
+                          (and (term-eq (triple-predicate src-dt) (make-iri arena RDFS_SUBCLASS_OF))
+                               (term-eq (triple-object t) (triple-object src-dt))
+                               (indexed-graph-contains g
+                                 (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject src-dt)))))))))
                 (let ((class2 (triple-object sc-triple))
                       (inferred (make-triple arena individual type-pred class2)))
                   ;; Don't add if already in graph
@@ -284,6 +328,20 @@
 
       ;; Also check: for each new subclass assertion, propagate existing types
       (for-each (dt (. delta triples))
+        (@loop-invariant
+          (forall (t result)
+            (exists (src-dt (. delta triples))
+              (and
+                (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                (or
+                  (and (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                       (term-eq (triple-subject t) (triple-subject src-dt))
+                       (indexed-graph-contains g
+                         (make-triple arena (triple-object src-dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
+                  (and (term-eq (triple-predicate src-dt) (make-iri arena RDFS_SUBCLASS_OF))
+                       (term-eq (triple-object t) (triple-object src-dt))
+                       (indexed-graph-contains g
+                         (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject src-dt)))))))))
         (when (term-eq (triple-predicate dt) subclass-pred)
           (let ((class1 (triple-subject dt))
                 (class2 (triple-object dt)))
@@ -291,6 +349,20 @@
             (let ((type-triples
                     (indexed-graph-match arena g no-term (some type-pred) (some class1))))
               (for-each (t-triple type-triples)
+                (@loop-invariant
+                  (forall (t result)
+                    (exists (src-dt (. delta triples))
+                      (and
+                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                        (or
+                          (and (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                               (term-eq (triple-subject t) (triple-subject src-dt))
+                               (indexed-graph-contains g
+                                 (make-triple arena (triple-object src-dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
+                          (and (term-eq (triple-predicate src-dt) (make-iri arena RDFS_SUBCLASS_OF))
+                               (term-eq (triple-object t) (triple-object src-dt))
+                               (indexed-graph-contains g
+                                 (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject src-dt)))))))))
                 (let ((individual (triple-subject t-triple))
                       (inferred (make-triple arena individual type-pred class2)))
                   (when (not (indexed-graph-contains g inferred))
@@ -313,6 +385,15 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (term-eq (triple-subject t) (triple-subject dt))
+            (indexed-graph-contains g
+              (make-triple arena (triple-object dt) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object t)))))))
     (@example
       ;; Graph: (Human equivalentClass Person), (alice type Human)
       ;; Result: (alice type Person)
@@ -325,6 +406,15 @@
 
       ;; For each type assertion in delta
       (for-each (dt (. delta triples))
+        (@loop-invariant
+          (forall (t result)
+            (exists (src-dt (. delta triples))
+              (and
+                (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                (term-eq (triple-subject t) (triple-subject src-dt))
+                (indexed-graph-contains g
+                  (make-triple arena (triple-object src-dt) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object t)))))))
         (when (term-eq (triple-predicate dt) type-pred)
           (let ((individual (triple-subject dt))
                 (class1 (triple-object dt)))
@@ -332,6 +422,15 @@
             (let ((equiv-triples
                     (indexed-graph-match arena g (some class1) (some equiv-pred) no-term)))
               (for-each (eq-triple equiv-triples)
+                (@loop-invariant
+                  (forall (t result)
+                    (exists (src-dt (. delta triples))
+                      (and
+                        (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                        (term-eq (triple-subject t) (triple-subject src-dt))
+                        (indexed-graph-contains g
+                          (make-triple arena (triple-object src-dt) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object t)))))))
                 (let ((class2 (triple-object eq-triple))
                       (inferred (make-triple arena individual type-pred class2)))
                   (when (not (indexed-graph-contains g inferred))
@@ -354,6 +453,15 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (term-eq (triple-subject t) (triple-subject dt))
+            (indexed-graph-contains g
+              (make-triple arena (triple-object t) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object dt)))))))
     (@example
       ;; Graph: (Human equivalentClass Person), (bob type Person)
       ;; Result: (bob type Human)
@@ -366,6 +474,15 @@
 
       ;; For each type assertion in delta
       (for-each (dt (. delta triples))
+        (@loop-invariant
+          (forall (t result)
+            (exists (src-dt (. delta triples))
+              (and
+                (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                (term-eq (triple-subject t) (triple-subject src-dt))
+                (indexed-graph-contains g
+                  (make-triple arena (triple-object t) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object src-dt)))))))
         (when (term-eq (triple-predicate dt) type-pred)
           (let ((individual (triple-subject dt))
                 (class2 (triple-object dt)))
@@ -373,6 +490,15 @@
             (let ((equiv-triples
                     (indexed-graph-match arena g no-term (some equiv-pred) (some class2))))
               (for-each (eq-triple equiv-triples)
+                (@loop-invariant
+                  (forall (t result)
+                    (exists (src-dt (. delta triples))
+                      (and
+                        (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                        (term-eq (triple-subject t) (triple-subject src-dt))
+                        (indexed-graph-contains g
+                          (make-triple arena (triple-object t) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object src-dt)))))))
                 (let ((class1 (triple-subject eq-triple))
                       (inferred (make-triple arena individual type-pred class1)))
                   (when (not (indexed-graph-contains g inferred))

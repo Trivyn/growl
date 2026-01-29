@@ -272,7 +272,13 @@
     (@post {(list-len $result) >= 0})
     ;; All results have owl:sameAs as predicate
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
-    ;; Symmetry property: if we infer (y sameAs x), there must be (x sameAs y) in g
+    (@property completeness
+      (forall (dt (. delta triples))
+        (or (not (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))
+            (indexed-graph-contains g
+              (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-subject dt)))
+            (list-contains $result
+              (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-subject dt))))))
     (@example
       ;; Graph: (alice sameAs alicia)
       ;; Result: (alicia sameAs alice)
@@ -282,6 +288,13 @@
           (mut result (list-new arena Triple)))
 
       (for-each (dt (. delta triples))
+        (@loop-invariant
+          (forall (dt (. delta triples))
+            (or (not (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))
+                (indexed-graph-contains g
+                  (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-subject dt)))
+                (list-contains result
+                  (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-subject dt))))))
         (when (term-eq (triple-predicate dt) same-as)
           (let ((x (triple-subject dt))
                 (y (triple-object dt))

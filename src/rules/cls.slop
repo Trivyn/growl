@@ -866,6 +866,16 @@
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+            (term-eq (triple-subject t) (triple-subject dt))
+            (indexed-graph-contains g
+              (make-triple arena (triple-object dt) (make-iri arena OWL_HAS_VALUE) (triple-object t)))
+            (indexed-graph-contains g
+              (make-triple arena (triple-object dt) (make-iri arena OWL_ON_PROPERTY) (triple-predicate t)))))))
     (@example
       ;; Graph: (USCitizen hasValue USA on citizenship), (alice type USCitizen)
       ;; Result: (alice citizenship USA)
@@ -880,14 +890,44 @@
       ;; Find hasValue restrictions
       (let ((hv-triples (indexed-graph-match arena g no-term (some hv-pred) no-term)))
         (for-each (hv-triple hv-triples)
+          (@loop-invariant
+            (forall (t result)
+              (exists (src-dt (. delta triples))
+                (and
+                  (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                  (term-eq (triple-subject t) (triple-subject src-dt))
+                  (indexed-graph-contains g
+                    (make-triple arena (triple-object src-dt) (make-iri arena OWL_HAS_VALUE) (triple-object t)))
+                  (indexed-graph-contains g
+                    (make-triple arena (triple-object src-dt) (make-iri arena OWL_ON_PROPERTY) (triple-predicate t)))))))
           (let ((restriction (triple-subject hv-triple))
                 (value (triple-object hv-triple)))
             ;; Find the onProperty
             (let ((prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
               (for-each (prop-triple prop-triples)
+                (@loop-invariant
+                  (forall (t result)
+                    (exists (src-dt (. delta triples))
+                      (and
+                        (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                        (term-eq (triple-subject t) (triple-subject src-dt))
+                        (indexed-graph-contains g
+                          (make-triple arena (triple-object src-dt) (make-iri arena OWL_HAS_VALUE) (triple-object t)))
+                        (indexed-graph-contains g
+                          (make-triple arena (triple-object src-dt) (make-iri arena OWL_ON_PROPERTY) (triple-predicate t)))))))
                 (let ((property (triple-object prop-triple)))
                   ;; For each type assertion where type is the restriction
                   (for-each (dt (. delta triples))
+                    (@loop-invariant
+                      (forall (t result)
+                        (exists (src-dt (. delta triples))
+                          (and
+                            (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
+                            (term-eq (triple-subject t) (triple-subject src-dt))
+                            (indexed-graph-contains g
+                              (make-triple arena (triple-object src-dt) (make-iri arena OWL_HAS_VALUE) (triple-object t)))
+                            (indexed-graph-contains g
+                              (make-triple arena (triple-object src-dt) (make-iri arena OWL_ON_PROPERTY) (triple-predicate t)))))))
                     (when (and (term-eq (triple-predicate dt) type-pred)
                                (term-eq (triple-object dt) restriction))
                       (let ((u (triple-subject dt))
@@ -912,6 +952,16 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (term-eq (triple-subject t) (triple-subject dt))
+            (indexed-graph-contains g
+              (make-triple arena (triple-object t) (make-iri arena OWL_HAS_VALUE) (triple-object dt)))
+            (indexed-graph-contains g
+              (make-triple arena (triple-object t) (make-iri arena OWL_ON_PROPERTY) (triple-predicate dt)))))))
     (@example
       ;; Graph: (USCitizen hasValue USA on citizenship), (bob citizenship USA)
       ;; Result: (bob type USCitizen)
@@ -926,14 +976,44 @@
       ;; Find hasValue restrictions
       (let ((hv-triples (indexed-graph-match arena g no-term (some hv-pred) no-term)))
         (for-each (hv-triple hv-triples)
+          (@loop-invariant
+            (forall (t result)
+              (exists (src-dt (. delta triples))
+                (and
+                  (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                  (term-eq (triple-subject t) (triple-subject src-dt))
+                  (indexed-graph-contains g
+                    (make-triple arena (triple-object t) (make-iri arena OWL_HAS_VALUE) (triple-object src-dt)))
+                  (indexed-graph-contains g
+                    (make-triple arena (triple-object t) (make-iri arena OWL_ON_PROPERTY) (triple-predicate src-dt)))))))
           (let ((restriction (triple-subject hv-triple))
                 (value (triple-object hv-triple)))
             ;; Find the onProperty
             (let ((prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
               (for-each (prop-triple prop-triples)
+                (@loop-invariant
+                  (forall (t result)
+                    (exists (src-dt (. delta triples))
+                      (and
+                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                        (term-eq (triple-subject t) (triple-subject src-dt))
+                        (indexed-graph-contains g
+                          (make-triple arena (triple-object t) (make-iri arena OWL_HAS_VALUE) (triple-object src-dt)))
+                        (indexed-graph-contains g
+                          (make-triple arena (triple-object t) (make-iri arena OWL_ON_PROPERTY) (triple-predicate src-dt)))))))
                 (let ((property (triple-object prop-triple)))
                   ;; For each property assertion in delta with matching value
                   (for-each (dt (. delta triples))
+                    (@loop-invariant
+                      (forall (t result)
+                        (exists (src-dt (. delta triples))
+                          (and
+                            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+                            (term-eq (triple-subject t) (triple-subject src-dt))
+                            (indexed-graph-contains g
+                              (make-triple arena (triple-object t) (make-iri arena OWL_HAS_VALUE) (triple-object src-dt)))
+                            (indexed-graph-contains g
+                              (make-triple arena (triple-object t) (make-iri arena OWL_ON_PROPERTY) (triple-predicate src-dt)))))))
                     (when (and (term-eq (triple-predicate dt) property)
                                (term-eq (triple-object dt) value))
                       (let ((u (triple-subject dt))
