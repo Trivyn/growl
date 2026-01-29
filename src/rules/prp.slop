@@ -432,6 +432,7 @@
     (@example
       ;; Graph: (hasChild domain Person), (alice hasChild bob)
       ;; Result: (alice type Person)
+      :eq triple-eq
       (arena (fixture-g-domain arena) (fixture-delta-usage arena))
       -> (list (make-triple arena (make-iri arena EX_ALICE) (make-iri arena RDF_TYPE) (make-iri arena EX_PERSON))))
     (let ((domain-pred (make-iri arena RDFS_DOMAIN))

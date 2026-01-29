@@ -306,6 +306,20 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@property completeness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS))
+            (or
+              (and
+                (term-eq (triple-subject t) (triple-subject dt))
+                (indexed-graph-contains g
+                  (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-object t))))
+              (and
+                (term-eq (triple-object t) (triple-object dt))
+                (indexed-graph-contains g
+                  (make-triple arena (triple-subject t) (make-iri arena OWL_SAME_AS) (triple-subject dt)))))))))
     (@example
       ;; Graph: (a sameAs b), (b sameAs c)
       ;; Delta: (b sameAs c)
@@ -317,12 +331,40 @@
           (mut result (list-new arena Triple)))
 
       (for-each (dt (. delta triples))
+        (@loop-invariant
+          (forall (t result)
+            (exists (src-dt (. delta triples))
+              (and
+                (term-eq (triple-predicate src-dt) (make-iri arena OWL_SAME_AS))
+                (or
+                  (and
+                    (term-eq (triple-subject t) (triple-subject src-dt))
+                    (indexed-graph-contains g
+                      (make-triple arena (triple-object src-dt) (make-iri arena OWL_SAME_AS) (triple-object t))))
+                  (and
+                    (term-eq (triple-object t) (triple-object src-dt))
+                    (indexed-graph-contains g
+                      (make-triple arena (triple-subject t) (make-iri arena OWL_SAME_AS) (triple-subject src-dt)))))))))
         (when (term-eq (triple-predicate dt) same-as)
           (let ((x (triple-subject dt))
                 (y (triple-object dt)))
             ;; Find y sameAs z (y as subject)
             (let ((y-objects (indexed-graph-match arena g (some y) (some same-as) no-term)))
               (for-each (yo-triple y-objects)
+                (@loop-invariant
+                  (forall (t result)
+                    (exists (src-dt (. delta triples))
+                      (and
+                        (term-eq (triple-predicate src-dt) (make-iri arena OWL_SAME_AS))
+                        (or
+                          (and
+                            (term-eq (triple-subject t) (triple-subject src-dt))
+                            (indexed-graph-contains g
+                              (make-triple arena (triple-object src-dt) (make-iri arena OWL_SAME_AS) (triple-object t))))
+                          (and
+                            (term-eq (triple-object t) (triple-object src-dt))
+                            (indexed-graph-contains g
+                              (make-triple arena (triple-subject t) (make-iri arena OWL_SAME_AS) (triple-subject src-dt)))))))))
                 (let ((z (triple-object yo-triple))
                       (inferred (make-triple arena x same-as z)))
                   (when (and (not (term-eq x z))
@@ -332,6 +374,20 @@
             ;; Find w sameAs x (x as object)
             (let ((x-subjects (indexed-graph-match arena g no-term (some same-as) (some x))))
               (for-each (xs-triple x-subjects)
+                (@loop-invariant
+                  (forall (t result)
+                    (exists (src-dt (. delta triples))
+                      (and
+                        (term-eq (triple-predicate src-dt) (make-iri arena OWL_SAME_AS))
+                        (or
+                          (and
+                            (term-eq (triple-subject t) (triple-subject src-dt))
+                            (indexed-graph-contains g
+                              (make-triple arena (triple-object src-dt) (make-iri arena OWL_SAME_AS) (triple-object t))))
+                          (and
+                            (term-eq (triple-object t) (triple-object src-dt))
+                            (indexed-graph-contains g
+                              (make-triple arena (triple-subject t) (make-iri arena OWL_SAME_AS) (triple-subject src-dt)))))))))
                 (let ((w (triple-subject xs-triple))
                       (inferred (make-triple arena w same-as y)))
                   (when (and (not (term-eq w y))
