@@ -6,7 +6,7 @@ entry = "src/growl.slop"
 [build]
 output = "build/libgrowl.a"
 sources = ["src"]
-include = ["../slop-rdf", "src"]
+include = ["../slop-rdf", "src", "${SLOP_HOME}/lib/std/"]
 type = "static"
 debug = false
 
@@ -18,7 +18,7 @@ library_paths = []
 entry = "src/test.slop"
 output = "build/growl-test"
 sources = ["src", "src/rules"]
-include = ["../slop-rdf", "src", "src/rules"]
+include = ["../slop-rdf", "src", "src/rules", "${SLOP_HOME}/lib/std"]
 
 [verify]
 sources = ["src"]
