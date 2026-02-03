@@ -1,0 +1,7 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix ex: <http://example.org/> .
+
+ex:Human owl:equivalentClass ex:Person .
+ex:alice rdf:type ex:Human .
+ex:bob rdf:type ex:Person .

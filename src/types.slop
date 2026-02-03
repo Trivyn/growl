@@ -30,8 +30,10 @@
 
   ;; Delta represents new triples from an iteration
   ;; Designed for future extension to differential dataflow
+  ;; Uses Set for O(1) deduplication instead of O(n) list scan
   (type Delta (record
     (triples (List Triple))
+    (seen (Set Triple))
     (iteration (Int 0 ..))))
 
   ;; Configuration for the reasoner
@@ -75,10 +77,9 @@
     (@pre {iteration >= 0})
     (@post {(. $result iteration) == iteration})
     (@post {(list-len (. $result triples)) == 0})
-    (@example (arena 0) -> (Delta (list Triple) 0))
-    (@example (arena 5) -> (Delta (list Triple) 5))
     (record-new Delta
       (triples (list-new arena Triple))
+      (seen (set-new arena Triple))
       (iteration iteration)))
 
   (fn delta-add ((arena Arena) (d Delta) (t Triple))
@@ -86,17 +87,14 @@
     (@spec ((Arena Delta Triple) -> Delta))
     (@alloc arena)
     (@pre {(. d iteration) >= 0})
-    ;;(@post {(list-len (. $result triples)) >= (list-len (. d triples))})
     (@post {(. $result iteration) == (. d iteration)})
-    (let ((mut found false))
-      (for-each (existing (. d triples))
-        (when (triple-eq existing t)
-          (set! found true)))
-      (if found
-        d
-        (do
-          (list-push (. d triples) t)
-          d))))
+    ;; O(1) lookup using hash set instead of O(n) list scan
+    (if (set-has (. d seen) t)
+      d
+      (do
+        (set-put (. d seen) t)
+        (list-push (. d triples) t)
+        d)))
 
   (fn delta-merge ((arena Arena) (d1 Delta) (d2 Delta))
     (@intent "Merge two deltas, deduplicating triples")
@@ -114,7 +112,6 @@
     (@spec ((Delta) -> Bool))
     (@pure)
     (@post {$result == ((list-len (. d triples)) == 0)})
-    (@example ((Delta (list Triple) 0)) -> true)
     (== (list-len (. d triples)) 0))
 
   ;; ============================================================

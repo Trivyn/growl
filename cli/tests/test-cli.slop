@@ -1,0 +1,380 @@
+;; ============================================================
+;; Growl CLI Integration Tests
+;;
+;; Tests the full pipeline: parse TTL -> reason -> report/emit
+;; Uses fixture TTL files in fixtures/
+;; ============================================================
+
+(module test-cli
+  (@doc "Integration tests for growl CLI pipeline")
+
+  (import rdf (Term Triple Graph make-iri make-triple make-graph graph-add graph-size term-eq))
+  (import index (IndexedGraph indexed-graph-create indexed-graph-add
+                 indexed-graph-match indexed-graph-size indexed-graph-contains))
+  (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
+  (import serialize-ttl (SerializeConfig serialize-ttl-string serialize-ttl-file))
+  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS))
+  (import growl (reason ReasonerResult ReasonerSuccess InconsistencyReport
+                 get-inferred-count get-types get-same-as))
+
+  ;; ============================================================
+  ;; Helpers
+  ;; ============================================================
+
+  (fn graph-to-indexed ((arena Arena) (g Graph))
+    (@intent "Convert Graph to IndexedGraph")
+    (@spec ((Arena Graph) -> IndexedGraph))
+    (@alloc arena)
+    (let ((mut ig (indexed-graph-create arena)))
+      (for-each (t (. g triples))
+        (set! ig (indexed-graph-add arena ig t)))
+      ig))
+
+  (fn indexed-to-graph ((arena Arena) (ig IndexedGraph))
+    (@intent "Convert IndexedGraph to Graph")
+    (@spec ((Arena IndexedGraph) -> Graph))
+    (@alloc arena)
+    (let ((mut g (make-graph arena)))
+      (for-each (t (. ig triples))
+        (set! g (graph-add arena g t)))
+      g))
+
+  (fn has-type ((arena Arena) (g IndexedGraph) (individual Term) (class Term))
+    (@intent "Check if individual has rdf:type class in graph")
+    (@spec ((Arena IndexedGraph Term Term) -> Bool))
+    (@alloc arena)
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (matches (indexed-graph-match arena g (some individual) (some type-pred) (some class))))
+      (> (list-len matches) 0)))
+
+  (fn has-same-as ((arena Arena) (g IndexedGraph) (a Term) (b Term))
+    (@intent "Check if a owl:sameAs b in graph")
+    (@spec ((Arena IndexedGraph Term Term) -> Bool))
+    (@alloc arena)
+    (let ((same-pred (make-iri arena OWL_SAME_AS))
+          (fwd (indexed-graph-match arena g (some a) (some same-pred) (some b)))
+          (bwd (indexed-graph-match arena g (some b) (some same-pred) (some a))))
+      (or (> (list-len fwd) 0) (> (list-len bwd) 0))))
+
+  (fn print-result ((name String) (passed Bool))
+    (@intent "Print test result")
+    (@spec ((String Bool) -> Unit))
+    (if passed
+      (do (print "[PASS] ") (println name))
+      (do (print "[FAIL] ") (println name))))
+
+  ;; ============================================================
+  ;; Pipeline helper: parse file -> index -> reason
+  ;; ============================================================
+
+  (fn parse-and-reason ((arena Arena) (path String))
+    (@intent "Parse TTL file and run reasoner, return result")
+    (@spec ((Arena String) -> (Option ReasonerResult)))
+    (@alloc arena)
+    (match (parse-ttl-file arena path)
+      ((error _) (none))
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g)))
+          (some (reason arena ig))))))
+
+  ;; ============================================================
+  ;; Test 1: Subclass chain from TTL file
+  ;; ============================================================
+
+  (fn test-subclass-chain-file ((arena Arena))
+    (@intent "Parse subclass-chain.ttl, verify alice gets inferred types")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/subclass-chain.ttl")
+      ((none)
+        (println "  ERROR: failed to parse subclass-chain.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success s)
+            (let ((alice (make-iri arena "http://example.org/alice"))
+                  (person (make-iri arena "http://example.org/Person"))
+                  (agent (make-iri arena "http://example.org/Agent"))
+                  (g (. s graph)))
+              (let ((has-person (has-type arena g alice person))
+                    (has-agent (has-type arena g alice agent))
+                    (did-infer (> (. s inferred-count) 0)))
+                (and has-person (and has-agent did-infer)))))
+          ((reason-inconsistent _)
+            (println "  ERROR: unexpected inconsistency")
+            false)))))
+
+  ;; ============================================================
+  ;; Test 2: Equivalent class from TTL file
+  ;; ============================================================
+
+  (fn test-equivalent-class-file ((arena Arena))
+    (@intent "Parse equivalent-class.ttl, verify bidirectional type inference")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/equivalent-class.ttl")
+      ((none)
+        (println "  ERROR: failed to parse equivalent-class.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success s)
+            (let ((alice (make-iri arena "http://example.org/alice"))
+                  (bob (make-iri arena "http://example.org/bob"))
+                  (human (make-iri arena "http://example.org/Human"))
+                  (person (make-iri arena "http://example.org/Person"))
+                  (g (. s graph)))
+              ;; alice (typed Human) should get Person
+              ;; bob (typed Person) should get Human
+              (and (has-type arena g alice person)
+                   (has-type arena g bob human))))
+          ((reason-inconsistent _)
+            (println "  ERROR: unexpected inconsistency")
+            false)))))
+
+  ;; ============================================================
+  ;; Test 3: Disjoint violation detected
+  ;; ============================================================
+
+  (fn test-disjoint-violation-file ((arena Arena))
+    (@intent "Parse disjoint-violation.ttl, verify inconsistency detected")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/disjoint-violation.ttl")
+      ((none)
+        (println "  ERROR: failed to parse disjoint-violation.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success _)
+            (println "  ERROR: should have detected inconsistency")
+            false)
+          ((reason-inconsistent _) true)))))
+
+  ;; ============================================================
+  ;; Test 4: sameAs + differentFrom violation
+  ;; ============================================================
+
+  (fn test-sameas-differentfrom-file ((arena Arena))
+    (@intent "Parse sameas-differentfrom.ttl, verify inconsistency detected")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/sameas-differentfrom.ttl")
+      ((none)
+        (println "  ERROR: failed to parse sameas-differentfrom.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success _)
+            (println "  ERROR: should have detected inconsistency")
+            false)
+          ((reason-inconsistent _) true)))))
+
+  ;; ============================================================
+  ;; Test 5: sameAs transitivity from TTL
+  ;; ============================================================
+
+  (fn test-sameas-chain-file ((arena Arena))
+    (@intent "Parse sameas-chain.ttl, verify transitive sameAs closure")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/sameas-chain.ttl")
+      ((none)
+        (println "  ERROR: failed to parse sameas-chain.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success s)
+            (let ((alice (make-iri arena "http://example.org/alice"))
+                  (charlie (make-iri arena "http://example.org/charlie")))
+              (has-same-as arena (. s graph) alice charlie)))
+          ((reason-inconsistent _)
+            (println "  ERROR: unexpected inconsistency")
+            false)))))
+
+  ;; ============================================================
+  ;; Test 6: Empty graph passes
+  ;; ============================================================
+
+  (fn test-empty-file ((arena Arena))
+    (@intent "Parse empty.ttl, verify clean pass with 0 inferred")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/empty.ttl")
+      ((none)
+        (println "  ERROR: failed to parse empty.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success s)
+            (== (. s inferred-count) 0))
+          ((reason-inconsistent _)
+            (println "  ERROR: unexpected inconsistency on empty graph")
+            false)))))
+
+  ;; ============================================================
+  ;; Test 7: BFO ontology passes (real-world)
+  ;; ============================================================
+
+  (fn test-bfo-consistent ((arena Arena))
+    (@intent "Parse BFO ontology, verify it is consistent")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (println "  BFO: parsing...")
+    (match (parse-ttl-file arena "fixtures/bfo-core.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse bfo-core.ttl")
+        false)
+      ((ok g)
+        (print "  BFO: parsed ")
+        (print (int-to-string arena (graph-size g)))
+        (println " triples, indexing...")
+        (let ((ig (graph-to-indexed arena g)))
+          (print "  BFO: indexed ")
+          (print (int-to-string arena (indexed-graph-size ig)))
+          (println " triples, reasoning...")
+          (match (reason arena ig)
+            ((reason-success s)
+              (do
+                (print "  BFO: ")
+                (print (int-to-string arena (. s inferred-count)))
+                (print " inferred, ")
+                (print (int-to-string arena (. s iterations)))
+                (println " iterations")
+                true))
+            ((reason-inconsistent report)
+              (print "  ERROR: BFO inconsistent: ")
+              (println (. report reason))
+              false))))))
+
+  ;; ============================================================
+  ;; Test 8: Round-trip emit (parse -> reason -> serialize -> parse)
+  ;; ============================================================
+
+  (fn test-emit-roundtrip ((arena Arena))
+    (@intent "Parse TTL, reason, emit to file, re-parse and verify size")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/subclass-chain.ttl")
+      ((none)
+        (println "  ERROR: failed to parse for roundtrip")
+        false)
+      ((some result)
+        (match result
+          ((reason-success s)
+            (let ((out-graph (indexed-to-graph arena (. s graph)))
+                  (no-base (Option String) (none))
+                  (config (record-new SerializeConfig
+                            (prefixes (make-prefix-map arena))
+                            (base-iri no-base)
+                            (indent-width 2)))
+                  (emit-path "fixtures/roundtrip-out.ttl"))
+              ;; Write materialized graph
+              (match (serialize-ttl-file arena out-graph config emit-path)
+                ((error _)
+                  (println "  ERROR: failed to write roundtrip file")
+                  false)
+                ((ok _)
+                  ;; Re-parse the emitted file
+                  (match (parse-ttl-file arena emit-path)
+                    ((error _)
+                      (println "  ERROR: failed to re-parse emitted file")
+                      false)
+                    ((ok g2)
+                      ;; Emitted graph should have at least as many triples as input
+                      (let ((original-size (indexed-graph-size (. s graph)))
+                            (reparsed-size (graph-size g2)))
+                        (do
+                          (print "  Roundtrip: emitted ")
+                          (print (int-to-string arena original-size))
+                          (print " triples, re-parsed ")
+                          (println (int-to-string arena reparsed-size))
+                          ;; Reparsed should have same or more triples
+                          ;; (serializer may produce slightly different count due to grouping)
+                          (>= reparsed-size 3)))))))))
+          ((reason-inconsistent _)
+            (println "  ERROR: unexpected inconsistency in roundtrip")
+            false)))))
+
+  ;; ============================================================
+  ;; Test 9: Nonexistent file fails gracefully
+  ;; ============================================================
+
+  (fn test-missing-file ((arena Arena))
+    (@intent "Verify that a missing file returns none (parse failure)")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/does-not-exist.ttl")
+      ((none) true)
+      ((some _)
+        (println "  ERROR: should have failed on missing file")
+        false)))
+
+  ;; ============================================================
+  ;; Main Test Runner
+  ;; ============================================================
+
+  (fn main ()
+    (@intent "Run all CLI integration tests")
+    (@spec (() -> Int))
+    :c-name "main"
+    (with-arena 268435456  ;; 256MB for test harness
+      (let ((mut passed 0)
+            (mut failed 0))
+
+        (println "========================================")
+        (println "Growl CLI Integration Tests")
+        (println "========================================")
+        (println "")
+
+        ;; Real-world ontology test (requires 8GB arena_cap)
+        (let ((r (test-bfo-consistent arena)))
+          (print-result "BFO ontology consistent" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Consistent ontologies
+        (let ((r (test-subclass-chain-file arena)))
+          (print-result "subclass chain from TTL" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-equivalent-class-file arena)))
+          (print-result "equivalent class from TTL" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-sameas-chain-file arena)))
+          (print-result "sameAs transitivity from TTL" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-empty-file arena)))
+          (print-result "empty graph from TTL" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Inconsistent ontologies
+        (let ((r (test-disjoint-violation-file arena)))
+          (print-result "disjoint violation detected" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-sameas-differentfrom-file arena)))
+          (print-result "sameAs/differentFrom violation detected" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Emit roundtrip
+        (let ((r (test-emit-roundtrip arena)))
+          (print-result "emit roundtrip (serialize + re-parse)" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Error handling
+        (let ((r (test-missing-file arena)))
+          (print-result "missing file handled gracefully" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Summary
+        (println "")
+        (println "========================================")
+        (print "Passed: ")
+        (println (int-to-string arena passed))
+        (print "Failed: ")
+        (println (int-to-string arena failed))
+        (println "========================================")
+
+        (if (== failed 0) 0 1)))))

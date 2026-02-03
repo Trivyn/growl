@@ -1,0 +1,51 @@
+[project]
+name = "growl-cli"
+version = "0.1.0"
+entry = "main.slop"
+
+[build]
+output = "build/growl"
+arena_cap = 8589934592  # 8GB cap
+# sources = [".", "../src", "../src/rules"]
+include = ["../../slop-rdf/src", "../../slop-rdf/src/parse", "../../slop-rdf/src/serialize", "../src", "../src/rules", "${SLOP_HOME}/lib/std/"]
+type = "executable"
+debug = false
+
+[build.link]
+libraries = []
+library_paths = []
+
+[test]
+entry = "tests/test-cli.slop"
+output = "build/growl-cli-test"
+sources = [".", "../src", "../src/rules", "tests"]
+include = ["../../slop-rdf/src", "../../slop-rdf/src/parse", "../../slop-rdf/src/serialize", "../src", "../src/rules", "${SLOP_HOME}/lib/std/"]
+
+[providers.openrouter]
+type = "openai-compatible"
+base_url = "https://openrouter.ai/api/v1"
+api_key = "${OPENROUTER_API_KEY}"
+
+[tiers.tier-1]
+provider = "openrouter"
+model = "anthropic/claude-haiku-4.5"
+
+[tiers.tier-2]
+provider = "openrouter"
+model = "anthropic/claude-sonnet-4.5"
+
+[tiers.tier-3]
+provider = "openrouter"
+model = "anthropic/claude-sonnet-4.5"
+context_length = 8192
+temperature = 0.5
+
+[tiers.tier-4]
+provider = "openrouter"
+model = "anthropic/claude-opus-4.5"
+context_length = 128000
+temperature = 0.6
+
+[routing]
+max_retries = 2
+escalate_on_failure = true

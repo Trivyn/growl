@@ -1,0 +1,15 @@
+[project]
+name = "growl-cli-test"
+version = "0.1.0"
+entry = "test-cli.slop"
+
+[build]
+output = "build/growl-cli-test"
+arena_cap = 8589934592  # 8GB
+include = ["../../../slop-rdf/src", "../../../slop-rdf/src/parse", "../../../slop-rdf/src/serialize", "../../src", "../../src/rules", "${SLOP_HOME}/lib/std/"]
+type = "executable"
+debug = false
+
+[build.link]
+libraries = []
+library_paths = []

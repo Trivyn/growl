@@ -1,0 +1,193 @@
+;; ============================================================
+;; Growl CLI - OWL 2 RL Reasoner Command-Line Interface
+;;
+;; Usage: growl [options] <file.ttl>
+;;   --quiet       Only print failures and inconsistencies
+;;   --emit <file> Write materialized graph to TTL file
+;; ============================================================
+
+(module main
+  (@doc "CLI interface for growl OWL 2 RL reasoner")
+
+  (import rdf (Term Triple Graph make-graph graph-add graph-size))
+  (import index (IndexedGraph indexed-graph-create indexed-graph-add
+                 indexed-graph-size))
+  (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
+  (import serialize-ttl (SerializeConfig serialize-ttl-file))
+  (import growl (reason ReasonerResult ReasonerSuccess InconsistencyReport
+                 get-inferred-count))
+
+  (ffi "string.h"
+    (strlen ((s (Ptr U8))) U64))
+
+  ;; ============================================================
+  ;; Argument Parsing
+  ;; ============================================================
+
+  (type CliArgs (record
+    (input-file (Option String))
+    (emit-file (Option String))
+    (quiet Bool)
+    (show-help Bool)))
+
+  (fn argv-to-string ((argv (Ptr (Ptr U8))) (index Int))
+    (@intent "Convert argv[index] to a SLOP String")
+    (@spec (((Ptr (Ptr U8)) Int) -> String))
+    (let ((ptr (@ argv index)))
+      (String ptr (strlen ptr))))
+
+  (fn parse-args ((arena Arena) (argc Int) (argv (Ptr (Ptr U8))))
+    (@intent "Parse command-line arguments into CliArgs")
+    (@spec ((Arena Int (Ptr (Ptr U8))) -> CliArgs))
+    (@alloc arena)
+    (let ((mut input (Option String) (none))
+          (mut emit (Option String) (none))
+          (mut quiet false)
+          (mut help false)
+          (mut i 1))
+      (while (< i argc)
+        (let ((arg (argv-to-string argv i)))
+          (cond
+            ((or (string-eq arg "--help") (string-eq arg "-h"))
+              (set! help true)
+              (set! i (+ i 1)))
+            ((or (string-eq arg "--quiet") (string-eq arg "-q"))
+              (set! quiet true)
+              (set! i (+ i 1)))
+            ((or (string-eq arg "--emit") (string-eq arg "-o"))
+              (if (< (+ i 1) argc)
+                (do
+                  (set! emit (some (argv-to-string argv (+ i 1))))
+                  (set! i (+ i 2)))
+                (do
+                  (println "Error: --emit requires a file path")
+                  (set! help true)
+                  (set! i (+ i 1)))))
+            (true
+              (set! input (some arg))
+              (set! i (+ i 1))))))
+      (record-new CliArgs
+        (input-file input)
+        (emit-file emit)
+        (quiet quiet)
+        (show-help help))))
+
+  (fn print-usage ()
+    (@intent "Print CLI usage information")
+    (@spec (() -> Unit))
+    (println "growl - OWL 2 RL Reasoner")
+    (println "")
+    (println "Usage: growl [options] <file.ttl>")
+    (println "")
+    (println "Options:")
+    (println "  -h, --help       Show this help message")
+    (println "  -q, --quiet      Only print failures and inconsistencies")
+    (println "  -o, --emit FILE  Write materialized graph to TTL file"))
+
+  ;; ============================================================
+  ;; Graph Conversion
+  ;; ============================================================
+
+  (fn graph-to-indexed ((arena Arena) (g Graph))
+    (@intent "Convert a Graph to an IndexedGraph for reasoning")
+    (@spec ((Arena Graph) -> IndexedGraph))
+    (@alloc arena)
+    (let ((mut ig (indexed-graph-create arena)))
+      (for-each (t (. g triples))
+        (set! ig (indexed-graph-add arena ig t)))
+      ig))
+
+  (fn indexed-to-graph ((arena Arena) (ig IndexedGraph))
+    (@intent "Convert an IndexedGraph back to a Graph for serialization")
+    (@spec ((Arena IndexedGraph) -> Graph))
+    (@alloc arena)
+    (let ((mut g (make-graph arena)))
+      (for-each (t (. ig triples))
+        (set! g (graph-add arena g t)))
+      g))
+
+  ;; ============================================================
+  ;; Main
+  ;; ============================================================
+
+  (fn main ((argc Int) (argv (Ptr (Ptr U8))))
+    (@intent "CLI entry point: parse TTL, run reasoner, report results")
+    (@spec ((Int (Ptr (Ptr U8))) -> Int))
+    :c-name "main"
+    (with-arena 268435456  ;; 256MB for reasoning
+      (let ((args (parse-args arena argc argv)))
+
+        ;; Handle help or missing input
+        (match (. args input-file)
+          ((none)
+            (print-usage)
+            (if (. args show-help) 0 1))
+          ((some input-path)
+
+            (if (. args show-help)
+              (do (print-usage) 0)
+
+            ;; Normal operation
+            (let ((quiet (. args quiet)))
+
+            ;; Parse TTL file
+            (match (parse-ttl-file arena input-path)
+              ((error e)
+                (print "Error: failed to parse ")
+                (println input-path)
+                1)
+
+              ((ok g)
+                ;; Convert to indexed graph and run reasoner
+                (let ((ig (graph-to-indexed arena g))
+                      (input-size (indexed-graph-size ig)))
+
+                  (when (not quiet)
+                    (print "Parsed ")
+                    (print (int-to-string arena input-size))
+                    (print " triples from ")
+                    (println input-path))
+
+                  ;; Run reasoner
+                  (match (reason arena ig)
+                    ((reason-success s)
+                      (let ((inferred (. s inferred-count))
+                            (iters (. s iterations)))
+
+                        (when (not quiet)
+                          (println "[PASS] Ontology is consistent")
+                          (print "  Inferred: ")
+                          (print (int-to-string arena inferred))
+                          (println " triples")
+                          (print "  Iterations: ")
+                          (println (int-to-string arena iters))
+                          (print "  Total: ")
+                          (print (int-to-string arena (indexed-graph-size (. s graph))))
+                          (println " triples"))
+
+                        ;; Emit materialized graph if requested
+                        (match (. args emit-file)
+                          ((some emit-path)
+                            (let ((out-graph (indexed-to-graph arena (. s graph)))
+                                  (no-base (Option String) (none))
+                                  (config (record-new SerializeConfig
+                                            (prefixes (make-prefix-map arena))
+                                            (base-iri no-base)
+                                            (indent-width 2))))
+                              (match (serialize-ttl-file arena out-graph config emit-path)
+                                ((ok _)
+                                  (when (not quiet)
+                                    (print "Wrote materialized graph to ")
+                                    (println emit-path))
+                                  0)
+                                ((error _)
+                                  (print "Error: failed to write ")
+                                  (println emit-path)
+                                  1))))
+                          ((none) 0))))
+
+                    ((reason-inconsistent report)
+                      (println "[FAIL] Ontology is inconsistent")
+                      (print "  Reason: ")
+                      (println (. report reason))
+                      1)))))))))))))
