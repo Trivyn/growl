@@ -12,7 +12,7 @@
 
   (import rdf (Term Triple term-eq triple-eq make-iri make-triple make-literal
                triple-subject triple-predicate triple-object))
-  (import index (IndexedGraph indexed-graph-match indexed-graph-contains indexed-graph-size
+  (import index (IndexedGraph indexed-graph-match indexed-graph-for-each indexed-graph-contains indexed-graph-size
                  indexed-graph-create indexed-graph-add))
   (import vocab (RDF_TYPE RDFS_DOMAIN RDFS_RANGE RDFS_SUBPROPERTY_OF
                  OWL_SAME_AS OWL_DIFFERENT_FROM OWL_EQUIVALENT_PROPERTY
@@ -461,16 +461,8 @@
         (let ((x (triple-subject dt))
               (p (triple-predicate dt)))
           ;; Find domain declarations for p
-          (let ((domain-triples (indexed-graph-match arena g (some p) (some domain-pred) no-term)))
-            (for-each (dom-triple domain-triples)
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-subject t) (triple-subject src-dt))
-                      (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena RDFS_DOMAIN) (triple-object t)))))))
+          (indexed-graph-for-each g (some p) (some domain-pred) no-term
+            (fn ((dom-triple Triple))
               (let ((c (triple-object dom-triple))
                     (inferred (make-triple arena x type-pred c)))
                 (when (not (indexed-graph-contains g inferred))
@@ -523,16 +515,8 @@
         (let ((y (triple-object dt))
               (p (triple-predicate dt)))
           ;; Only apply to non-literal objects
-          (let ((range-triples (indexed-graph-match arena g (some p) (some range-pred) no-term)))
-            (for-each (rng-triple range-triples)
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-subject t) (triple-object src-dt))
-                      (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena RDFS_RANGE) (triple-object t)))))))
+          (indexed-graph-for-each g (some p) (some range-pred) no-term
+            (fn ((rng-triple Triple))
               (let ((c (triple-object rng-triple))
                     (inferred (make-triple arena y type-pred c)))
                 (when (not (indexed-graph-contains g inferred))
@@ -578,47 +562,17 @@
           (mut result (list-new arena Triple)))
 
       ;; Find all functional properties
-      (let ((fp-triples (indexed-graph-match arena g no-term (some type-pred) (some fp-type))))
-        (for-each (fp-triple fp-triples)
-          (@loop-invariant
-            (forall (t result)
-              (exists (src-dt (. delta triples))
-                (and
-                  (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))
-                  (term-eq (triple-subject t) (triple-object src-dt))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_FUNCTIONAL_PROPERTY)))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-subject src-dt) (triple-predicate src-dt) (triple-object t)))))))
+      (indexed-graph-for-each g no-term (some type-pred) (some fp-type)
+        (fn ((fp-triple Triple))
           (let ((p (triple-subject fp-triple)))
             ;; For each usage of p in delta
             (for-each (dt (. delta triples))
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))
-                      (term-eq (triple-subject t) (triple-object src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_FUNCTIONAL_PROPERTY)))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-subject src-dt) (triple-predicate src-dt) (triple-object t)))))))
               (when (term-eq (triple-predicate dt) p)
                 (let ((x (triple-subject dt))
                       (y1 (triple-object dt)))
                   ;; Find other values for same subject
-                  (let ((other-triples (indexed-graph-match arena g (some x) (some p) no-term)))
-                    (for-each (other-triple other-triples)
-                      (@loop-invariant
-                        (forall (t result)
-                          (exists (src-dt (. delta triples))
-                            (and
-                              (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))
-                              (term-eq (triple-subject t) (triple-object src-dt))
-                              (indexed-graph-contains g
-                                (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_FUNCTIONAL_PROPERTY)))
-                              (indexed-graph-contains g
-                                (make-triple arena (triple-subject src-dt) (triple-predicate src-dt) (triple-object t)))))))
+                  (indexed-graph-for-each g (some x) (some p) no-term
+                    (fn ((other-triple Triple))
                       (let ((y2 (triple-object other-triple)))
                         (when (not (term-eq y1 y2))
                           (let ((inferred (make-triple arena y1 same-as y2)))
@@ -664,46 +618,16 @@
           (no-term (Option Term) (none))
           (mut result (list-new arena Triple)))
 
-      (let ((ifp-triples (indexed-graph-match arena g no-term (some type-pred) (some ifp-type))))
-        (for-each (ifp-triple ifp-triples)
-          (@loop-invariant
-            (forall (t result)
-              (exists (src-dt (. delta triples))
-                (and
-                  (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))
-                  (term-eq (triple-subject t) (triple-subject src-dt))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_INVERSE_FUNCTIONAL_PROPERTY)))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-object t) (triple-predicate src-dt) (triple-object src-dt)))))))
+      (indexed-graph-for-each g no-term (some type-pred) (some ifp-type)
+        (fn ((ifp-triple Triple))
           (let ((p (triple-subject ifp-triple)))
             (for-each (dt (. delta triples))
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))
-                      (term-eq (triple-subject t) (triple-subject src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_INVERSE_FUNCTIONAL_PROPERTY)))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-object t) (triple-predicate src-dt) (triple-object src-dt)))))))
               (when (term-eq (triple-predicate dt) p)
                 (let ((x1 (triple-subject dt))
                       (y (triple-object dt)))
                   ;; Find other subjects with same object
-                  (let ((other-triples (indexed-graph-match arena g no-term (some p) (some y))))
-                    (for-each (other-triple other-triples)
-                      (@loop-invariant
-                        (forall (t result)
-                          (exists (src-dt (. delta triples))
-                            (and
-                              (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))
-                              (term-eq (triple-subject t) (triple-subject src-dt))
-                              (indexed-graph-contains g
-                                (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_INVERSE_FUNCTIONAL_PROPERTY)))
-                              (indexed-graph-contains g
-                                (make-triple arena (triple-object t) (triple-predicate src-dt) (triple-object src-dt)))))))
+                  (indexed-graph-for-each g no-term (some p) (some y)
+                    (fn ((other-triple Triple))
                       (let ((x2 (triple-subject other-triple)))
                         (when (not (term-eq x1 x2))
                           (let ((inferred (make-triple arena x1 same-as x2)))
@@ -753,44 +677,10 @@
           (no-term (Option Term) (none))
           (mut result (list-new arena Triple)))
 
-      (let ((sym-triples (indexed-graph-match arena g no-term (some type-pred) (some sym-type))))
-        (for-each (sym-triple sym-triples)
-          (@loop-invariant
-            (forall (t result)
-              (exists (src-dt (. delta triples))
-                (and
-                  (term-eq (triple-subject t) (triple-object src-dt))
-                  (term-eq (triple-predicate t) (triple-predicate src-dt))
-                  (term-eq (triple-object t) (triple-subject src-dt))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_SYMMETRIC_PROPERTY)))))))
-          (@loop-invariant
-            (forall (dt (. delta triples))
-              (or (not (indexed-graph-contains g
-                    (make-triple arena (triple-predicate dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_SYMMETRIC_PROPERTY))))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-object dt) (triple-predicate dt) (triple-subject dt)))
-                  (list-contains result
-                    (make-triple arena (triple-object dt) (triple-predicate dt) (triple-subject dt))))))
+      (indexed-graph-for-each g no-term (some type-pred) (some sym-type)
+        (fn ((sym-triple Triple))
           (let ((p (triple-subject sym-triple)))
             (for-each (dt (. delta triples))
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-subject t) (triple-object src-dt))
-                      (term-eq (triple-predicate t) (triple-predicate src-dt))
-                      (term-eq (triple-object t) (triple-subject src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_SYMMETRIC_PROPERTY)))))))
-              (@loop-invariant
-                (forall (dt (. delta triples))
-                  (or (not (indexed-graph-contains g
-                        (make-triple arena (triple-predicate dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_SYMMETRIC_PROPERTY))))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-object dt) (triple-predicate dt) (triple-subject dt)))
-                      (list-contains result
-                        (make-triple arena (triple-object dt) (triple-predicate dt) (triple-subject dt))))))
               (when (term-eq (triple-predicate dt) p)
                 (let ((x (triple-subject dt))
                       (y (triple-object dt))
@@ -877,79 +767,23 @@
           (no-term (Option Term) (none))
           (mut result (list-new arena Triple)))
 
-      (let ((trans-triples (indexed-graph-match arena g no-term (some type-pred) (some trans-type))))
-        (for-each (trans-triple trans-triples)
-          (@loop-invariant
-            (forall (t result)
-              (exists (src-dt (. delta triples))
-                (and
-                  (term-eq (triple-predicate t) (triple-predicate src-dt))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_TRANSITIVE_PROPERTY)))
-                  (or
-                    (and (term-eq (triple-subject t) (triple-subject src-dt))
-                         (indexed-graph-contains g
-                           (make-triple arena (triple-object src-dt) (triple-predicate src-dt) (triple-object t))))
-                    (and (term-eq (triple-object t) (triple-object src-dt))
-                         (indexed-graph-contains g
-                           (make-triple arena (triple-subject t) (triple-predicate src-dt) (triple-subject src-dt)))))))))
+      (indexed-graph-for-each g no-term (some type-pred) (some trans-type)
+        (fn ((trans-triple Triple))
           (let ((p (triple-subject trans-triple)))
             (for-each (dt (. delta triples))
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-predicate t) (triple-predicate src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_TRANSITIVE_PROPERTY)))
-                      (or
-                        (and (term-eq (triple-subject t) (triple-subject src-dt))
-                             (indexed-graph-contains g
-                               (make-triple arena (triple-object src-dt) (triple-predicate src-dt) (triple-object t))))
-                        (and (term-eq (triple-object t) (triple-object src-dt))
-                             (indexed-graph-contains g
-                               (make-triple arena (triple-subject t) (triple-predicate src-dt) (triple-subject src-dt)))))))))
               (when (term-eq (triple-predicate dt) p)
                 (let ((x (triple-subject dt))
                       (y (triple-object dt)))
                   ;; Find y ?p ?z
-                  (let ((next-triples (indexed-graph-match arena g (some y) (some p) no-term)))
-                    (for-each (next-triple next-triples)
-                      (@loop-invariant
-                        (forall (t result)
-                          (exists (src-dt (. delta triples))
-                            (and
-                              (term-eq (triple-predicate t) (triple-predicate src-dt))
-                              (indexed-graph-contains g
-                                (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_TRANSITIVE_PROPERTY)))
-                              (or
-                                (and (term-eq (triple-subject t) (triple-subject src-dt))
-                                     (indexed-graph-contains g
-                                       (make-triple arena (triple-object src-dt) (triple-predicate src-dt) (triple-object t))))
-                                (and (term-eq (triple-object t) (triple-object src-dt))
-                                     (indexed-graph-contains g
-                                       (make-triple arena (triple-subject t) (triple-predicate src-dt) (triple-subject src-dt)))))))))
+                  (indexed-graph-for-each g (some y) (some p) no-term
+                    (fn ((next-triple Triple))
                       (let ((z (triple-object next-triple))
                             (inferred (make-triple arena x p z)))
                         (when (not (indexed-graph-contains g inferred))
                           (list-push result inferred)))))
                   ;; Find ?w ?p ?x
-                  (let ((prev-triples (indexed-graph-match arena g no-term (some p) (some x))))
-                    (for-each (prev-triple prev-triples)
-                      (@loop-invariant
-                        (forall (t result)
-                          (exists (src-dt (. delta triples))
-                            (and
-                              (term-eq (triple-predicate t) (triple-predicate src-dt))
-                              (indexed-graph-contains g
-                                (make-triple arena (triple-predicate src-dt) (make-iri arena RDF_TYPE) (make-iri arena OWL_TRANSITIVE_PROPERTY)))
-                              (or
-                                (and (term-eq (triple-subject t) (triple-subject src-dt))
-                                     (indexed-graph-contains g
-                                       (make-triple arena (triple-object src-dt) (triple-predicate src-dt) (triple-object t))))
-                                (and (term-eq (triple-object t) (triple-object src-dt))
-                                     (indexed-graph-contains g
-                                       (make-triple arena (triple-subject t) (triple-predicate src-dt) (triple-subject src-dt)))))))))
+                  (indexed-graph-for-each g no-term (some p) (some x)
+                    (fn ((prev-triple Triple))
                       (let ((w (triple-subject prev-triple))
                             (inferred (make-triple arena w p y)))
                         (when (not (indexed-graph-contains g inferred))
@@ -1025,28 +859,12 @@
           (mut result (list-new arena Triple)))
 
       (for-each (dt (. delta triples))
-        (@loop-invariant
-          (forall (t result)
-            (exists (src-dt (. delta triples))
-              (and
-                (term-eq (triple-subject t) (triple-subject src-dt))
-                (term-eq (triple-object t) (triple-object src-dt))
-                (indexed-graph-contains g
-                  (make-triple arena (triple-predicate src-dt) (make-iri arena RDFS_SUBPROPERTY_OF) (triple-predicate t)))))))
         (let ((x (triple-subject dt))
               (p1 (triple-predicate dt))
               (y (triple-object dt)))
           ;; Find superproperties of p1
-          (let ((super-triples (indexed-graph-match arena g (some p1) (some subprop-pred) no-term)))
-            (for-each (super-triple super-triples)
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-subject t) (triple-subject src-dt))
-                      (term-eq (triple-object t) (triple-object src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena RDFS_SUBPROPERTY_OF) (triple-predicate t)))))))
+          (indexed-graph-for-each g (some p1) (some subprop-pred) no-term
+            (fn ((super-triple Triple))
               (let ((p2 (triple-object super-triple))
                     (inferred (make-triple arena x p2 y)))
                 (when (not (indexed-graph-contains g inferred))
@@ -1086,28 +904,12 @@
           (mut result (list-new arena Triple)))
 
       ;; Find p1 inverseOf p2 declarations
-      (let ((inv-triples (indexed-graph-match arena g no-term (some inverse-pred) no-term)))
-        (for-each (inv-triple inv-triples)
-          (@loop-invariant
-            (forall (t result)
-              (exists (src-dt (. delta triples))
-                (and
-                  (term-eq (triple-subject t) (triple-object src-dt))
-                  (term-eq (triple-object t) (triple-subject src-dt))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-predicate src-dt) (make-iri arena OWL_INVERSE_OF) (triple-predicate t)))))))
+      (indexed-graph-for-each g no-term (some inverse-pred) no-term
+        (fn ((inv-triple Triple))
           (let ((p1 (triple-subject inv-triple))
                 (p2 (triple-object inv-triple)))
             ;; For each usage of p1 in delta
             (for-each (dt (. delta triples))
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-subject t) (triple-object src-dt))
-                      (term-eq (triple-object t) (triple-subject src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena OWL_INVERSE_OF) (triple-predicate t)))))))
               (when (term-eq (triple-predicate dt) p1)
                 (let ((x (triple-subject dt))
                       (y (triple-object dt))
@@ -1148,28 +950,12 @@
           (no-term (Option Term) (none))
           (mut result (list-new arena Triple)))
 
-      (let ((inv-triples (indexed-graph-match arena g no-term (some inverse-pred) no-term)))
-        (for-each (inv-triple inv-triples)
-          (@loop-invariant
-            (forall (t result)
-              (exists (src-dt (. delta triples))
-                (and
-                  (term-eq (triple-subject t) (triple-object src-dt))
-                  (term-eq (triple-object t) (triple-subject src-dt))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-predicate t) (make-iri arena OWL_INVERSE_OF) (triple-predicate src-dt)))))))
+      (indexed-graph-for-each g no-term (some inverse-pred) no-term
+        (fn ((inv-triple Triple))
           (let ((p1 (triple-subject inv-triple))
                 (p2 (triple-object inv-triple)))
             ;; For each usage of p2 in delta
             (for-each (dt (. delta triples))
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-subject t) (triple-object src-dt))
-                      (term-eq (triple-object t) (triple-subject src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate t) (make-iri arena OWL_INVERSE_OF) (triple-predicate src-dt)))))))
               (when (term-eq (triple-predicate dt) p2)
                 (let ((x (triple-subject dt))
                       (y (triple-object dt))
@@ -1205,27 +991,11 @@
           (no-term (Option Term) (none))
           (mut result (list-new arena Triple)))
 
-      (let ((equiv-triples (indexed-graph-match arena g no-term (some equiv-pred) no-term)))
-        (for-each (equiv-triple equiv-triples)
-          (@loop-invariant
-            (forall (t result)
-              (exists (src-dt (. delta triples))
-                (and
-                  (term-eq (triple-subject t) (triple-subject src-dt))
-                  (term-eq (triple-object t) (triple-object src-dt))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-predicate src-dt) (make-iri arena OWL_EQUIVALENT_PROPERTY) (triple-predicate t)))))))
+      (indexed-graph-for-each g no-term (some equiv-pred) no-term
+        (fn ((equiv-triple Triple))
           (let ((p1 (triple-subject equiv-triple))
                 (p2 (triple-object equiv-triple)))
             (for-each (dt (. delta triples))
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-subject t) (triple-subject src-dt))
-                      (term-eq (triple-object t) (triple-object src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate src-dt) (make-iri arena OWL_EQUIVALENT_PROPERTY) (triple-predicate t)))))))
               (when (term-eq (triple-predicate dt) p1)
                 (let ((x (triple-subject dt))
                       (y (triple-object dt))
@@ -1261,27 +1031,11 @@
           (no-term (Option Term) (none))
           (mut result (list-new arena Triple)))
 
-      (let ((equiv-triples (indexed-graph-match arena g no-term (some equiv-pred) no-term)))
-        (for-each (equiv-triple equiv-triples)
-          (@loop-invariant
-            (forall (t result)
-              (exists (src-dt (. delta triples))
-                (and
-                  (term-eq (triple-subject t) (triple-subject src-dt))
-                  (term-eq (triple-object t) (triple-object src-dt))
-                  (indexed-graph-contains g
-                    (make-triple arena (triple-predicate t) (make-iri arena OWL_EQUIVALENT_PROPERTY) (triple-predicate src-dt)))))))
+      (indexed-graph-for-each g no-term (some equiv-pred) no-term
+        (fn ((equiv-triple Triple))
           (let ((p1 (triple-subject equiv-triple))
                 (p2 (triple-object equiv-triple)))
             (for-each (dt (. delta triples))
-              (@loop-invariant
-                (forall (t result)
-                  (exists (src-dt (. delta triples))
-                    (and
-                      (term-eq (triple-subject t) (triple-subject src-dt))
-                      (term-eq (triple-object t) (triple-object src-dt))
-                      (indexed-graph-contains g
-                        (make-triple arena (triple-predicate t) (make-iri arena OWL_EQUIVALENT_PROPERTY) (triple-predicate src-dt)))))))
               (when (term-eq (triple-predicate dt) p2)
                 (let ((x (triple-subject dt))
                       (y (triple-object dt))
@@ -1336,4 +1090,4 @@
                       (reason "prp-pdw: disjoint properties both asserted")
                       (witnesses (list Triple dt conflict pdw-triple))))))))))))
 
-      (none))))
+      (none))))  ;; close fn, module

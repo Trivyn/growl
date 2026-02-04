@@ -8,7 +8,7 @@
   (@doc "Parallel fixpoint rule engine with fork-join pattern")
 
   (import rdf (Term Triple triple-eq))
-  (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match))
+  (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match indexed-graph-for-each))
   (import thread (chan-buffered send recv spawn join))
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
@@ -86,8 +86,9 @@
     (@post {(. $result iteration) == 0})
     (let ((mut d (make-delta arena 0)))
       ;; In first iteration, all triples are "new"
-      (for-each (t (indexed-graph-match arena g (none) (none) (none)))
-        (set! d (delta-add arena d t)))
+      (indexed-graph-for-each g (none) (none) (none)
+        (fn ((t Triple))
+          (set! d (delta-add arena d t))))
       d))
 
   ;; ============================================================

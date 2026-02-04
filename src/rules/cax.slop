@@ -12,7 +12,7 @@
 
   (import rdf (Term Triple term-eq triple-eq make-iri make-triple make-blank
                triple-subject triple-predicate triple-object))
-  (import index (IndexedGraph indexed-graph-match indexed-graph-contains indexed-graph-size
+  (import index (IndexedGraph indexed-graph-match indexed-graph-for-each indexed-graph-contains indexed-graph-size
                  indexed-graph-create indexed-graph-add))
   (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_EQUIVALENT_CLASS OWL_DISJOINT_WITH
                  OWL_ALL_DISJOINT_CLASSES OWL_MEMBERS RDF_FIRST RDF_REST RDF_NIL))
@@ -303,23 +303,8 @@
           (let ((individual (triple-subject dt))
                 (class1 (triple-object dt)))
             ;; Find all superclasses of class1
-            (let ((superclass-triples
-                    (indexed-graph-match arena g (some class1) (some subclass-pred) no-term)))
-              (for-each (sc-triple superclass-triples)
-                (@loop-invariant
-                  (forall (t result)
-                    (exists (src-dt (. delta triples))
-                      (and
-                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                        (or
-                          (and (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
-                               (term-eq (triple-subject t) (triple-subject src-dt))
-                               (indexed-graph-contains g
-                                 (make-triple arena (triple-object src-dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
-                          (and (term-eq (triple-predicate src-dt) (make-iri arena RDFS_SUBCLASS_OF))
-                               (term-eq (triple-object t) (triple-object src-dt))
-                               (indexed-graph-contains g
-                                 (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject src-dt)))))))))
+            (indexed-graph-for-each g (some class1) (some subclass-pred) no-term
+              (fn ((sc-triple Triple))
                 (let ((class2 (triple-object sc-triple))
                       (inferred (make-triple arena individual type-pred class2)))
                   ;; Don't add if already in graph
@@ -346,23 +331,8 @@
           (let ((class1 (triple-subject dt))
                 (class2 (triple-object dt)))
             ;; Find all instances of class1
-            (let ((type-triples
-                    (indexed-graph-match arena g no-term (some type-pred) (some class1))))
-              (for-each (t-triple type-triples)
-                (@loop-invariant
-                  (forall (t result)
-                    (exists (src-dt (. delta triples))
-                      (and
-                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                        (or
-                          (and (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
-                               (term-eq (triple-subject t) (triple-subject src-dt))
-                               (indexed-graph-contains g
-                                 (make-triple arena (triple-object src-dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
-                          (and (term-eq (triple-predicate src-dt) (make-iri arena RDFS_SUBCLASS_OF))
-                               (term-eq (triple-object t) (triple-object src-dt))
-                               (indexed-graph-contains g
-                                 (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject src-dt)))))))))
+            (indexed-graph-for-each g no-term (some type-pred) (some class1)
+              (fn ((t-triple Triple))
                 (let ((individual (triple-subject t-triple))
                       (inferred (make-triple arena individual type-pred class2)))
                   (when (not (indexed-graph-contains g inferred))
@@ -419,18 +389,8 @@
           (let ((individual (triple-subject dt))
                 (class1 (triple-object dt)))
             ;; Find equivalent classes where class1 is subject
-            (let ((equiv-triples
-                    (indexed-graph-match arena g (some class1) (some equiv-pred) no-term)))
-              (for-each (eq-triple equiv-triples)
-                (@loop-invariant
-                  (forall (t result)
-                    (exists (src-dt (. delta triples))
-                      (and
-                        (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
-                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                        (term-eq (triple-subject t) (triple-subject src-dt))
-                        (indexed-graph-contains g
-                          (make-triple arena (triple-object src-dt) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object t)))))))
+            (indexed-graph-for-each g (some class1) (some equiv-pred) no-term
+              (fn ((eq-triple Triple))
                 (let ((class2 (triple-object eq-triple))
                       (inferred (make-triple arena individual type-pred class2)))
                   (when (not (indexed-graph-contains g inferred))
@@ -487,18 +447,8 @@
           (let ((individual (triple-subject dt))
                 (class2 (triple-object dt)))
             ;; Find equivalent classes where class2 is object
-            (let ((equiv-triples
-                    (indexed-graph-match arena g no-term (some equiv-pred) (some class2))))
-              (for-each (eq-triple equiv-triples)
-                (@loop-invariant
-                  (forall (t result)
-                    (exists (src-dt (. delta triples))
-                      (and
-                        (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
-                        (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                        (term-eq (triple-subject t) (triple-subject src-dt))
-                        (indexed-graph-contains g
-                          (make-triple arena (triple-object t) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object src-dt)))))))
+            (indexed-graph-for-each g no-term (some equiv-pred) (some class2)
+              (fn ((eq-triple Triple))
                 (let ((class1 (triple-subject eq-triple))
                       (inferred (make-triple arena individual type-pred class1)))
                   (when (not (indexed-graph-contains g inferred))
@@ -547,9 +497,8 @@
           (let ((individual (triple-subject dt))
                 (class1 (triple-object dt)))
             ;; Find classes disjoint with class1
-            (let ((disjoint-triples
-                    (indexed-graph-match arena g (some class1) (some disjoint-pred) no-term)))
-              (for-each (dj-triple disjoint-triples)
+            (let ((dj-triples (indexed-graph-match arena g (some class1) (some disjoint-pred) no-term)))
+              (for-each (dj-triple dj-triples)
                 (let ((class2 (triple-object dj-triple))
                       ;; Check if individual is also type class2
                       (type2-triple (make-triple arena individual type-pred class2)))
@@ -563,9 +512,8 @@
         (when (term-eq (triple-predicate dt) type-pred)
           (let ((individual (triple-subject dt))
                 (class2 (triple-object dt)))
-            (let ((disjoint-triples
-                    (indexed-graph-match arena g no-term (some disjoint-pred) (some class2))))
-              (for-each (dj-triple disjoint-triples)
+            (let ((dj-triples (indexed-graph-match arena g no-term (some disjoint-pred) (some class2))))
+              (for-each (dj-triple dj-triples)
                 (let ((class1 (triple-subject dj-triple))
                       (type1-triple (make-triple arena individual type-pred class1)))
                   (when (indexed-graph-contains g type1-triple)
@@ -609,8 +557,8 @@
         (for-each (adc-triple adc-triples)
           (let ((adc-node (triple-subject adc-triple)))
             ;; Get the members list
-            (let ((members-triples (indexed-graph-match arena g (some adc-node) (some members-pred) no-term)))
-              (for-each (m-triple members-triples)
+            (let ((m-triples (indexed-graph-match arena g (some adc-node) (some members-pred) no-term)))
+              (for-each (m-triple m-triples)
                 (let ((list-head (triple-object m-triple))
                       (classes (rdf-list-elements-indexed arena g list-head)))
                   ;; For each pair of classes in the list, check for shared instances
@@ -618,13 +566,13 @@
                     (for-each (class-b classes)
                       (when (not (term-eq class-a class-b))
                         ;; Find individuals that are instances of both class-a and class-b
-                        (let ((class-a-instances (indexed-graph-match arena g no-term (some type-pred) (some class-a))))
-                          (for-each (inst-triple class-a-instances)
+                        (let ((inst-triples (indexed-graph-match arena g no-term (some type-pred) (some class-a))))
+                          (for-each (inst-triple inst-triples)
                             (let ((individual (triple-subject inst-triple))
                                   (class-b-type-triple (make-triple arena individual type-pred class-b)))
                               (when (indexed-graph-contains g class-b-type-triple)
                                 (return (some (record-new InconsistencyReport
                                   (reason "cax-adc: individual is instance of two classes in AllDisjointClasses")
-                                  (witnesses (list Triple inst-triple class-b-type-triple adc-triple))))))))))))))))))
+                                  (witnesses (list Triple inst-triple class-b-type-triple adc-triple)))))))))))))))))))
 
-      (none))))
+      (none)))

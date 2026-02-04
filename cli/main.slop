@@ -20,6 +20,27 @@
   (ffi "string.h"
     (strlen ((s (Ptr U8))) U64))
 
+  (ffi "slop_runtime.h"
+    (slop_now_ms (() I64)))
+
+  ;; ============================================================
+  ;; Timing Helpers
+  ;; ============================================================
+
+  (fn print-elapsed ((arena Arena) (elapsed I64))
+    (@intent "Print elapsed time in seconds with milliseconds")
+    (@spec ((Arena I64) -> Unit))
+    (print (int-to-string arena (/ elapsed 1000)))
+    (print ".")
+    (let ((ms (% elapsed 1000)))
+      ;; Pad with leading zeros if needed
+      (when (< ms 100)
+        (print "0"))
+      (when (< ms 10)
+        (print "0"))
+      (print (int-to-string arena ms)))
+    (print "s"))
+
   ;; ============================================================
   ;; Argument Parsing
   ;; ============================================================
@@ -128,7 +149,8 @@
               (do (print-usage) 0)
 
             ;; Normal operation
-            (let ((quiet (. args quiet)))
+            (let ((quiet (. args quiet))
+                  (parse-start (slop_now_ms)))
 
             ;; Parse TTL file
             (match (parse-ttl-file arena input-path)
@@ -140,28 +162,35 @@
               ((ok g)
                 ;; Convert to indexed graph and run reasoner
                 (let ((ig (graph-to-indexed arena g))
-                      (input-size (indexed-graph-size ig)))
+                      (input-size (indexed-graph-size ig))
+                      (parse-elapsed (- (slop_now_ms) parse-start)))
 
                   (when (not quiet)
                     (print "Parsed ")
                     (print (int-to-string arena input-size))
                     (print " triples from ")
-                    (println input-path))
+                    (print input-path)
+                    (print " (")
+                    (print-elapsed arena parse-elapsed)
+                    (println ")"))
 
                   ;; Run reasoner
+                  (let ((reason-start (slop_now_ms)))
                   (match (reason arena ig)
                     ((reason-success s)
                       (let ((inferred (. s inferred-count))
-                            (iters (. s iterations)))
+                            (iters (. s iterations))
+                            (reason-elapsed (- (slop_now_ms) reason-start)))
 
                         (when (not quiet)
-                          (println "[PASS] Ontology is consistent")
-                          (print "  Inferred: ")
+                          (print "Reasoning completed: ")
                           (print (int-to-string arena inferred))
-                          (println " triples")
-                          (print "  Iterations: ")
-                          (println (int-to-string arena iters))
-                          (print "  Total: ")
+                          (print " inferred in ")
+                          (print (int-to-string arena iters))
+                          (print " iterations (")
+                          (print-elapsed arena reason-elapsed)
+                          (println ")")
+                          (print "Total: ")
                           (print (int-to-string arena (indexed-graph-size (. s graph))))
                           (println " triples"))
 
@@ -190,4 +219,4 @@
                       (println "[FAIL] Ontology is inconsistent")
                       (print "  Reason: ")
                       (println (. report reason))
-                      1)))))))))))))
+                      1))))))))))))))))
