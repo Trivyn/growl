@@ -219,4 +219,4 @@
                       (println "[FAIL] Ontology is inconsistent")
                       (print "  Reason: ")
                       (println (. report reason))
-                      1))))))))))))))))
+                      1))))))))))))))
