@@ -99,11 +99,12 @@
         ;; Index by predicate for fast lookup
         (let ((pred (triple-predicate t))
               (pred-map (. d by-predicate)))
-          (when (not (map-has pred-map pred))
-            (map-put pred-map pred (set-new arena Triple)))
           (match (map-get pred-map pred)
             ((some pred-set) (set-put pred-set t))
-            ((none) (do))))
+            ((none)
+              (let ((new-set (set-new arena Triple)))
+                (set-put new-set t)
+                (map-put pred-map pred new-set)))))
         d)))
 
   (fn delta-merge ((arena Arena) (d1 Delta) (d2 Delta))
