@@ -2,6 +2,9 @@
 ;; Growl Engine: Parallel Fixpoint Rule Evaluation
 ;;
 ;; Implements fork-join parallel semi-naive evaluation.
+;; Each of the 5 rule groups (scm, cax, prp, eq, cls) runs
+;; in its own thread with its own arena; results merge on
+;; the coordinator thread.
 ;; ============================================================
 
 (module engine
@@ -60,6 +63,7 @@
       ;; Main fixpoint loop
       (while (and (not done) (< (. state iteration) (. config max-iterations)))
         (@loop-invariant {(. state iteration) <= (. config max-iterations)})
+        (c-inline "fprintf(stderr, \"[engine] iter=%lld graph=%lld global_alloc=%zu MB\\n\", (long long)state.iteration, (long long)index_indexed_graph_size(state.graph), (size_t)(slop_global_allocated / (1024*1024)))")
         (match (engine-run-iteration arena state)
           ((ok new-state)
             (if (delta-is-empty (. new-state delta))
@@ -104,7 +108,7 @@
              ((ok new-state) {(. new-state iteration) == (+ (. state iteration) 1)})
              ((error _) true)))
     ;; Apply all rules to get new inferred triples
-    (match (apply-all-rules arena (. state graph) (. state delta))
+    (match (apply-all-rules arena (. state graph) (. state delta) (. state config))
       ((ok new-delta)
         ;; Merge new triples into graph and update state
         (ok (record-new EngineState
@@ -116,11 +120,30 @@
         (error report))))
 
   ;; ============================================================
-  ;; Rule Application (Single-Threaded Path)
+  ;; Rule Application: Dispatch
   ;; ============================================================
 
-  (fn apply-all-rules ((arena Arena) (g IndexedGraph) (delta Delta))
-    (@intent "Apply all OWL 2 RL rules, return combined delta of inferred triples")
+  (fn apply-all-rules ((arena Arena) (g IndexedGraph) (delta Delta) (config ReasonerConfig))
+    (@intent "Apply all OWL 2 RL rules, dispatching to sequential or parallel path")
+    (@spec ((Arena IndexedGraph Delta ReasonerConfig) -> (Result Delta InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((ok d) {(. d iteration) == (+ (. delta iteration) 1)})
+             ((error _) true)))
+    ;; Iteration 0 always runs sequentially to pre-intern all vocabulary
+    ;; strings in the global intern pool before concurrent access.
+    ;; Single-worker config also uses sequential path.
+    (if (or (<= (. config worker-count) 1) (== (. delta iteration) 0))
+      (apply-all-rules-sequential arena g delta)
+      (apply-all-rules-parallel arena g delta config)))
+
+  ;; ============================================================
+  ;; Rule Application: Sequential Path
+  ;; ============================================================
+
+  (fn apply-all-rules-sequential ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Apply all OWL 2 RL rules sequentially, return combined delta")
     (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
@@ -130,33 +153,38 @@
     (let ((next-iter (+ (. delta iteration) 1))
           (mut combined (make-delta arena next-iter)))
 
-      ;; Apply each rule group
-      ;; Order matters for some rules, but within groups order is arbitrary
+      ;; Apply each rule group sequentially
 
+      (c-inline "fprintf(stderr, \"  [seq] before scm: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Schema rules first (often create subclass hierarchies)
       (match (apply-scm-rules arena g delta)
         ((ok scm-delta) (set! combined (delta-merge arena combined scm-delta)))
         ((error report) (return (error report))))
 
+      (c-inline "fprintf(stderr, \"  [seq] after scm: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Class axiom rules (subclass propagation)
       (match (apply-cax-rules arena g delta)
         ((ok cax-delta) (set! combined (delta-merge arena combined cax-delta)))
         ((error report) (return (error report))))
 
+      (c-inline "fprintf(stderr, \"  [seq] after cax: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Property rules
       (match (apply-prp-rules arena g delta)
         ((ok prp-delta) (set! combined (delta-merge arena combined prp-delta)))
         ((error report) (return (error report))))
 
+      (c-inline "fprintf(stderr, \"  [seq] after prp: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Equality rules
       (match (apply-eq-rules arena g delta)
         ((ok eq-delta) (set! combined (delta-merge arena combined eq-delta)))
         ((error report) (return (error report))))
 
+      (c-inline "fprintf(stderr, \"  [seq] after eq: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Class expression rules
       (match (apply-cls-rules arena g delta)
         ((ok cls-delta) (set! combined (delta-merge arena combined cls-delta)))
         ((error report) (return (error report))))
+      (c-inline "fprintf(stderr, \"  [seq] after cls: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
 
       ;; Filter out triples already in graph
       (let ((mut filtered (make-delta arena next-iter)))
@@ -164,6 +192,53 @@
           (when (not (indexed-graph-contains g t))
             (set! filtered (delta-add arena filtered t))))
         (ok filtered))))
+
+  ;; ============================================================
+  ;; Rule Application: Parallel Path (Fork-Join)
+  ;; ============================================================
+
+  (fn apply-all-rules-parallel ((arena Arena) (g IndexedGraph) (delta Delta) (config ReasonerConfig))
+    (@intent "Apply all OWL 2 RL rules in parallel using fork-join, one thread per rule group")
+    (@spec ((Arena IndexedGraph Delta ReasonerConfig) -> (Result Delta InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@pre {(. config worker-count) > 1})
+    (@post (match $result
+             ((ok d) {(. d iteration) == (+ (. delta iteration) 1)})
+             ((error _) true)))
+    (let ((next-iter (+ (. delta iteration) 1))
+          (result-chan (chan-buffered WorkerMessage arena (. config channel-buffer)))
+          ;; Allocate coordinator-owned per-worker arenas so data survives until collect
+          (arena-scm (arena-new 1048576))
+          (arena-cax (arena-new 1048576))
+          (arena-prp (arena-new 1048576))
+          (arena-eq  (arena-new 1048576))
+          (arena-cls (arena-new 1048576)))
+
+      ;; Spawn 5 workers, one per rule group, each with its coordinator-owned arena
+      (let ((workers (spawn-rule-workers arena g delta result-chan
+                                         arena-scm arena-cax arena-prp arena-eq arena-cls)))
+
+        ;; Collect results from all workers
+        (let ((result (collect-worker-results arena result-chan workers next-iter)))
+
+          ;; Free worker arenas now that results have been merged into coordinator arena
+          (arena-free arena-scm)
+          (arena-free arena-cax)
+          (arena-free arena-prp)
+          (arena-free arena-eq)
+          (arena-free arena-cls)
+
+          (match result
+            ((ok combined)
+              ;; Filter out triples already in graph
+              (let ((mut filtered (make-delta arena next-iter)))
+                (for-each (t (. combined triples))
+                  (when (not (indexed-graph-contains g t))
+                    (set! filtered (delta-add arena filtered t))))
+                (ok filtered)))
+            ((error report)
+              (error report)))))))
 
   ;; ============================================================
   ;; Graph Merging
@@ -182,55 +257,76 @@
       result))
 
   ;; ============================================================
-  ;; Parallel Worker Management (Future Enhancement)
+  ;; Parallel Worker Management
   ;; ============================================================
 
-  (fn spawn-rule-workers ((arena Arena) (state EngineState) (result-chan (Ptr (Chan WorkerMessage))))
-    (@intent "Spawn worker threads for parallel rule evaluation")
-    (@spec ((Arena EngineState (Ptr (Chan WorkerMessage))) -> (List (Ptr (Thread Unit)))))
+  (fn spawn-rule-workers ((arena Arena) (g IndexedGraph) (delta Delta)
+                          (result-chan (Ptr (Chan WorkerMessage)))
+                          (arena-scm Arena) (arena-cax Arena) (arena-prp Arena)
+                          (arena-eq Arena) (arena-cls Arena))
+    (@intent "Spawn 5 worker threads, one per rule group, each with coordinator-owned arena")
+    (@spec ((Arena IndexedGraph Delta (Ptr (Chan WorkerMessage)) Arena Arena Arena Arena Arena)
+            -> (List (Ptr (Thread Unit)))))
     (@alloc arena)
-    (@pre {(. (. state config) worker-count) >= 1})
-    (@post {(list-len $result) >= 1})
-    ;; For now, spawn a single worker that applies all rules
-    ;; Future: distribute rules across config.worker-count workers
-    (let ((mut workers (list-new arena (Ptr (Thread Unit))))
-          (g (. state graph))
-          (d (. state delta)))
-      ;; Spawn one worker that applies all rule groups sequentially
+    (@post {(list-len $result) == 5})
+    (let ((mut workers (list-new arena (Ptr (Thread Unit)))))
+
+      ;; Worker 1: Schema rules (scm)
       (list-push workers
         (spawn arena (fn ()
-          ;; Apply all rule groups and send results via channel
-          (match (apply-scm-rules arena g d)
-            ((ok scm-d) (send result-chan (union-new WorkerMessage msg-delta scm-d)))
+          (match (apply-scm-rules arena-scm g delta)
+            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
             ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (match (apply-cax-rules arena g d)
-            ((ok cax-d) (send result-chan (union-new WorkerMessage msg-delta cax-d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (match (apply-prp-rules arena g d)
-            ((ok prp-d) (send result-chan (union-new WorkerMessage msg-delta prp-d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (match (apply-eq-rules arena g d)
-            ((ok eq-d) (send result-chan (union-new WorkerMessage msg-delta eq-d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (match (apply-cls-rules arena g d)
-            ((ok cls-d) (send result-chan (union-new WorkerMessage msg-delta cls-d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          ;; Signal completion
           (send result-chan (union-new WorkerMessage msg-done unit)))))
+
+      ;; Worker 2: Class axiom rules (cax)
+      (list-push workers
+        (spawn arena (fn ()
+          (match (apply-cax-rules arena-cax g delta)
+            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
+            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+          (send result-chan (union-new WorkerMessage msg-done unit)))))
+
+      ;; Worker 3: Property rules (prp)
+      (list-push workers
+        (spawn arena (fn ()
+          (match (apply-prp-rules arena-prp g delta)
+            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
+            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+          (send result-chan (union-new WorkerMessage msg-done unit)))))
+
+      ;; Worker 4: Equality rules (eq)
+      (list-push workers
+        (spawn arena (fn ()
+          (match (apply-eq-rules arena-eq g delta)
+            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
+            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+          (send result-chan (union-new WorkerMessage msg-done unit)))))
+
+      ;; Worker 5: Class expression rules (cls)
+      (list-push workers
+        (spawn arena (fn ()
+          (match (apply-cls-rules arena-cls g delta)
+            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
+            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+          (send result-chan (union-new WorkerMessage msg-done unit)))))
+
       workers))
 
   (fn collect-worker-results ((arena Arena) (result-chan (Ptr (Chan WorkerMessage)))
-                              (workers (List (Ptr (Thread Unit)))))
-    (@intent "Collect all worker results and merge deltas")
-    (@spec ((Arena (Ptr (Chan WorkerMessage)) (List (Ptr (Thread Unit))))
+                              (workers (List (Ptr (Thread Unit))))
+                              (next-iter (Int 0 ..)))
+    (@intent "Collect all worker results and merge deltas into combined delta")
+    (@spec ((Arena (Ptr (Chan WorkerMessage)) (List (Ptr (Thread Unit))) (Int 0 ..))
             -> (Result Delta InconsistencyReport)))
     (@alloc arena)
-    (@pre {(list-len workers) >= 1})
-    ;; First join all workers to ensure they've completed
-    (for-each (w workers)
-      (join w))
-    ;; Collect results from channel
-    (let ((mut combined (make-delta arena 0))
+    (@pre {(list-len workers) == 5})
+    (@pre {next-iter >= 1})
+    (@post (match $result
+             ((ok d) {(. d iteration) == next-iter})
+             ((error _) true)))
+    ;; Collect results from channel before joining
+    (let ((mut combined (make-delta arena next-iter))
           (mut inconsistency (Option InconsistencyReport) (none))
           (mut done-count 0)
           (expected (list-len workers)))
@@ -248,6 +344,9 @@
           ((error _)
             ;; Channel error, stop receiving
             (set! done-count expected))))
+      ;; Join all workers to ensure they've completed
+      (for-each (w workers)
+        (join w))
       ;; Return inconsistency if found, otherwise merged delta
       (match inconsistency
         ((some r) (error r))
