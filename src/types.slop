@@ -8,7 +8,7 @@
 (module types
   (@doc "Core type definitions for the growl reasoner")
 
-  (import rdf (Triple triple-eq triple-predicate Term IRI))
+  (import rdf (Triple triple-eq triple-predicate Term IRI term-eq))
   (import index (IndexedGraph))
 
   (export
@@ -34,6 +34,7 @@
   (type Delta (record
     (triples (List Triple))
     (seen (Set Triple))
+    (by-predicate (Map Term (Set Triple)))
     (iteration (Int 0 ..))))
 
   ;; Configuration for the reasoner
@@ -80,6 +81,7 @@
     (record-new Delta
       (triples (list-new arena Triple))
       (seen (set-new arena Triple))
+      (by-predicate (map-new arena Term (Set Triple)))
       (iteration iteration)))
 
   (fn delta-add ((arena Arena) (d Delta) (t Triple))
@@ -94,6 +96,14 @@
       (do
         (set-put (. d seen) t)
         (list-push (. d triples) t)
+        ;; Index by predicate for fast lookup
+        (let ((pred (triple-predicate t))
+              (pred-map (. d by-predicate)))
+          (when (not (map-has pred-map pred))
+            (map-put pred-map pred (set-new arena Triple)))
+          (match (map-get pred-map pred)
+            ((some pred-set) (set-put pred-set t))
+            ((none) (do))))
         d)))
 
   (fn delta-merge ((arena Arena) (d1 Delta) (d2 Delta))

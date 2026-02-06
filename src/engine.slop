@@ -186,12 +186,9 @@
         ((error report) (return (error report))))
       (c-inline "fprintf(stderr, \"  [seq] after cls: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
 
-      ;; Filter out triples already in graph
-      (let ((mut filtered (make-delta arena next-iter)))
-        (for-each (t (. combined triples))
-          (when (not (indexed-graph-contains g t))
-            (set! filtered (delta-add arena filtered t))))
-        (ok filtered))))
+      ;; Each rule already checks (indexed-graph-contains g inferred) before adding,
+      ;; and delta-add deduplicates across rules via (set-has seen t).
+      (ok combined)))
 
   ;; ============================================================
   ;; Rule Application: Parallel Path (Fork-Join)
@@ -229,16 +226,9 @@
           (arena-free arena-eq)
           (arena-free arena-cls)
 
-          (match result
-            ((ok combined)
-              ;; Filter out triples already in graph
-              (let ((mut filtered (make-delta arena next-iter)))
-                (for-each (t (. combined triples))
-                  (when (not (indexed-graph-contains g t))
-                    (set! filtered (delta-add arena filtered t))))
-                (ok filtered)))
-            ((error report)
-              (error report)))))))
+          ;; Each rule already checks (indexed-graph-contains g inferred) before adding,
+          ;; and delta-add deduplicates across rules via (set-has seen t).
+          result))))
 
   ;; ============================================================
   ;; Graph Merging

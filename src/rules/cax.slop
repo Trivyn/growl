@@ -284,59 +284,35 @@
           (mut result (list-new arena Triple)))
 
       ;; Strategy: for each type assertion in delta, find superclasses
-      (for-each (dt (. delta triples))
-        (@loop-invariant
-          (forall (t result)
-            (exists (src-dt (. delta triples))
-              (and
-                (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                (or
-                  (and (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
-                       (term-eq (triple-subject t) (triple-subject src-dt))
-                       (indexed-graph-contains g
-                         (make-triple arena (triple-object src-dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
-                  (and (term-eq (triple-predicate src-dt) (make-iri arena RDFS_SUBCLASS_OF))
-                       (term-eq (triple-object t) (triple-object src-dt))
-                       (indexed-graph-contains g
-                         (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject src-dt)))))))))
-        (when (term-eq (triple-predicate dt) type-pred)
-          (let ((individual (triple-subject dt))
-                (class1 (triple-object dt)))
-            ;; Find all superclasses of class1
-            (indexed-graph-for-each g (some class1) (some subclass-pred) no-term
-              (fn ((sc-triple Triple))
-                (let ((class2 (triple-object sc-triple))
-                      (inferred (make-triple arena individual type-pred class2)))
-                  ;; Don't add if already in graph
-                  (when (not (indexed-graph-contains g inferred))
-                    (list-push result inferred))))))))
+      (match (map-get (. delta by-predicate) type-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((individual (triple-subject dt))
+                  (class1 (triple-object dt)))
+              ;; Find all superclasses of class1
+              (indexed-graph-for-each g (some class1) (some subclass-pred) no-term
+                (fn ((sc-triple Triple))
+                  (let ((class2 (triple-object sc-triple))
+                        (inferred (make-triple arena individual type-pred class2)))
+                    ;; Don't add if already in graph
+                    (when (not (indexed-graph-contains g inferred))
+                      (list-push result inferred))))))))
+        ((none) (do)))
 
       ;; Also check: for each new subclass assertion, propagate existing types
-      (for-each (dt (. delta triples))
-        (@loop-invariant
-          (forall (t result)
-            (exists (src-dt (. delta triples))
-              (and
-                (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                (or
-                  (and (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
-                       (term-eq (triple-subject t) (triple-subject src-dt))
-                       (indexed-graph-contains g
-                         (make-triple arena (triple-object src-dt) (make-iri arena RDFS_SUBCLASS_OF) (triple-object t))))
-                  (and (term-eq (triple-predicate src-dt) (make-iri arena RDFS_SUBCLASS_OF))
-                       (term-eq (triple-object t) (triple-object src-dt))
-                       (indexed-graph-contains g
-                         (make-triple arena (triple-subject t) (make-iri arena RDF_TYPE) (triple-subject src-dt)))))))))
-        (when (term-eq (triple-predicate dt) subclass-pred)
-          (let ((class1 (triple-subject dt))
-                (class2 (triple-object dt)))
-            ;; Find all instances of class1
-            (indexed-graph-for-each g no-term (some type-pred) (some class1)
-              (fn ((t-triple Triple))
-                (let ((individual (triple-subject t-triple))
-                      (inferred (make-triple arena individual type-pred class2)))
-                  (when (not (indexed-graph-contains g inferred))
-                    (list-push result inferred))))))))
+      (match (map-get (. delta by-predicate) subclass-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((class1 (triple-subject dt))
+                  (class2 (triple-object dt)))
+              ;; Find all instances of class1
+              (indexed-graph-for-each g no-term (some type-pred) (some class1)
+                (fn ((t-triple Triple))
+                  (let ((individual (triple-subject t-triple))
+                        (inferred (make-triple arena individual type-pred class2)))
+                    (when (not (indexed-graph-contains g inferred))
+                      (list-push result inferred))))))))
+        ((none) (do)))
 
       result))
 
@@ -375,26 +351,19 @@
           (mut result (list-new arena Triple)))
 
       ;; For each type assertion in delta
-      (for-each (dt (. delta triples))
-        (@loop-invariant
-          (forall (t result)
-            (exists (src-dt (. delta triples))
-              (and
-                (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
-                (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                (term-eq (triple-subject t) (triple-subject src-dt))
-                (indexed-graph-contains g
-                  (make-triple arena (triple-object src-dt) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object t)))))))
-        (when (term-eq (triple-predicate dt) type-pred)
-          (let ((individual (triple-subject dt))
-                (class1 (triple-object dt)))
-            ;; Find equivalent classes where class1 is subject
-            (indexed-graph-for-each g (some class1) (some equiv-pred) no-term
-              (fn ((eq-triple Triple))
-                (let ((class2 (triple-object eq-triple))
-                      (inferred (make-triple arena individual type-pred class2)))
-                  (when (not (indexed-graph-contains g inferred))
-                    (list-push result inferred))))))))
+      (match (map-get (. delta by-predicate) type-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((individual (triple-subject dt))
+                  (class1 (triple-object dt)))
+              ;; Find equivalent classes where class1 is subject
+              (indexed-graph-for-each g (some class1) (some equiv-pred) no-term
+                (fn ((eq-triple Triple))
+                  (let ((class2 (triple-object eq-triple))
+                        (inferred (make-triple arena individual type-pred class2)))
+                    (when (not (indexed-graph-contains g inferred))
+                      (list-push result inferred))))))))
+        ((none) (do)))
 
       result))
 
@@ -433,26 +402,19 @@
           (mut result (list-new arena Triple)))
 
       ;; For each type assertion in delta
-      (for-each (dt (. delta triples))
-        (@loop-invariant
-          (forall (t result)
-            (exists (src-dt (. delta triples))
-              (and
-                (term-eq (triple-predicate src-dt) (make-iri arena RDF_TYPE))
-                (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
-                (term-eq (triple-subject t) (triple-subject src-dt))
-                (indexed-graph-contains g
-                  (make-triple arena (triple-object t) (make-iri arena OWL_EQUIVALENT_CLASS) (triple-object src-dt)))))))
-        (when (term-eq (triple-predicate dt) type-pred)
-          (let ((individual (triple-subject dt))
-                (class2 (triple-object dt)))
-            ;; Find equivalent classes where class2 is object
-            (indexed-graph-for-each g no-term (some equiv-pred) (some class2)
-              (fn ((eq-triple Triple))
-                (let ((class1 (triple-subject eq-triple))
-                      (inferred (make-triple arena individual type-pred class1)))
-                  (when (not (indexed-graph-contains g inferred))
-                    (list-push result inferred))))))))
+      (match (map-get (. delta by-predicate) type-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((individual (triple-subject dt))
+                  (class2 (triple-object dt)))
+              ;; Find equivalent classes where class2 is object
+              (indexed-graph-for-each g no-term (some equiv-pred) (some class2)
+                (fn ((eq-triple Triple))
+                  (let ((class1 (triple-subject eq-triple))
+                        (inferred (make-triple arena individual type-pred class1)))
+                    (when (not (indexed-graph-contains g inferred))
+                      (list-push result inferred))))))))
+        ((none) (do)))
 
       result))
 
