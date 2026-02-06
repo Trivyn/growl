@@ -721,15 +721,17 @@
       (let ((asym-triples (indexed-graph-match arena g no-term (some type-pred) (some asym-type))))
         (for-each (asym-triple asym-triples)
           (let ((p (triple-subject asym-triple)))
-            (for-each (dt (. delta triples))
-              (when (term-eq (triple-predicate dt) p)
-                (let ((x (triple-subject dt))
-                      (y (triple-object dt))
-                      (reverse (make-triple arena y p x)))
-                  (when (indexed-graph-contains g reverse)
-                    (return (some (record-new InconsistencyReport
-                      (reason "prp-asyp: asymmetric property used symmetrically")
-                      (witnesses (list Triple dt reverse asym-triple))))))))))))
+            (match (map-get (. delta by-predicate) p)
+              ((some pred-triples)
+                (for-each (dt pred-triples)
+                  (let ((x (triple-subject dt))
+                        (y (triple-object dt))
+                        (reverse (make-triple arena y p x)))
+                    (when (indexed-graph-contains g reverse)
+                      (return (some (record-new InconsistencyReport
+                        (reason "prp-asyp: asymmetric property used symmetrically")
+                        (witnesses (list Triple dt reverse asym-triple)))))))))
+              ((none) (do))))))
 
       (none)))
 
@@ -824,14 +826,16 @@
       (let ((irp-triples (indexed-graph-match arena g no-term (some type-pred) (some irp-type))))
         (for-each (irp-triple irp-triples)
           (let ((p (triple-subject irp-triple)))
-            (for-each (dt (. delta triples))
-              (when (term-eq (triple-predicate dt) p)
-                (let ((x (triple-subject dt))
-                      (y (triple-object dt)))
-                  (when (term-eq x y)
-                    (return (some (record-new InconsistencyReport
-                      (reason "prp-irp: irreflexive property used reflexively")
-                      (witnesses (list Triple dt irp-triple))))))))))))
+            (match (map-get (. delta by-predicate) p)
+              ((some pred-triples)
+                (for-each (dt pred-triples)
+                  (let ((x (triple-subject dt))
+                        (y (triple-object dt)))
+                    (when (term-eq x y)
+                      (return (some (record-new InconsistencyReport
+                        (reason "prp-irp: irreflexive property used reflexively")
+                        (witnesses (list Triple dt irp-triple)))))))))
+              ((none) (do))))))
 
       (none)))
 
@@ -1087,24 +1091,28 @@
           (let ((p1 (triple-subject pdw-triple))
                 (p2 (triple-object pdw-triple)))
             ;; Check if delta has p1 assertions
-            (for-each (dt (. delta triples))
-              (when (term-eq (triple-predicate dt) p1)
-                (let ((x (triple-subject dt))
-                      (y (triple-object dt))
-                      (conflict (make-triple arena x p2 y)))
-                  (when (indexed-graph-contains g conflict)
-                    (return (some (record-new InconsistencyReport
-                      (reason "prp-pdw: disjoint properties both asserted")
-                      (witnesses (list Triple dt conflict pdw-triple)))))))))
+            (match (map-get (. delta by-predicate) p1)
+              ((some pred-triples)
+                (for-each (dt pred-triples)
+                  (let ((x (triple-subject dt))
+                        (y (triple-object dt))
+                        (conflict (make-triple arena x p2 y)))
+                    (when (indexed-graph-contains g conflict)
+                      (return (some (record-new InconsistencyReport
+                        (reason "prp-pdw: disjoint properties both asserted")
+                        (witnesses (list Triple dt conflict pdw-triple)))))))))
+              ((none) (do)))
             ;; Also check symmetric case: delta has p2 assertions
-            (for-each (dt (. delta triples))
-              (when (term-eq (triple-predicate dt) p2)
-                (let ((x (triple-subject dt))
-                      (y (triple-object dt))
-                      (conflict (make-triple arena x p1 y)))
-                  (when (indexed-graph-contains g conflict)
-                    (return (some (record-new InconsistencyReport
-                      (reason "prp-pdw: disjoint properties both asserted")
-                      (witnesses (list Triple dt conflict pdw-triple))))))))))))
+            (match (map-get (. delta by-predicate) p2)
+              ((some pred-triples)
+                (for-each (dt pred-triples)
+                  (let ((x (triple-subject dt))
+                        (y (triple-object dt))
+                        (conflict (make-triple arena x p1 y)))
+                    (when (indexed-graph-contains g conflict)
+                      (return (some (record-new InconsistencyReport
+                        (reason "prp-pdw: disjoint properties both asserted")
+                        (witnesses (list Triple dt conflict pdw-triple)))))))))
+              ((none) (do))))))
 
       (none))))  ;; close fn, module

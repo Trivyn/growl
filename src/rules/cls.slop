@@ -508,12 +508,14 @@
     (let ((type-pred (make-iri arena RDF_TYPE))
           (nothing (make-iri arena OWL_NOTHING)))
 
-      (for-each (dt (. delta triples))
-        (when (and (term-eq (triple-predicate dt) type-pred)
-                   (term-eq (triple-object dt) nothing))
-          (return (some (record-new InconsistencyReport
-            (reason "cls-nothing2: individual is instance of owl:Nothing")
-            (witnesses (list Triple dt)))))))
+      (match (map-get (. delta by-predicate) type-pred)
+        ((some type-triples)
+          (for-each (dt type-triples)
+            (when (term-eq (triple-object dt) nothing)
+              (return (some (record-new InconsistencyReport
+                (reason "cls-nothing2: individual is instance of owl:Nothing")
+                (witnesses (list Triple dt))))))))
+        ((none) (do)))
 
       (none)))
 
@@ -702,24 +704,26 @@
           (let ((c1 (triple-subject comp-triple))
                 (c2 (triple-object comp-triple)))
             ;; For each type assertion in delta
-            (for-each (dt (. delta triples))
-              (when (term-eq (triple-predicate dt) type-pred)
-                (let ((individual (triple-subject dt))
-                      (asserted-class (triple-object dt)))
-                  ;; Check if type is c1, then check for c2
-                  (when (term-eq asserted-class c1)
-                    (let ((c2-type (make-triple arena individual type-pred c2)))
-                      (when (indexed-graph-contains g c2-type)
-                        (return (some (record-new InconsistencyReport
-                          (reason "cls-com: individual in both class and its complement")
-                          (witnesses (list Triple dt c2-type comp-triple))))))))
-                  ;; Check if type is c2, then check for c1
-                  (when (term-eq asserted-class c2)
-                    (let ((c1-type (make-triple arena individual type-pred c1)))
-                      (when (indexed-graph-contains g c1-type)
-                        (return (some (record-new InconsistencyReport
-                          (reason "cls-com: individual in both class and its complement")
-                          (witnesses (list Triple dt c1-type comp-triple))))))))))))))
+            (match (map-get (. delta by-predicate) type-pred)
+              ((some type-triples)
+                (for-each (dt type-triples)
+                  (let ((individual (triple-subject dt))
+                        (asserted-class (triple-object dt)))
+                    ;; Check if type is c1, then check for c2
+                    (when (term-eq asserted-class c1)
+                      (let ((c2-type (make-triple arena individual type-pred c2)))
+                        (when (indexed-graph-contains g c2-type)
+                          (return (some (record-new InconsistencyReport
+                            (reason "cls-com: individual in both class and its complement")
+                            (witnesses (list Triple dt c2-type comp-triple))))))))
+                    ;; Check if type is c2, then check for c1
+                    (when (term-eq asserted-class c2)
+                      (let ((c1-type (make-triple arena individual type-pred c1)))
+                        (when (indexed-graph-contains g c1-type)
+                          (return (some (record-new InconsistencyReport
+                            (reason "cls-com: individual in both class and its complement")
+                            (witnesses (list Triple dt c1-type comp-triple)))))))))))
+              ((none) (do))))))
 
       (none)))
 

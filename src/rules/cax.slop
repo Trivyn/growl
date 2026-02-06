@@ -454,34 +454,35 @@
           (no-term (Option Term) (none)))
 
       ;; For each type assertion in delta, check if individual is in a disjoint class
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) type-pred)
-          (let ((individual (triple-subject dt))
-                (class1 (triple-object dt)))
-            ;; Find classes disjoint with class1
-            (let ((dj-triples (indexed-graph-match arena g (some class1) (some disjoint-pred) no-term)))
-              (for-each (dj-triple dj-triples)
-                (let ((class2 (triple-object dj-triple))
-                      ;; Check if individual is also type class2
-                      (type2-triple (make-triple arena individual type-pred class2)))
-                  (when (indexed-graph-contains g type2-triple)
-                    (return (some (record-new InconsistencyReport
-                      (reason "cax-dw: individual is instance of two disjoint classes")
-                      (witnesses (list Triple dt type2-triple dj-triple))))))))))))
+      (match (map-get (. delta by-predicate) type-pred)
+        ((some type-triples)
+          (for-each (dt type-triples)
+            (let ((individual (triple-subject dt))
+                  (class1 (triple-object dt)))
+              ;; Find classes disjoint with class1
+              (let ((dj-triples (indexed-graph-match arena g (some class1) (some disjoint-pred) no-term)))
+                (for-each (dj-triple dj-triples)
+                  (let ((class2 (triple-object dj-triple))
+                        ;; Check if individual is also type class2
+                        (type2-triple (make-triple arena individual type-pred class2)))
+                    (when (indexed-graph-contains g type2-triple)
+                      (return (some (record-new InconsistencyReport
+                        (reason "cax-dw: individual is instance of two disjoint classes")
+                        (witnesses (list Triple dt type2-triple dj-triple)))))))))))
 
-      ;; Also check symmetric case: class2 disjointWith class1
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) type-pred)
-          (let ((individual (triple-subject dt))
-                (class2 (triple-object dt)))
-            (let ((dj-triples (indexed-graph-match arena g no-term (some disjoint-pred) (some class2))))
-              (for-each (dj-triple dj-triples)
-                (let ((class1 (triple-subject dj-triple))
-                      (type1-triple (make-triple arena individual type-pred class1)))
-                  (when (indexed-graph-contains g type1-triple)
-                    (return (some (record-new InconsistencyReport
-                      (reason "cax-dw: individual is instance of two disjoint classes")
-                      (witnesses (list Triple dt type1-triple dj-triple))))))))))))
+          ;; Also check symmetric case: class2 disjointWith class1
+          (for-each (dt type-triples)
+            (let ((individual (triple-subject dt))
+                  (class2 (triple-object dt)))
+              (let ((dj-triples (indexed-graph-match arena g no-term (some disjoint-pred) (some class2))))
+                (for-each (dj-triple dj-triples)
+                  (let ((class1 (triple-subject dj-triple))
+                        (type1-triple (make-triple arena individual type-pred class1)))
+                    (when (indexed-graph-contains g type1-triple)
+                      (return (some (record-new InconsistencyReport
+                        (reason "cax-dw: individual is instance of two disjoint classes")
+                        (witnesses (list Triple dt type1-triple dj-triple))))))))))))
+        ((none) (do)))
 
       (none)))
 
