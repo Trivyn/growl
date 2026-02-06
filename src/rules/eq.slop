@@ -287,20 +287,15 @@
     (let ((same-as (make-iri arena OWL_SAME_AS))
           (mut result (list-new arena Triple)))
 
-      (for-each (dt (. delta triples))
-        (@loop-invariant
-          (forall (dt (. delta triples))
-            (or (not (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))
-                (indexed-graph-contains g
-                  (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-subject dt)))
-                (list-contains result
-                  (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-subject dt))))))
-        (when (term-eq (triple-predicate dt) same-as)
-          (let ((x (triple-subject dt))
-                (y (triple-object dt))
-                (inferred (make-triple arena y same-as x)))
-            (when (not (indexed-graph-contains g inferred))
-              (list-push result inferred)))))
+      (match (map-get (. delta by-predicate) same-as)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((x (triple-subject dt))
+                  (y (triple-object dt))
+                  (inferred (make-triple arena y same-as x)))
+              (when (not (indexed-graph-contains g inferred))
+                (list-push result inferred)))))
+        ((none) (do)))
 
       result))
 
@@ -343,41 +338,29 @@
           (no-term (Option Term) (none))
           (mut result (list-new arena Triple)))
 
-      (for-each (dt (. delta triples))
-        (@loop-invariant
-          (forall (t result)
-            (exists (src-dt (. delta triples))
-              (and
-                (term-eq (triple-predicate src-dt) (make-iri arena OWL_SAME_AS))
-                (or
-                  (and
-                    (term-eq (triple-subject t) (triple-subject src-dt))
-                    (indexed-graph-contains g
-                      (make-triple arena (triple-object src-dt) (make-iri arena OWL_SAME_AS) (triple-object t))))
-                  (and
-                    (term-eq (triple-object t) (triple-object src-dt))
-                    (indexed-graph-contains g
-                      (make-triple arena (triple-subject t) (make-iri arena OWL_SAME_AS) (triple-subject src-dt)))))))))
-        (when (term-eq (triple-predicate dt) same-as)
-          (let ((x (triple-subject dt))
-                (y (triple-object dt)))
-            ;; Find y sameAs z (y as subject)
-            (indexed-graph-for-each g (some y) (some same-as) no-term
-              (fn ((yo-triple Triple))
-                (let ((z (triple-object yo-triple))
-                      (inferred (make-triple arena x same-as z)))
-                  (when (and (not (term-eq x z))
-                             (not (indexed-graph-contains g inferred)))
-                    (list-push result inferred)))))
+      (match (map-get (. delta by-predicate) same-as)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((x (triple-subject dt))
+                  (y (triple-object dt)))
+              ;; Find y sameAs z (y as subject)
+              (indexed-graph-for-each g (some y) (some same-as) no-term
+                (fn ((yo-triple Triple))
+                  (let ((z (triple-object yo-triple))
+                        (inferred (make-triple arena x same-as z)))
+                    (when (and (not (term-eq x z))
+                               (not (indexed-graph-contains g inferred)))
+                      (list-push result inferred)))))
 
-            ;; Find w sameAs x (x as object)
-            (indexed-graph-for-each g no-term (some same-as) (some x)
-              (fn ((xs-triple Triple))
-                (let ((w (triple-subject xs-triple))
-                      (inferred (make-triple arena w same-as y)))
-                  (when (and (not (term-eq w y))
-                             (not (indexed-graph-contains g inferred)))
-                    (list-push result inferred))))))))
+              ;; Find w sameAs x (x as object)
+              (indexed-graph-for-each g no-term (some same-as) (some x)
+                (fn ((xs-triple Triple))
+                  (let ((w (triple-subject xs-triple))
+                        (inferred (make-triple arena w same-as y)))
+                    (when (and (not (term-eq w y))
+                               (not (indexed-graph-contains g inferred)))
+                      (list-push result inferred))))))))
+        ((none) (do)))
 
       result))
 
@@ -405,20 +388,22 @@
           (mut result (list-new arena Triple)))
 
       ;; For each sameAs assertion in delta
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) same-as)
-          (let ((s (triple-subject dt))
-                (s-prime (triple-object dt)))
-            ;; Find all triples with s as subject
-            (indexed-graph-for-each g (some s) no-term no-term
-              (fn ((s-triple Triple))
-                (let ((p (triple-predicate s-triple))
-                      (o (triple-object s-triple)))
-                  ;; Don't duplicate sameAs triples themselves
-                  (when (not (term-eq p same-as))
-                    (let ((inferred (make-triple arena s-prime p o)))
-                      (when (not (indexed-graph-contains g inferred))
-                        (list-push result inferred))))))))))
+      (match (map-get (. delta by-predicate) same-as)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((s (triple-subject dt))
+                  (s-prime (triple-object dt)))
+              ;; Find all triples with s as subject
+              (indexed-graph-for-each g (some s) no-term no-term
+                (fn ((s-triple Triple))
+                  (let ((p (triple-predicate s-triple))
+                        (o (triple-object s-triple)))
+                    ;; Don't duplicate sameAs triples themselves
+                    (when (not (term-eq p same-as))
+                      (let ((inferred (make-triple arena s-prime p o)))
+                        (when (not (indexed-graph-contains g inferred))
+                          (list-push result inferred))))))))))
+        ((none) (do)))
 
       ;; Also check: for new triples, find sameAs for their subjects
       (for-each (dt (. delta triples))
@@ -462,18 +447,20 @@
           (mut result (list-new arena Triple)))
 
       ;; For each sameAs assertion in delta (where subject/object could be properties)
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) same-as)
-          (let ((p (triple-subject dt))
-                (p-prime (triple-object dt)))
-            ;; Find all triples with p as predicate
-            (indexed-graph-for-each g no-term (some p) no-term
-              (fn ((p-triple Triple))
-                (let ((s (triple-subject p-triple))
-                      (o (triple-object p-triple))
-                      (inferred (make-triple arena s p-prime o)))
-                  (when (not (indexed-graph-contains g inferred))
-                    (list-push result inferred))))))))
+      (match (map-get (. delta by-predicate) same-as)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((p (triple-subject dt))
+                  (p-prime (triple-object dt)))
+              ;; Find all triples with p as predicate
+              (indexed-graph-for-each g no-term (some p) no-term
+                (fn ((p-triple Triple))
+                  (let ((s (triple-subject p-triple))
+                        (o (triple-object p-triple))
+                        (inferred (make-triple arena s p-prime o)))
+                    (when (not (indexed-graph-contains g inferred))
+                      (list-push result inferred))))))))
+        ((none) (do)))
 
       result))
 
@@ -501,20 +488,22 @@
           (mut result (list-new arena Triple)))
 
       ;; For each sameAs assertion in delta
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) same-as)
-          (let ((o (triple-subject dt))
-                (o-prime (triple-object dt)))
-            ;; Find all triples with o as object
-            (indexed-graph-for-each g no-term no-term (some o)
-              (fn ((o-triple Triple))
-                (let ((s (triple-subject o-triple))
-                      (p (triple-predicate o-triple)))
-                  ;; Don't duplicate sameAs triples themselves
-                  (when (not (term-eq p same-as))
-                    (let ((inferred (make-triple arena s p o-prime)))
-                      (when (not (indexed-graph-contains g inferred))
-                        (list-push result inferred))))))))))
+      (match (map-get (. delta by-predicate) same-as)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((o (triple-subject dt))
+                  (o-prime (triple-object dt)))
+              ;; Find all triples with o as object
+              (indexed-graph-for-each g no-term no-term (some o)
+                (fn ((o-triple Triple))
+                  (let ((s (triple-subject o-triple))
+                        (p (triple-predicate o-triple)))
+                    ;; Don't duplicate sameAs triples themselves
+                    (when (not (term-eq p same-as))
+                      (let ((inferred (make-triple arena s p o-prime)))
+                        (when (not (indexed-graph-contains g inferred))
+                          (list-push result inferred))))))))))
+        ((none) (do)))
 
       ;; Also check: for new triples, find sameAs for their objects
       (for-each (dt (. delta triples))
@@ -562,26 +551,30 @@
           (different-from (make-iri arena OWL_DIFFERENT_FROM)))
 
       ;; For each sameAs in delta, check for differentFrom
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) same-as)
-          (let ((x (triple-subject dt))
-                (y (triple-object dt))
-                (diff-triple (make-triple arena x different-from y)))
-            (when (indexed-graph-contains g diff-triple)
-              (return (some (record-new InconsistencyReport
-                (reason "eq-diff1: x sameAs y and x differentFrom y")
-                (witnesses (list Triple dt diff-triple)))))))))
+      (match (map-get (. delta by-predicate) same-as)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((x (triple-subject dt))
+                  (y (triple-object dt))
+                  (diff-triple (make-triple arena x different-from y)))
+              (when (indexed-graph-contains g diff-triple)
+                (return (some (record-new InconsistencyReport
+                  (reason "eq-diff1: x sameAs y and x differentFrom y")
+                  (witnesses (list Triple dt diff-triple)))))))))
+        ((none) (do)))
 
       ;; For each differentFrom in delta, check for sameAs
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) different-from)
-          (let ((x (triple-subject dt))
-                (y (triple-object dt))
-                (same-triple (make-triple arena x same-as y)))
-            (when (indexed-graph-contains g same-triple)
-              (return (some (record-new InconsistencyReport
-                (reason "eq-diff1: x sameAs y and x differentFrom y")
-                (witnesses (list Triple dt same-triple)))))))))
+      (match (map-get (. delta by-predicate) different-from)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((x (triple-subject dt))
+                  (y (triple-object dt))
+                  (same-triple (make-triple arena x same-as y)))
+              (when (indexed-graph-contains g same-triple)
+                (return (some (record-new InconsistencyReport
+                  (reason "eq-diff1: x sameAs y and x differentFrom y")
+                  (witnesses (list Triple dt same-triple)))))))))
+        ((none) (do)))
 
       (none)))
 
@@ -609,15 +602,17 @@
     (let ((same-as (make-iri arena OWL_SAME_AS))
           (different-from (make-iri arena OWL_DIFFERENT_FROM)))
 
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) same-as)
-          (let ((x (triple-subject dt))
-                (y (triple-object dt))
-                (diff-triple (make-triple arena y different-from x)))
-            (when (indexed-graph-contains g diff-triple)
-              (return (some (record-new InconsistencyReport
-                (reason "eq-diff2: x sameAs y and y differentFrom x")
-                (witnesses (list Triple dt diff-triple)))))))))
+      (match (map-get (. delta by-predicate) same-as)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((x (triple-subject dt))
+                  (y (triple-object dt))
+                  (diff-triple (make-triple arena y different-from x)))
+              (when (indexed-graph-contains g diff-triple)
+                (return (some (record-new InconsistencyReport
+                  (reason "eq-diff2: x sameAs y and y differentFrom x")
+                  (witnesses (list Triple dt diff-triple)))))))))
+        ((none) (do)))
 
       (none)))
 
@@ -640,15 +635,17 @@
     (let ((same-as (make-iri arena OWL_SAME_AS))
           (different-from (make-iri arena OWL_DIFFERENT_FROM)))
 
-      (for-each (dt (. delta triples))
-        (when (term-eq (triple-predicate dt) different-from)
-          (let ((x (triple-subject dt))
-                (y (triple-object dt))
-                ;; Check y sameAs x
-                (same-triple (make-triple arena y same-as x)))
-            (when (indexed-graph-contains g same-triple)
-              (return (some (record-new InconsistencyReport
-                (reason "eq-diff3: y sameAs x and x differentFrom y")
-                (witnesses (list Triple dt same-triple)))))))))
+      (match (map-get (. delta by-predicate) different-from)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((x (triple-subject dt))
+                  (y (triple-object dt))
+                  ;; Check y sameAs x
+                  (same-triple (make-triple arena y same-as x)))
+              (when (indexed-graph-contains g same-triple)
+                (return (some (record-new InconsistencyReport
+                  (reason "eq-diff3: y sameAs x and x differentFrom y")
+                  (witnesses (list Triple dt same-triple)))))))))
+        ((none) (do)))
 
       (none))))
