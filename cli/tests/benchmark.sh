@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-GROWL=../build/growl
+GROWL=${GROWL:-../build/growl}
 FIXTURES=fixtures
 BENCHMARKS=fixtures/benchmarks
 
