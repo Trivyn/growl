@@ -1,0 +1,21 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix test: <http://test.example/> .
+
+## Key BFO axioms: Continuant and Occurrent are disjoint top-level categories
+obo:BFO_0000001 rdf:type owl:Class ;
+    rdfs:label "entity" .
+
+obo:BFO_0000002 rdf:type owl:Class ;
+    rdfs:subClassOf obo:BFO_0000001 ;
+    owl:disjointWith obo:BFO_0000003 ;
+    rdfs:label "continuant" .
+
+obo:BFO_0000003 rdf:type owl:Class ;
+    rdfs:subClassOf obo:BFO_0000001 ;
+    rdfs:label "occurrent" .
+
+## Inject inconsistency: an individual typed as both Continuant and Occurrent
+test:bad1 rdf:type obo:BFO_0000002 , obo:BFO_0000003 .

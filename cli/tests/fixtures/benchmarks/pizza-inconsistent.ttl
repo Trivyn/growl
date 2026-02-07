@@ -1,0 +1,32 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix pizza: <http://www.co-ode.org/ontologies/pizza/pizza.owl#> .
+@prefix test: <http://test.example/> .
+
+## Key Pizza axioms: topping categories are all disjoint
+pizza:PizzaTopping rdf:type owl:Class ;
+    rdfs:label "PizzaTopping" .
+
+pizza:CheeseTopping rdf:type owl:Class ;
+    rdfs:subClassOf pizza:PizzaTopping ;
+    rdfs:label "CheeseTopping" .
+
+pizza:FishTopping rdf:type owl:Class ;
+    rdfs:subClassOf pizza:PizzaTopping ;
+    rdfs:label "FishTopping" .
+
+pizza:MeatTopping rdf:type owl:Class ;
+    rdfs:subClassOf pizza:PizzaTopping ;
+    rdfs:label "MeatTopping" .
+
+pizza:VegetableTopping rdf:type owl:Class ;
+    rdfs:subClassOf pizza:PizzaTopping ;
+    rdfs:label "VegetableTopping" .
+
+## AllDisjointClasses — topping categories cannot overlap
+[] rdf:type owl:AllDisjointClasses ;
+    owl:members ( pizza:CheeseTopping pizza:FishTopping pizza:MeatTopping pizza:VegetableTopping ) .
+
+## Inject inconsistency: a topping typed as both Meat and Vegetable
+test:bad1 rdf:type pizza:MeatTopping , pizza:VegetableTopping .

@@ -9,11 +9,12 @@
 (module main
   (@doc "CLI interface for growl OWL 2 RL reasoner")
 
-  (import rdf (Term Triple Graph make-graph graph-add graph-size))
+  (import rdf (Term Triple Graph GraphSize make-graph graph-size))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-size))
-  (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
-  (import serialize-ttl (SerializeConfig serialize-ttl-file))
+  (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file TtlFileError))
+  (import common (ParseError Position))
+  (import serialize-ttl (SerializeConfig serialize-ttl-stream))
   (import growl (reason reason-with-config ReasonerConfig ReasonerResult ReasonerSuccess InconsistencyReport
                  get-inferred-count default-config))
 
@@ -122,10 +123,9 @@
     (@intent "Convert an IndexedGraph back to a Graph for serialization")
     (@spec ((Arena IndexedGraph) -> Graph))
     (@alloc arena)
-    (let ((mut g (make-graph arena)))
-      (for-each (t (. ig triples))
-        (set! g (graph-add arena g t)))
-      g))
+    (record-new Graph
+      (triples (. ig triples))
+      (size (cast GraphSize (indexed-graph-size ig)))))
 
   ;; ============================================================
   ;; Main
@@ -157,6 +157,16 @@
               ((error e)
                 (print "Error: failed to parse ")
                 (println input-path)
+                (match e
+                  ((parse-error pe)
+                    (print "  at line ")
+                    (print (int-to-string arena (. (. pe position) line)))
+                    (print ", column ")
+                    (println (int-to-string arena (. (. pe position) column)))
+                    (print "  ")
+                    (println (. pe message)))
+                  ((file-error _)
+                    (println "  (file error)")))
                 1)
 
               ((ok g)
@@ -199,6 +209,19 @@
                           (print (int-to-string arena (indexed-graph-size (. s graph))))
                           (println " triples"))
 
+                        ;; Always print machine-parseable summary
+                        (when quiet
+                          (print input-path)
+                          (print ": ")
+                          (print-elapsed arena parse-elapsed)
+                          (print " parse, ")
+                          (print-elapsed arena reason-elapsed)
+                          (print " reason, ")
+                          (print (int-to-string arena input-size))
+                          (print " -> ")
+                          (print (int-to-string arena (indexed-graph-size (. s graph))))
+                          (println " triples"))
+
                         ;; Emit materialized graph if requested
                         (match (. args emit-file)
                           ((some emit-path)
@@ -208,7 +231,7 @@
                                             (prefixes (make-prefix-map arena))
                                             (base-iri no-base)
                                             (indent-width 2))))
-                              (match (serialize-ttl-file arena out-graph config emit-path)
+                              (match (serialize-ttl-stream arena out-graph config emit-path)
                                 ((ok _)
                                   (when (not quiet)
                                     (print "Wrote materialized graph to ")
@@ -221,7 +244,17 @@
                           ((none) 0))))
 
                     ((reason-inconsistent report)
-                      (println "[FAIL] Ontology is inconsistent")
-                      (print "  Reason: ")
-                      (println (. report reason))
-                      1))))))))))))))
+                      (let ((reason-elapsed (- (slop_now_ms) reason-start)))
+                        (when quiet
+                          (print input-path)
+                          (print ": ")
+                          (print-elapsed arena parse-elapsed)
+                          (print " parse, ")
+                          (print-elapsed arena reason-elapsed)
+                          (print " reason, ")
+                          (print (int-to-string arena input-size))
+                          (println " triples [INCONSISTENT]"))
+                        (println "[FAIL] Ontology is inconsistent")
+                        (print "  Reason: ")
+                        (println (. report reason))
+                        1)))))))))))))))

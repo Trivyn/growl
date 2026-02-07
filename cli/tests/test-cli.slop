@@ -8,11 +8,11 @@
 (module test-cli
   (@doc "Integration tests for growl CLI pipeline")
 
-  (import rdf (Term Triple Graph make-iri make-triple make-graph graph-add graph-size term-eq))
+  (import rdf (Term Triple Graph GraphSize make-iri make-triple make-graph graph-size term-eq))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-match indexed-graph-size indexed-graph-contains))
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
-  (import serialize-ttl (SerializeConfig serialize-ttl-string serialize-ttl-file))
+  (import serialize-ttl (SerializeConfig serialize-ttl-string serialize-ttl-stream))
   (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS))
   (import growl (reason ReasonerResult ReasonerSuccess InconsistencyReport
                  get-inferred-count get-types get-same-as))
@@ -34,10 +34,9 @@
     (@intent "Convert IndexedGraph to Graph")
     (@spec ((Arena IndexedGraph) -> Graph))
     (@alloc arena)
-    (let ((mut g (make-graph arena)))
-      (for-each (t (. ig triples))
-        (set! g (graph-add arena g t)))
-      g))
+    (record-new Graph
+      (triples (. ig triples))
+      (size (cast GraphSize (indexed-graph-size ig)))))
 
   (fn has-type ((arena Arena) (g IndexedGraph) (individual Term) (class Term))
     (@intent "Check if individual has rdf:type class in graph")
@@ -277,7 +276,7 @@
                             (indent-width 2)))
                   (emit-path "fixtures/roundtrip-out.ttl"))
               ;; Write materialized graph
-              (match (serialize-ttl-file arena out-graph config emit-path)
+              (match (serialize-ttl-stream arena out-graph config emit-path)
                 ((error _)
                   (println "  ERROR: failed to write roundtrip file")
                   false)

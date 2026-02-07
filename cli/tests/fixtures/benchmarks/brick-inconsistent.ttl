@@ -1,0 +1,21 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix brick: <https://brickschema.org/schema/Brick#> .
+@prefix test: <http://test.example/> .
+
+## Key Brick axioms: Sensor and Alarm are disjoint Point subclasses
+brick:Point rdf:type owl:Class ;
+    rdfs:label "Point" .
+
+brick:Sensor rdf:type owl:Class ;
+    rdfs:subClassOf brick:Point ;
+    owl:disjointWith brick:Alarm , brick:Command , brick:Parameter , brick:Setpoint , brick:Status ;
+    rdfs:label "Sensor" .
+
+brick:Alarm rdf:type owl:Class ;
+    rdfs:subClassOf brick:Point ;
+    rdfs:label "Alarm" .
+
+## Inject inconsistency: an individual typed as both Sensor and Alarm
+test:bad1 rdf:type brick:Sensor , brick:Alarm .

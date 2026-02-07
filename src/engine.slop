@@ -2,9 +2,9 @@
 ;; Growl Engine: Parallel Fixpoint Rule Evaluation
 ;;
 ;; Implements fork-join parallel semi-naive evaluation.
-;; Each of the 5 rule groups (scm, cax, prp, eq, cls) runs
-;; in its own thread with its own arena; results merge on
-;; the coordinator thread.
+;; 12 semantic sub-workers split across 5 rule groups
+;; (scm, cax, prp, eq, cls), each with its own thread
+;; and arena; results merge on the coordinator thread.
 ;; ============================================================
 
 (module engine
@@ -15,11 +15,16 @@
   (import thread (chan-buffered send recv spawn join))
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
-  (import cax (apply-cax-rules))
-  (import scm (apply-scm-rules))
-  (import prp (apply-prp-rules))
-  (import eq (apply-eq-rules))
-  (import cls (apply-cls-rules))
+  (import cax (apply-cax-rules cax-sco cax-eqc1 cax-eqc2 cax-dw cax-adc))
+  (import scm (apply-scm-rules scm-cls scm-sco scm-eqc1 scm-eqc2
+               scm-op scm-dp scm-spo scm-eqp1 scm-eqp2
+               scm-dom1 scm-dom2 scm-rng1 scm-rng2))
+  (import prp (apply-prp-rules prp-dom prp-rng prp-fp prp-ifp prp-symp prp-trp
+               prp-asyp prp-irp prp-pdw prp-spo1 prp-eqp1 prp-eqp2 prp-inv1 prp-inv2))
+  (import eq  (apply-eq-rules eq-sym eq-trans eq-rep-s eq-rep-p eq-rep-o
+               eq-diff1 eq-diff2 eq-diff3))
+  (import cls (apply-cls-rules cls-nothing2 cls-int1 cls-int2 cls-uni cls-com
+               cls-svf1 cls-svf2 cls-avf cls-hv1 cls-hv2 cls-maxc1 cls-maxc2 cls-oo))
 
   (export
     engine-run
@@ -232,7 +237,7 @@
   ;; ============================================================
 
   (fn apply-all-rules-parallel ((arena Arena) (g IndexedGraph) (delta Delta) (config ReasonerConfig))
-    (@intent "Apply all OWL 2 RL rules in parallel using fork-join, one thread per rule group")
+    (@intent "Apply all OWL 2 RL rules in parallel using fork-join, 12 semantic sub-workers")
     (@spec ((Arena IndexedGraph Delta ReasonerConfig) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
@@ -243,29 +248,46 @@
     (let ((next-iter (+ (. delta iteration) 1))
           (result-chan (chan-buffered WorkerMessage arena (. config channel-buffer)))
           ;; Allocate coordinator-owned per-worker arenas so data survives until collect
-          (arena-scm (arena-new 1048576))
-          (arena-cax (arena-new 1048576))
-          (arena-prp (arena-new 1048576))
-          (arena-eq  (arena-new 1048576))
-          (arena-cls (arena-new 1048576)))
+          ;; 12 arenas: 3 scm + 2 cax + 3 prp + 2 eq + 2 cls
+          (arena-scm-class  (arena-new 1048576))
+          (arena-scm-prop   (arena-new 1048576))
+          (arena-scm-domrng (arena-new 1048576))
+          (arena-cax-infer  (arena-new 1048576))
+          (arena-cax-check  (arena-new 1048576))
+          (arena-prp-char   (arena-new 1048576))
+          (arena-prp-chain  (arena-new 1048576))
+          (arena-prp-check  (arena-new 1048576))
+          (arena-eq-infer   (arena-new 1048576))
+          (arena-eq-check   (arena-new 1048576))
+          (arena-cls-set    (arena-new 1048576))
+          (arena-cls-ind    (arena-new 1048576)))
 
-      ;; Spawn 5 workers, one per rule group, each with its coordinator-owned arena
+      ;; Spawn 12 sub-workers, each handling a semantic subset of rules
       (let ((workers (spawn-rule-workers arena g delta result-chan
-                                         arena-scm arena-cax arena-prp arena-eq arena-cls
+                                         arena-scm-class arena-scm-prop arena-scm-domrng
+                                         arena-cax-infer arena-cax-check
+                                         arena-prp-char arena-prp-chain arena-prp-check
+                                         arena-eq-infer arena-eq-check
+                                         arena-cls-set arena-cls-ind
                                          (. config verbose))))
 
         ;; Collect results from all workers
         (let ((result (collect-worker-results arena result-chan workers next-iter)))
 
           ;; Free worker arenas now that results have been merged into coordinator arena
-          (arena-free arena-scm)
-          (arena-free arena-cax)
-          (arena-free arena-prp)
-          (arena-free arena-eq)
-          (arena-free arena-cls)
+          (arena-free arena-scm-class)
+          (arena-free arena-scm-prop)
+          (arena-free arena-scm-domrng)
+          (arena-free arena-cax-infer)
+          (arena-free arena-cax-check)
+          (arena-free arena-prp-char)
+          (arena-free arena-prp-chain)
+          (arena-free arena-prp-check)
+          (arena-free arena-eq-infer)
+          (arena-free arena-eq-check)
+          (arena-free arena-cls-set)
+          (arena-free arena-cls-ind)
 
-          ;; Each rule already checks (indexed-graph-contains g inferred) before adding,
-          ;; and delta-add deduplicates across rules via (set-has seen t).
           result))))
 
   ;; ============================================================
@@ -290,79 +312,259 @@
 
   (fn spawn-rule-workers ((arena Arena) (g IndexedGraph) (delta Delta)
                           (result-chan (Ptr (Chan WorkerMessage)))
-                          (arena-scm Arena) (arena-cax Arena) (arena-prp Arena)
-                          (arena-eq Arena) (arena-cls Arena)
+                          (arena-scm-class Arena) (arena-scm-prop Arena) (arena-scm-domrng Arena)
+                          (arena-cax-infer Arena) (arena-cax-check Arena)
+                          (arena-prp-char Arena) (arena-prp-chain Arena) (arena-prp-check Arena)
+                          (arena-eq-infer Arena) (arena-eq-check Arena)
+                          (arena-cls-set Arena) (arena-cls-ind Arena)
                           (verbose Bool))
-    (@intent "Spawn 5 worker threads, one per rule group, each with coordinator-owned arena")
-    (@spec ((Arena IndexedGraph Delta (Ptr (Chan WorkerMessage)) Arena Arena Arena Arena Arena Bool)
+    (@intent "Spawn 12 sub-worker threads, each handling a semantic subset of rules")
+    (@spec ((Arena IndexedGraph Delta (Ptr (Chan WorkerMessage))
+             Arena Arena Arena Arena Arena Arena Arena Arena Arena Arena Arena Arena Bool)
             -> (List (Ptr (Thread Unit)))))
     (@alloc arena)
-    ;; postcondition removed — verifier can't track list-new + list-push length
-    (let ((mut workers (list-new arena (Ptr (Thread Unit)))))
+    (let ((mut workers (list-new arena (Ptr (Thread Unit))))
+          (next-iter (+ (. delta iteration) 1)))
 
-      ;; Worker 1: Schema rules (scm)
+      ;; ---- SCM sub-workers (3) ----
+
+      ;; scm-class: scm-cls, scm-sco, scm-eqc1, scm-eqc2
       (list-push workers
         (spawn arena (fn ()
-          (let ((t0 (now-ms)))
-            (match (apply-scm-rules arena-scm g delta)
-              ((ok d)
-                (do
-                  (when verbose
-                    (do (print "  scm: ") (print-ms arena-scm (- (now-ms) t0)) (println "")))
-                  (send result-chan (union-new WorkerMessage msg-delta d))))
-              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-scm-class next-iter)))
+            (for-each (t (scm-cls arena-scm-class g delta))
+              (set! result (delta-add arena-scm-class result t)))
+            (for-each (t (scm-sco arena-scm-class g delta))
+              (set! result (delta-add arena-scm-class result t)))
+            (for-each (t (scm-eqc1 arena-scm-class g delta))
+              (set! result (delta-add arena-scm-class result t)))
+            (for-each (t (scm-eqc2 arena-scm-class g delta))
+              (set! result (delta-add arena-scm-class result t)))
+            (when verbose
+              (do (print "  scm-class: ") (print-ms arena-scm-class (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; Worker 2: Class axiom rules (cax)
+      ;; scm-prop: scm-op, scm-dp, scm-spo, scm-eqp1, scm-eqp2
       (list-push workers
         (spawn arena (fn ()
-          (let ((t0 (now-ms)))
-            (match (apply-cax-rules arena-cax g delta)
-              ((ok d)
-                (do
-                  (when verbose
-                    (do (print "  cax: ") (print-ms arena-cax (- (now-ms) t0)) (println "")))
-                  (send result-chan (union-new WorkerMessage msg-delta d))))
-              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-scm-prop next-iter)))
+            (for-each (t (scm-op arena-scm-prop g delta))
+              (set! result (delta-add arena-scm-prop result t)))
+            (for-each (t (scm-dp arena-scm-prop g delta))
+              (set! result (delta-add arena-scm-prop result t)))
+            (for-each (t (scm-spo arena-scm-prop g delta))
+              (set! result (delta-add arena-scm-prop result t)))
+            (for-each (t (scm-eqp1 arena-scm-prop g delta))
+              (set! result (delta-add arena-scm-prop result t)))
+            (for-each (t (scm-eqp2 arena-scm-prop g delta))
+              (set! result (delta-add arena-scm-prop result t)))
+            (when verbose
+              (do (print "  scm-prop: ") (print-ms arena-scm-prop (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; Worker 3: Property rules (prp)
+      ;; scm-domrng: scm-dom1, scm-dom2, scm-rng1, scm-rng2
       (list-push workers
         (spawn arena (fn ()
-          (let ((t0 (now-ms)))
-            (match (apply-prp-rules arena-prp g delta)
-              ((ok d)
-                (do
-                  (when verbose
-                    (do (print "  prp: ") (print-ms arena-prp (- (now-ms) t0)) (println "")))
-                  (send result-chan (union-new WorkerMessage msg-delta d))))
-              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-scm-domrng next-iter)))
+            (for-each (t (scm-dom1 arena-scm-domrng g delta))
+              (set! result (delta-add arena-scm-domrng result t)))
+            (for-each (t (scm-dom2 arena-scm-domrng g delta))
+              (set! result (delta-add arena-scm-domrng result t)))
+            (for-each (t (scm-rng1 arena-scm-domrng g delta))
+              (set! result (delta-add arena-scm-domrng result t)))
+            (for-each (t (scm-rng2 arena-scm-domrng g delta))
+              (set! result (delta-add arena-scm-domrng result t)))
+            (when verbose
+              (do (print "  scm-domrng: ") (print-ms arena-scm-domrng (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; Worker 4: Equality rules (eq)
+      ;; ---- CAX sub-workers (2) ----
+
+      ;; cax-infer: cax-sco, cax-eqc1, cax-eqc2
       (list-push workers
         (spawn arena (fn ()
-          (let ((t0 (now-ms)))
-            (match (apply-eq-rules arena-eq g delta)
-              ((ok d)
-                (do
-                  (when verbose
-                    (do (print "  eq:  ") (print-ms arena-eq (- (now-ms) t0)) (println "")))
-                  (send result-chan (union-new WorkerMessage msg-delta d))))
-              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-cax-infer next-iter)))
+            (for-each (t (cax-sco arena-cax-infer g delta))
+              (set! result (delta-add arena-cax-infer result t)))
+            (for-each (t (cax-eqc1 arena-cax-infer g delta))
+              (set! result (delta-add arena-cax-infer result t)))
+            (for-each (t (cax-eqc2 arena-cax-infer g delta))
+              (set! result (delta-add arena-cax-infer result t)))
+            (when verbose
+              (do (print "  cax-infer: ") (print-ms arena-cax-infer (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; Worker 5: Class expression rules (cls)
+      ;; cax-check: cax-dw, cax-adc
       (list-push workers
         (spawn arena (fn ()
           (let ((t0 (now-ms)))
-            (match (apply-cls-rules arena-cls g delta)
-              ((ok d)
-                (do
-                  (when verbose
-                    (do (print "  cls: ") (print-ms arena-cls (- (now-ms) t0)) (println "")))
-                  (send result-chan (union-new WorkerMessage msg-delta d))))
-              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+            (match (cax-dw arena-cax-check g delta)
+              ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+              ((none)
+                (match (cax-adc arena-cax-check g delta)
+                  ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                  ((none) (do)))))
+            (when verbose
+              (do (print "  cax-check: ") (print-ms arena-cax-check (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
+
+      ;; ---- PRP sub-workers (3) ----
+
+      ;; prp-char: prp-dom, prp-rng, prp-fp, prp-ifp, prp-symp, prp-trp
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-prp-char next-iter)))
+            (for-each (t (prp-dom arena-prp-char g delta))
+              (set! result (delta-add arena-prp-char result t)))
+            (for-each (t (prp-rng arena-prp-char g delta))
+              (set! result (delta-add arena-prp-char result t)))
+            (for-each (t (prp-fp arena-prp-char g delta))
+              (set! result (delta-add arena-prp-char result t)))
+            (for-each (t (prp-ifp arena-prp-char g delta))
+              (set! result (delta-add arena-prp-char result t)))
+            (for-each (t (prp-symp arena-prp-char g delta))
+              (set! result (delta-add arena-prp-char result t)))
+            (for-each (t (prp-trp arena-prp-char g delta))
+              (set! result (delta-add arena-prp-char result t)))
+            (when verbose
+              (do (print "  prp-char: ") (print-ms arena-prp-char (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
+
+      ;; prp-chain: prp-spo1, prp-eqp1, prp-eqp2, prp-inv1, prp-inv2
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-prp-chain next-iter)))
+            (for-each (t (prp-spo1 arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
+            (for-each (t (prp-eqp1 arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
+            (for-each (t (prp-eqp2 arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
+            (for-each (t (prp-inv1 arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
+            (for-each (t (prp-inv2 arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
+            (when verbose
+              (do (print "  prp-chain: ") (print-ms arena-prp-chain (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
+
+      ;; prp-check: prp-asyp, prp-irp, prp-pdw
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms)))
+            (match (prp-asyp arena-prp-check g delta)
+              ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+              ((none)
+                (match (prp-irp arena-prp-check g delta)
+                  ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                  ((none)
+                    (match (prp-pdw arena-prp-check g delta)
+                      ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                      ((none) (do)))))))
+            (when verbose
+              (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
+
+      ;; ---- EQ sub-workers (2) ----
+
+      ;; eq-infer: eq-sym, eq-trans, eq-rep-s, eq-rep-p, eq-rep-o
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-eq-infer next-iter)))
+            (for-each (t (eq-sym arena-eq-infer g delta))
+              (set! result (delta-add arena-eq-infer result t)))
+            (for-each (t (eq-trans arena-eq-infer g delta))
+              (set! result (delta-add arena-eq-infer result t)))
+            (for-each (t (eq-rep-s arena-eq-infer g delta))
+              (set! result (delta-add arena-eq-infer result t)))
+            (for-each (t (eq-rep-p arena-eq-infer g delta))
+              (set! result (delta-add arena-eq-infer result t)))
+            (for-each (t (eq-rep-o arena-eq-infer g delta))
+              (set! result (delta-add arena-eq-infer result t)))
+            (when verbose
+              (do (print "  eq-infer: ") (print-ms arena-eq-infer (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
+
+      ;; eq-check: eq-diff1, eq-diff2, eq-diff3
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms)))
+            (match (eq-diff1 arena-eq-check g delta)
+              ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+              ((none)
+                (match (eq-diff2 arena-eq-check g delta)
+                  ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                  ((none)
+                    (match (eq-diff3 arena-eq-check g delta)
+                      ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                      ((none) (do)))))))
+            (when verbose
+              (do (print "  eq-check: ") (print-ms arena-eq-check (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
+
+      ;; ---- CLS sub-workers (2) ----
+
+      ;; cls-set: cls-int1, cls-int2, cls-uni, cls-svf1, cls-svf2, cls-avf
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-cls-set next-iter)))
+            (for-each (t (cls-int1 arena-cls-set g delta))
+              (set! result (delta-add arena-cls-set result t)))
+            (for-each (t (cls-int2 arena-cls-set g delta))
+              (set! result (delta-add arena-cls-set result t)))
+            (for-each (t (cls-uni arena-cls-set g delta))
+              (set! result (delta-add arena-cls-set result t)))
+            (for-each (t (cls-svf1 arena-cls-set g delta))
+              (set! result (delta-add arena-cls-set result t)))
+            (for-each (t (cls-svf2 arena-cls-set g delta))
+              (set! result (delta-add arena-cls-set result t)))
+            (for-each (t (cls-avf arena-cls-set g delta))
+              (set! result (delta-add arena-cls-set result t)))
+            (when verbose
+              (do (print "  cls-set: ") (print-ms arena-cls-set (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
+
+      ;; cls-ind: cls-hv1, cls-hv2, cls-maxc1, cls-maxc2, cls-oo, cls-nothing2, cls-com
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms))
+                (mut result (make-delta arena-cls-ind next-iter)))
+            (for-each (t (cls-hv1 arena-cls-ind g delta))
+              (set! result (delta-add arena-cls-ind result t)))
+            (for-each (t (cls-hv2 arena-cls-ind g delta))
+              (set! result (delta-add arena-cls-ind result t)))
+            (for-each (t (cls-maxc1 arena-cls-ind g delta))
+              (set! result (delta-add arena-cls-ind result t)))
+            (for-each (t (cls-maxc2 arena-cls-ind g delta))
+              (set! result (delta-add arena-cls-ind result t)))
+            (for-each (t (cls-oo arena-cls-ind g delta))
+              (set! result (delta-add arena-cls-ind result t)))
+            ;; cls-nothing2 and cls-com are check rules
+            (match (cls-nothing2 arena-cls-ind g delta)
+              ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+              ((none)
+                (match (cls-com arena-cls-ind g delta)
+                  ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                  ((none) (do)))))
+            (when verbose
+              (do (print "  cls-ind: ") (print-ms arena-cls-ind (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
       workers))
@@ -374,7 +576,7 @@
     (@spec ((Arena (Ptr (Chan WorkerMessage)) (List (Ptr (Thread Unit))) (Int 0 ..))
             -> (Result Delta InconsistencyReport)))
     (@alloc arena)
-    (@pre {(list-len workers) == 5})
+    (@pre {(list-len workers) == 12})
     (@pre {next-iter >= 1})
     (@post (match $result
              ((ok d) {(. d iteration) == next-iter})
