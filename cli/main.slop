@@ -3,6 +3,7 @@
 ;;
 ;; Usage: growl [options] <file.ttl>
 ;;   --quiet       Only print failures and inconsistencies
+;;   --fast        Skip schema rules and consistency checks
 ;;   --emit <file> Write materialized graph to TTL file
 ;; ============================================================
 
@@ -50,6 +51,7 @@
     (input-file (Option String))
     (emit-file (Option String))
     (quiet Bool)
+    (fast Bool)
     (show-help Bool)))
 
   (fn argv-to-string ((argv (Ptr (Ptr U8))) (index Int))
@@ -65,6 +67,7 @@
     (let ((mut input (Option String) (none))
           (mut emit (Option String) (none))
           (mut quiet false)
+          (mut fast false)
           (mut help false)
           (mut i 1))
       (while (< i argc)
@@ -75,6 +78,9 @@
               (set! i (+ i 1)))
             ((or (string-eq arg "--quiet") (string-eq arg "-q"))
               (set! quiet true)
+              (set! i (+ i 1)))
+            ((or (string-eq arg "--fast") (string-eq arg "-f"))
+              (set! fast true)
               (set! i (+ i 1)))
             ((or (string-eq arg "--emit") (string-eq arg "-o"))
               (if (< (+ i 1) argc)
@@ -92,6 +98,7 @@
         (input-file input)
         (emit-file emit)
         (quiet quiet)
+        (fast fast)
         (show-help help))))
 
   (fn print-usage ()
@@ -104,7 +111,8 @@
     (println "Options:")
     (println "  -h, --help       Show this help message")
     (println "  -q, --quiet      Only print failures and inconsistencies")
-    (println "  -o, --emit FILE  Write materialized graph to TTL file"))
+    (println "  -o, --emit FILE  Write materialized graph to TTL file")
+    (println "  -f, --fast       Skip schema rules and consistency checks"))
 
   ;; ============================================================
   ;; Graph Conversion
@@ -190,7 +198,8 @@
                                   (worker-count 4)
                                   (channel-buffer 256)
                                   (max-iterations 1000)
-                                  (verbose (not quiet)))))
+                                  (verbose (not quiet))
+                                  (fast (. args fast)))))
                   (match (reason-with-config arena ig config)
                     ((reason-success s)
                       (let ((inferred (. s inferred-count))

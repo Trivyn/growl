@@ -48,7 +48,7 @@ types_Delta eq_fixture_delta_empty(slop_arena* arena);
 types_Delta eq_fixture_delta_rep_p(slop_arena* arena);
 types_Delta eq_fixture_delta_rep_o(slop_arena* arena);
 types_Delta eq_fixture_delta_contradiction(slop_arena* arena);
-slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
 slop_list_rdf_Triple eq_eq_sym(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple eq_eq_trans(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple eq_eq_rep_s(slop_arena* arena, index_IndexedGraph g, types_Delta delta);

@@ -37,6 +37,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
         slop_option_string input = (slop_option_string){.has_value = false};
         slop_option_string emit = (slop_option_string){.has_value = false};
         uint8_t quiet = 0;
+        uint8_t fast = 0;
         uint8_t help = 0;
         int64_t i = 1;
         while ((i < argc)) {
@@ -47,6 +48,9 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                     i = (i + 1);
                 } else if ((string_eq(arg, SLOP_STR("--quiet")) || string_eq(arg, SLOP_STR("-q")))) {
                     quiet = 1;
+                    i = (i + 1);
+                } else if ((string_eq(arg, SLOP_STR("--fast")) || string_eq(arg, SLOP_STR("-f")))) {
+                    fast = 1;
                     i = (i + 1);
                 } else if ((string_eq(arg, SLOP_STR("--emit")) || string_eq(arg, SLOP_STR("-o")))) {
                     if (((i + 1) < argc)) {
@@ -63,7 +67,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                 }
             }
         }
-        return ((main_CliArgs){.input_file = input, .emit_file = emit, .quiet = quiet, .show_help = help});
+        return ((main_CliArgs){.input_file = input, .emit_file = emit, .quiet = quiet, .fast = fast, .show_help = help});
     }
 }
 
@@ -76,6 +80,7 @@ void main_print_usage(void) {
     printf("%s\n", "  -h, --help       Show this help message");
     printf("%s\n", "  -q, --quiet      Only print failures and inconsistencies");
     printf("%s\n", "  -o, --emit FILE  Write materialized graph to TTL file");
+    printf("%s\n", "  -f, --fast       Skip schema rules and consistency checks");
 }
 
 index_IndexedGraph main_graph_to_indexed(slop_arena* arena, rdf_Graph g) {
@@ -166,7 +171,7 @@ int main(int64_t argc, uint8_t** argv) {
                                 }
                                 {
                                     __auto_type reason_start = slop_now_ms();
-                                    __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet)});
+                                    __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet), .fast = args.fast});
                                     __auto_type _mv_233 = growl_reason_with_config(arena, ig, config);
                                     switch (_mv_233.tag) {
                                         case types_ReasonerResult_reason_success:

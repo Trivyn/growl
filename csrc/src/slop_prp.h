@@ -58,7 +58,7 @@ types_Delta prp_fixture_delta_subprop(slop_arena* arena);
 types_Delta prp_fixture_delta_inverse1(slop_arena* arena);
 types_Delta prp_fixture_delta_inverse2(slop_arena* arena);
 types_Delta prp_fixture_delta_pdw(slop_arena* arena);
-slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
 slop_list_rdf_Triple prp_prp_dom(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_rng(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_fp(slop_arena* arena, index_IndexedGraph g, types_Delta delta);

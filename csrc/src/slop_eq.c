@@ -26,7 +26,7 @@ types_Delta eq_fixture_delta_empty(slop_arena* arena);
 types_Delta eq_fixture_delta_rep_p(slop_arena* arena);
 types_Delta eq_fixture_delta_rep_o(slop_arena* arena);
 types_Delta eq_fixture_delta_contradiction(slop_arena* arena);
-slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
 slop_list_rdf_Triple eq_eq_sym(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple eq_eq_trans(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple eq_eq_rep_s(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
@@ -229,7 +229,7 @@ types_Delta eq_fixture_delta_contradiction(slop_arena* arena) {
     }
 }
 
-slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
+slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
     slop_result_types_Delta_types_InconsistencyReport _retval;
     {
@@ -270,23 +270,25 @@ slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* 
                 result = types_delta_add(arena, result, t);
             }
         }
-        __auto_type _mv_75 = eq_eq_diff1(arena, g, delta);
-        if (_mv_75.has_value) {
-            __auto_type report = _mv_75.value;
-            return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-        } else if (!_mv_75.has_value) {
-        }
-        __auto_type _mv_76 = eq_eq_diff2(arena, g, delta);
-        if (_mv_76.has_value) {
-            __auto_type report = _mv_76.value;
-            return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-        } else if (!_mv_76.has_value) {
-        }
-        __auto_type _mv_77 = eq_eq_diff3(arena, g, delta);
-        if (_mv_77.has_value) {
-            __auto_type report = _mv_77.value;
-            return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-        } else if (!_mv_77.has_value) {
+        if (!(fast)) {
+            __auto_type _mv_75 = eq_eq_diff1(arena, g, delta);
+            if (_mv_75.has_value) {
+                __auto_type report = _mv_75.value;
+                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+            } else if (!_mv_75.has_value) {
+            }
+            __auto_type _mv_76 = eq_eq_diff2(arena, g, delta);
+            if (_mv_76.has_value) {
+                __auto_type report = _mv_76.value;
+                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+            } else if (!_mv_76.has_value) {
+            }
+            __auto_type _mv_77 = eq_eq_diff3(arena, g, delta);
+            if (_mv_77.has_value) {
+                __auto_type report = _mv_77.value;
+                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+            } else if (!_mv_77.has_value) {
+            }
         }
         _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = true, .data.ok = result });
     }

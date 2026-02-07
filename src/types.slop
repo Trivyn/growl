@@ -42,7 +42,8 @@
     (worker-count (Int 1 .. 64))
     (channel-buffer (Int 64 .. 4096))
     (max-iterations (Int 1 .. 10000))
-    (verbose Bool)))
+    (verbose Bool)
+    (fast Bool)))
 
   ;; Engine state during fixpoint computation
   (type EngineState (record

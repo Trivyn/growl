@@ -11,11 +11,12 @@ int64_t growl_get_inferred_count(types_ReasonerResult result);
 
 types_ReasonerConfig growl_default_config(void) {
     types_ReasonerConfig _retval;
-    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1});
+    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0});
     SLOP_POST(((_retval.worker_count == 4)), "(== (. $result worker-count) 4)");
     SLOP_POST(((_retval.channel_buffer == 256)), "(== (. $result channel-buffer) 256)");
     SLOP_POST(((_retval.max_iterations == 1000)), "(== (. $result max-iterations) 1000)");
     SLOP_POST(((_retval.verbose == 1)), "(== (. $result verbose) true)");
+    SLOP_POST(((_retval.fast == 0)), "(== (. $result fast) false)");
     return _retval;
 }
 

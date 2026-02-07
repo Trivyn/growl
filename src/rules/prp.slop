@@ -358,9 +358,9 @@
   ;; Rule Dispatcher
   ;; ============================================================
 
-  (fn apply-prp-rules ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn apply-prp-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool))
     (@intent "Apply all property axiom rules (Table 5)")
-    (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
+    (@spec ((Arena IndexedGraph Delta Bool) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
@@ -387,16 +387,18 @@
       (for-each (t (prp-trp arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Inconsistency checks
-      (match (prp-asyp arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
-      (match (prp-irp arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
-      (match (prp-pdw arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
+      ;; Inconsistency checks (skipped in fast mode)
+      (when (not fast)
+        (do
+          (match (prp-asyp arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))
+          (match (prp-irp arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))
+          (match (prp-pdw arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))))
 
       ;; Subproperty and equivalence
       (for-each (t (prp-spo1 arena g delta))

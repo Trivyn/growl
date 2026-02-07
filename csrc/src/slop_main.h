@@ -19,6 +19,7 @@ struct main_CliArgs {
     slop_option_string input_file;
     slop_option_string emit_file;
     uint8_t quiet;
+    uint8_t fast;
     uint8_t show_help;
 };
 typedef struct main_CliArgs main_CliArgs;

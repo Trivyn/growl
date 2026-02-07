@@ -429,9 +429,9 @@
   ;; Rule Dispatcher
   ;; ============================================================
 
-  (fn apply-cls-rules ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn apply-cls-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool))
     (@intent "Apply all class expression rules (Table 6)")
-    (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
+    (@spec ((Arena IndexedGraph Delta Bool) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
@@ -440,10 +440,11 @@
     (let ((next-iter (+ (. delta iteration) 1))
           (mut result (make-delta arena next-iter)))
 
-      ;; Check for owl:Nothing membership (immediate inconsistency)
-      (match (cls-nothing2 arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
+      ;; Check for owl:Nothing membership (skipped in fast mode)
+      (when (not fast)
+        (match (cls-nothing2 arena g delta)
+          ((some report) (return (error report)))
+          ((none) (do))))
 
       ;; Intersection rules
       (for-each (t (cls-int1 arena g delta))
@@ -455,10 +456,11 @@
       (for-each (t (cls-uni arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Complement (inconsistency check)
-      (match (cls-com arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
+      ;; Complement (inconsistency check, skipped in fast mode)
+      (when (not fast)
+        (match (cls-com arena g delta)
+          ((some report) (return (error report)))
+          ((none) (do))))
 
       ;; Restriction rules
       (for-each (t (cls-svf1 arena g delta))
@@ -472,11 +474,13 @@
       (for-each (t (cls-hv2 arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Cardinality rules
-      (for-each (t (cls-maxc1 arena g delta))
-        (set! result (delta-add arena result t)))
-      (for-each (t (cls-maxc2 arena g delta))
-        (set! result (delta-add arena result t)))
+      ;; Cardinality rules (skipped in fast mode)
+      (when (not fast)
+        (do
+          (for-each (t (cls-maxc1 arena g delta))
+            (set! result (delta-add arena result t)))
+          (for-each (t (cls-maxc2 arena g delta))
+            (set! result (delta-add arena result t)))))
 
       ;; OneOf enumeration
       (for-each (t (cls-oo arena g delta))

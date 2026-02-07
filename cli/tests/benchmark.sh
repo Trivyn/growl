@@ -39,6 +39,10 @@ for f in \
   for run in 1 2 3; do
     $GROWL --quiet "$f" 2>&1
   done
+  echo "--- fast mode ---"
+  for run in 1 2 3; do
+    $GROWL --quiet --fast "$f" 2>&1
+  done
   echo ""
 done
 

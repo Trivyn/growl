@@ -52,7 +52,7 @@ index_IndexedGraph cls_fixture_g_maxc1(slop_arena* arena);
 types_Delta cls_fixture_delta_maxc(slop_arena* arena);
 index_IndexedGraph cls_fixture_g_one_of(slop_arena* arena);
 types_Delta cls_fixture_delta_one_of(slop_arena* arena);
-slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
 slop_option_types_InconsistencyReport cls_cls_nothing2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cls_cls_int1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cls_cls_int2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
@@ -462,17 +462,19 @@ types_Delta cls_fixture_delta_one_of(slop_arena* arena) {
     }
 }
 
-slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
+slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
     slop_result_types_Delta_types_InconsistencyReport _retval;
     {
         __auto_type next_iter = (delta.iteration + 1);
         __auto_type result = types_make_delta(arena, next_iter);
-        __auto_type _mv_53 = cls_cls_nothing2(arena, g, delta);
-        if (_mv_53.has_value) {
-            __auto_type report = _mv_53.value;
-            return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-        } else if (!_mv_53.has_value) {
+        if (!(fast)) {
+            __auto_type _mv_53 = cls_cls_nothing2(arena, g, delta);
+            if (_mv_53.has_value) {
+                __auto_type report = _mv_53.value;
+                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+            } else if (!_mv_53.has_value) {
+            }
         }
         {
             __auto_type _coll = cls_cls_int1(arena, g, delta);
@@ -495,11 +497,13 @@ slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena
                 result = types_delta_add(arena, result, t);
             }
         }
-        __auto_type _mv_54 = cls_cls_com(arena, g, delta);
-        if (_mv_54.has_value) {
-            __auto_type report = _mv_54.value;
-            return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-        } else if (!_mv_54.has_value) {
+        if (!(fast)) {
+            __auto_type _mv_54 = cls_cls_com(arena, g, delta);
+            if (_mv_54.has_value) {
+                __auto_type report = _mv_54.value;
+                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+            } else if (!_mv_54.has_value) {
+            }
         }
         {
             __auto_type _coll = cls_cls_svf1(arena, g, delta);
@@ -536,18 +540,20 @@ slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena
                 result = types_delta_add(arena, result, t);
             }
         }
-        {
-            __auto_type _coll = cls_cls_maxc1(arena, g, delta);
-            for (size_t _i = 0; _i < _coll.len; _i++) {
-                __auto_type t = _coll.data[_i];
-                result = types_delta_add(arena, result, t);
+        if (!(fast)) {
+            {
+                __auto_type _coll = cls_cls_maxc1(arena, g, delta);
+                for (size_t _i = 0; _i < _coll.len; _i++) {
+                    __auto_type t = _coll.data[_i];
+                    result = types_delta_add(arena, result, t);
+                }
             }
-        }
-        {
-            __auto_type _coll = cls_cls_maxc2(arena, g, delta);
-            for (size_t _i = 0; _i < _coll.len; _i++) {
-                __auto_type t = _coll.data[_i];
-                result = types_delta_add(arena, result, t);
+            {
+                __auto_type _coll = cls_cls_maxc2(arena, g, delta);
+                for (size_t _i = 0; _i < _coll.len; _i++) {
+                    __auto_type t = _coll.data[_i];
+                    result = types_delta_add(arena, result, t);
+                }
             }
         }
         {

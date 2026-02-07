@@ -46,8 +46,26 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 (record ReasonerConfig
   (worker-count Int)      ;; Number of parallel workers (default: 4)
   (channel-buffer Int)    ;; Message buffer size (default: 256)
-  (max-iterations Int))   ;; Iteration limit (default: 1000)
+  (max-iterations Int)    ;; Iteration limit (default: 1000)
+  (verbose Bool)          ;; Print per-iteration timing (default: true)
+  (fast Bool))            ;; Skip schema rules & checks (default: false)
 ```
+
+## CLI Usage
+
+```bash
+growl [options] <file.ttl>
+
+Options:
+  -h, --help       Show help message
+  -q, --quiet      Only print failures and inconsistencies
+  -f, --fast       Skip schema rules and consistency checks
+  -o, --emit FILE  Write materialized graph to TTL file
+```
+
+### Fast Mode
+
+The `--fast` flag skips schema vocabulary rules (scm-\*), consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, eq-diff1/2/3, cls-nothing2, cls-com), and cardinality rules (cls-maxc1/2). This matches the inference depth of reasoners like `reasonable` that skip schema closure. Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
 
 ## Building
 
