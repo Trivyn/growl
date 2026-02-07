@@ -5,7 +5,7 @@ entry = "test-cli.slop"
 
 [build]
 output = "build/growl-cli-test"
-arena_cap = 8589934592  # 8GB
+no_arena_cap = true
 include = ["../../../slop-rdf/src", "../../../slop-rdf/src/parse", "../../../slop-rdf/src/serialize", "../../src", "../../src/rules", "${SLOP_HOME}/lib/std/"]
 type = "executable"
 debug = false

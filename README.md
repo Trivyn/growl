@@ -73,6 +73,17 @@ The `--fast` flag skips schema vocabulary rules (scm-\*), consistency checks (ca
 slop build src/growl.slop
 ```
 
+### Building from C
+
+Pre-transpiled C sources are included in `csrc/`, so you can build with just a C compiler — no SLOP toolchain required.
+
+```bash
+make            # build cli → build/growl
+make release    # optimized build (-O3, NDEBUG)
+make test       # build and run tests
+make benchmark  # run benchmarks
+```
+
 ## Verification
 
 ```bash

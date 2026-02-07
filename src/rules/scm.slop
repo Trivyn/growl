@@ -15,10 +15,11 @@
   (import index (IndexedGraph indexed-graph-match indexed-graph-for-each indexed-graph-contains indexed-graph-size
                  indexed-graph-create indexed-graph-add))
   (import vocab (RDF_TYPE RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF RDFS_DOMAIN RDFS_RANGE
-                 OWL_CLASS OWL_THING OWL_EQUIVALENT_CLASS OWL_EQUIVALENT_PROPERTY
+                 OWL_CLASS OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_EQUIVALENT_PROPERTY
                  OWL_OBJECT_PROPERTY OWL_DATATYPE_PROPERTY
                  OWL_HAS_VALUE OWL_SOME_VALUES_FROM OWL_ALL_VALUES_FROM
                  OWL_ON_PROPERTY OWL_INTERSECTION_OF OWL_UNION_OF))
+  (import list (rdf-list-elements-indexed))
   (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
 
   (export
@@ -27,6 +28,8 @@
     scm-sco
     scm-eqc1
     scm-eqc2
+    scm-int
+    scm-uni
     scm-op
     scm-dp
     scm-spo
@@ -35,7 +38,12 @@
     scm-dom1
     scm-dom2
     scm-rng1
-    scm-rng2)
+    scm-rng2
+    scm-svf1
+    scm-svf2
+    scm-avf1
+    scm-avf2
+    scm-hv)
 
   ;; ============================================================
   ;; Test Fixture URIs (for @example annotations)
@@ -190,6 +198,10 @@
         (set! result (delta-add arena result t)))
       (for-each (t (scm-eqc2 arena g delta))
         (set! result (delta-add arena result t)))
+      (for-each (t (scm-int arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-uni arena g delta))
+        (set! result (delta-add arena result t)))
 
       ;; Property schema rules
       (for-each (t (scm-op arena g delta))
@@ -213,6 +225,18 @@
       (for-each (t (scm-rng2 arena g delta))
         (set! result (delta-add arena result t)))
 
+      ;; Restriction schema rules
+      (for-each (t (scm-svf1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-svf2 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-avf1 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-avf2 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-hv arena g delta))
+        (set! result (delta-add arena result t)))
+
       (ok result)))
 
   ;; ============================================================
@@ -223,33 +247,30 @@
   ;; ============================================================
 
   (fn scm-cls ((arena Arena) (g IndexedGraph) (delta Delta))
-    (@intent "Infer reflexive subClassOf and subClassOf owl:Thing for classes")
+    (@intent "Infer reflexive subClassOf, subClassOf owl:Thing, Nothing subClassOf, and reflexive equivalentClass for classes")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
-    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
     (@property soundness
       (forall (t $result)
         (exists (dt (. delta triples))
           (and
             (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
-            (term-eq (triple-object dt) (make-iri arena OWL_CLASS))
-            (term-eq (triple-predicate t) (make-iri arena RDFS_SUBCLASS_OF))
-            (term-eq (triple-subject t) (triple-subject dt))
-            (or
-              (term-eq (triple-object t) (triple-subject dt))
-              (term-eq (triple-object t) (make-iri arena OWL_THING)))))))
+            (term-eq (triple-object dt) (make-iri arena OWL_CLASS))))))
     (@example
       ;; Graph: (Person type owl:Class)
-      ;; Result: (Person subClassOf Person), (Person subClassOf owl:Thing)
+      ;; Result: (Person subClassOf Person), (Person subClassOf owl:Thing),
+      ;;         (owl:Nothing subClassOf Person), (Person equivalentClass Person)
       (arena (fixture-g-with-class arena) (fixture-delta-with-class arena))
-      -> (list _ _))
+      -> (list _ _ _ _))
     (let ((class-type (make-iri arena OWL_CLASS))
           (type-pred (make-iri arena RDF_TYPE))
           (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS))
           (thing (make-iri arena OWL_THING))
+          (nothing (make-iri arena OWL_NOTHING))
           (mut result (list-new arena Triple)))
 
       (match (map-get (. delta by-predicate) type-pred)
@@ -264,7 +285,15 @@
                 ;; c subClassOf owl:Thing
                 (let ((to-thing (make-triple arena class subclass-pred thing)))
                   (when (not (indexed-graph-contains g to-thing))
-                    (list-push result to-thing)))))))
+                    (list-push result to-thing)))
+                ;; owl:Nothing subClassOf c
+                (let ((nothing-sub (make-triple arena nothing subclass-pred class)))
+                  (when (not (indexed-graph-contains g nothing-sub))
+                    (list-push result nothing-sub)))
+                ;; Reflexive: c equivalentClass c
+                (let ((refl-equiv (make-triple arena class equiv-pred class)))
+                  (when (not (indexed-graph-contains g refl-equiv))
+                    (list-push result refl-equiv)))))))
         ((none) (do)))
 
       result))
@@ -870,6 +899,360 @@
                         (inferred (make-triple arena p range-pred c2)))
                     (when (not (indexed-graph-contains g inferred))
                       (list-push result inferred))))))))
+        ((none) (do)))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-int: Intersection implies subClassOf components
+  ;;
+  ;; If (?c owl:intersectionOf ?x) and LIST(?x, ?c1, ..., ?cn)
+  ;; then (?c rdfs:subClassOf ?c1), ..., (?c rdfs:subClassOf ?cn)
+  ;; ============================================================
+
+  (fn scm-int ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from intersection to its components")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@property soundness
+      (forall (t $result)
+        (term-eq (triple-predicate t) (make-iri arena RDFS_SUBCLASS_OF))))
+    (let ((intersection-pred (make-iri arena OWL_INTERSECTION_OF))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Trigger on new intersectionOf assertions in delta
+      (match (map-get (. delta by-predicate) intersection-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((int-class (triple-subject dt))
+                  (list-head (triple-object dt))
+                  (components (rdf-list-elements-indexed arena g list-head)))
+              (for-each (comp components)
+                (let ((inferred (make-triple arena int-class subclass-pred comp)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred)))))))
+        ((none) (do)))
+
+      ;; Also scan graph for existing intersectionOf definitions (triggered by first iteration)
+      (indexed-graph-for-each g no-term (some intersection-pred) no-term
+        (fn ((int-triple Triple))
+          (let ((int-class (triple-subject int-triple))
+                (list-head (triple-object int-triple))
+                (components (rdf-list-elements-indexed arena g list-head)))
+            (for-each (comp components)
+              (let ((inferred (make-triple arena int-class subclass-pred comp)))
+                (when (not (indexed-graph-contains g inferred))
+                  (list-push result inferred)))))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-uni: Union components are subClassOf the union
+  ;;
+  ;; If (?c owl:unionOf ?x) and LIST(?x, ?c1, ..., ?cn)
+  ;; then (?c1 rdfs:subClassOf ?c), ..., (?cn rdfs:subClassOf ?c)
+  ;; ============================================================
+
+  (fn scm-uni ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from union components to the union class")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@property soundness
+      (forall (t $result)
+        (term-eq (triple-predicate t) (make-iri arena RDFS_SUBCLASS_OF))))
+    (let ((union-pred (make-iri arena OWL_UNION_OF))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Trigger on new unionOf assertions in delta
+      (match (map-get (. delta by-predicate) union-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((union-class (triple-subject dt))
+                  (list-head (triple-object dt))
+                  (components (rdf-list-elements-indexed arena g list-head)))
+              (for-each (comp components)
+                (let ((inferred (make-triple arena comp subclass-pred union-class)))
+                  (when (not (indexed-graph-contains g inferred))
+                    (list-push result inferred)))))))
+        ((none) (do)))
+
+      ;; Also scan graph for existing unionOf definitions
+      (indexed-graph-for-each g no-term (some union-pred) no-term
+        (fn ((union-triple Triple))
+          (let ((union-class (triple-subject union-triple))
+                (list-head (triple-object union-triple))
+                (components (rdf-list-elements-indexed arena g list-head)))
+            (for-each (comp components)
+              (let ((inferred (make-triple arena comp subclass-pred union-class)))
+                (when (not (indexed-graph-contains g inferred))
+                  (list-push result inferred)))))))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-svf1: someValuesFrom subclass via subclass of value type
+  ;;
+  ;; If (?c1 owl:someValuesFrom ?y1) on (?p) and
+  ;;    (?c2 owl:someValuesFrom ?y2) on (?p) and
+  ;;    (?y1 rdfs:subClassOf ?y2)
+  ;; then (?c1 rdfs:subClassOf ?c2)
+  ;; ============================================================
+
+  (fn scm-svf1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from someValuesFrom restrictions with subclass value types")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (let ((svf-pred (make-iri arena OWL_SOME_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Triggered by new subClassOf in delta: y1 subClassOf y2
+      ;; Look up restrictions where y1 or y2 is the someValuesFrom value
+      (match (map-get (. delta by-predicate) subclass-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((y1 (triple-subject dt))
+                  (y2 (triple-object dt)))
+              ;; Find all restrictions with someValuesFrom y1 (these are c1 candidates)
+              (indexed-graph-for-each g no-term (some svf-pred) (some y1)
+                (fn ((svf1-triple Triple))
+                  (let ((c1 (triple-subject svf1-triple)))
+                    ;; Get the onProperty for c1
+                    (indexed-graph-for-each g (some c1) (some on-prop-pred) no-term
+                      (fn ((prop1-triple Triple))
+                        (let ((p (triple-object prop1-triple)))
+                          ;; Find restrictions with someValuesFrom y2 on same property p
+                          (indexed-graph-for-each g no-term (some svf-pred) (some y2)
+                            (fn ((svf2-triple Triple))
+                              (let ((c2 (triple-subject svf2-triple)))
+                                ;; Check c2 onProperty p
+                                (let ((c2-on-p (make-triple arena c2 on-prop-pred p)))
+                                  (when (indexed-graph-contains g c2-on-p)
+                                    (let ((inferred (make-triple arena c1 subclass-pred c2)))
+                                      (when (not (indexed-graph-contains g inferred))
+                                        (list-push result inferred)))))))))))))))))
+        ((none) (do)))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-svf2: someValuesFrom subclass via subproperty
+  ;;
+  ;; If (?c1 owl:someValuesFrom ?y) on (?p1) and
+  ;;    (?c2 owl:someValuesFrom ?y) on (?p2) and
+  ;;    (?p1 rdfs:subPropertyOf ?p2)
+  ;; then (?c1 rdfs:subClassOf ?c2)
+  ;; ============================================================
+
+  (fn scm-svf2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from someValuesFrom restrictions with subproperty")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (let ((svf-pred (make-iri arena OWL_SOME_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Triggered by new subPropertyOf: p1 subPropertyOf p2
+      (match (map-get (. delta by-predicate) subprop-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((p1 (triple-subject dt))
+                  (p2 (triple-object dt)))
+              ;; Find restrictions with onProperty p1
+              (indexed-graph-for-each g no-term (some on-prop-pred) (some p1)
+                (fn ((prop1-triple Triple))
+                  (let ((c1 (triple-subject prop1-triple)))
+                    ;; Get someValuesFrom for c1
+                    (indexed-graph-for-each g (some c1) (some svf-pred) no-term
+                      (fn ((svf1-triple Triple))
+                        (let ((y (triple-object svf1-triple)))
+                          ;; Find restrictions with onProperty p2 and someValuesFrom y
+                          (indexed-graph-for-each g no-term (some on-prop-pred) (some p2)
+                            (fn ((prop2-triple Triple))
+                              (let ((c2 (triple-subject prop2-triple))
+                                    (c2-svf-y (make-triple arena c2 svf-pred y)))
+                                (when (indexed-graph-contains g c2-svf-y)
+                                  (let ((inferred (make-triple arena c1 subclass-pred c2)))
+                                    (when (not (indexed-graph-contains g inferred))
+                                      (list-push result inferred))))))))))))))))
+        ((none) (do)))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-avf1: allValuesFrom subclass via subclass of value type
+  ;;
+  ;; If (?c1 owl:allValuesFrom ?y1) on (?p) and
+  ;;    (?c2 owl:allValuesFrom ?y2) on (?p) and
+  ;;    (?y1 rdfs:subClassOf ?y2)
+  ;; then (?c1 rdfs:subClassOf ?c2)
+  ;; ============================================================
+
+  (fn scm-avf1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from allValuesFrom restrictions with subclass value types")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (let ((avf-pred (make-iri arena OWL_ALL_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Triggered by new subClassOf: y1 subClassOf y2
+      (match (map-get (. delta by-predicate) subclass-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((y1 (triple-subject dt))
+                  (y2 (triple-object dt)))
+              ;; Find restrictions with allValuesFrom y1
+              (indexed-graph-for-each g no-term (some avf-pred) (some y1)
+                (fn ((avf1-triple Triple))
+                  (let ((c1 (triple-subject avf1-triple)))
+                    ;; Get onProperty for c1
+                    (indexed-graph-for-each g (some c1) (some on-prop-pred) no-term
+                      (fn ((prop1-triple Triple))
+                        (let ((p (triple-object prop1-triple)))
+                          ;; Find restrictions with allValuesFrom y2 on same property
+                          (indexed-graph-for-each g no-term (some avf-pred) (some y2)
+                            (fn ((avf2-triple Triple))
+                              (let ((c2 (triple-subject avf2-triple)))
+                                (let ((c2-on-p (make-triple arena c2 on-prop-pred p)))
+                                  (when (indexed-graph-contains g c2-on-p)
+                                    (let ((inferred (make-triple arena c1 subclass-pred c2)))
+                                      (when (not (indexed-graph-contains g inferred))
+                                        (list-push result inferred)))))))))))))))))
+        ((none) (do)))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-avf2: allValuesFrom subclass via subproperty (REVERSED)
+  ;;
+  ;; If (?c1 owl:allValuesFrom ?y) on (?p1) and
+  ;;    (?c2 owl:allValuesFrom ?y) on (?p2) and
+  ;;    (?p1 rdfs:subPropertyOf ?p2)
+  ;; then (?c2 rdfs:subClassOf ?c1)   ← NOTE reversed direction
+  ;; ============================================================
+
+  (fn scm-avf2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from allValuesFrom restrictions with subproperty (reversed)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (let ((avf-pred (make-iri arena OWL_ALL_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Triggered by new subPropertyOf: p1 subPropertyOf p2
+      (match (map-get (. delta by-predicate) subprop-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((p1 (triple-subject dt))
+                  (p2 (triple-object dt)))
+              ;; Find restrictions with onProperty p1
+              (indexed-graph-for-each g no-term (some on-prop-pred) (some p1)
+                (fn ((prop1-triple Triple))
+                  (let ((c1 (triple-subject prop1-triple)))
+                    ;; Get allValuesFrom for c1
+                    (indexed-graph-for-each g (some c1) (some avf-pred) no-term
+                      (fn ((avf1-triple Triple))
+                        (let ((y (triple-object avf1-triple)))
+                          ;; Find restrictions with onProperty p2 and allValuesFrom y
+                          (indexed-graph-for-each g no-term (some on-prop-pred) (some p2)
+                            (fn ((prop2-triple Triple))
+                              (let ((c2 (triple-subject prop2-triple))
+                                    (c2-avf-y (make-triple arena c2 avf-pred y)))
+                                ;; NOTE: reversed direction - c2 subClassOf c1
+                                (when (indexed-graph-contains g c2-avf-y)
+                                  (let ((inferred (make-triple arena c2 subclass-pred c1)))
+                                    (when (not (indexed-graph-contains g inferred))
+                                      (list-push result inferred))))))))))))))))
+        ((none) (do)))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-hv: hasValue subclass via subproperty
+  ;;
+  ;; If (?c1 owl:hasValue ?i) on (?p1) and
+  ;;    (?c2 owl:hasValue ?i) on (?p2) and
+  ;;    (?p1 rdfs:subPropertyOf ?p2)
+  ;; then (?c1 rdfs:subClassOf ?c2)
+  ;; ============================================================
+
+  (fn scm-hv ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive subClassOf from hasValue restrictions with subproperty")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (let ((hv-pred (make-iri arena OWL_HAS_VALUE))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Triggered by new subPropertyOf: p1 subPropertyOf p2
+      (match (map-get (. delta by-predicate) subprop-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((p1 (triple-subject dt))
+                  (p2 (triple-object dt)))
+              ;; Find restrictions with onProperty p1
+              (indexed-graph-for-each g no-term (some on-prop-pred) (some p1)
+                (fn ((prop1-triple Triple))
+                  (let ((c1 (triple-subject prop1-triple)))
+                    ;; Get hasValue for c1
+                    (indexed-graph-for-each g (some c1) (some hv-pred) no-term
+                      (fn ((hv1-triple Triple))
+                        (let ((i (triple-object hv1-triple)))
+                          ;; Find restrictions with onProperty p2 and hasValue i
+                          (indexed-graph-for-each g no-term (some on-prop-pred) (some p2)
+                            (fn ((prop2-triple Triple))
+                              (let ((c2 (triple-subject prop2-triple))
+                                    (c2-hv-i (make-triple arena c2 hv-pred i)))
+                                (when (indexed-graph-contains g c2-hv-i)
+                                  (let ((inferred (make-triple arena c1 subclass-pred c2)))
+                                    (when (not (indexed-graph-contains g inferred))
+                                      (list-push result inferred))))))))))))))))
         ((none) (do)))
 
       result)))

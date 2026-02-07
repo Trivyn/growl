@@ -9,6 +9,7 @@ sources = ["src"]
 include = ["../slop-rdf", "src", "${SLOP_HOME}/lib/std/"]
 type = "static"
 debug = false
+no_arena_cap = true
 
 [build.link]
 libraries = []

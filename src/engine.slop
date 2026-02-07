@@ -16,12 +16,13 @@
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
   (import cax (apply-cax-rules cax-sco cax-eqc1 cax-eqc2 cax-dw cax-adc))
-  (import scm (apply-scm-rules scm-cls scm-sco scm-eqc1 scm-eqc2
+  (import scm (apply-scm-rules scm-cls scm-sco scm-eqc1 scm-eqc2 scm-int scm-uni
                scm-op scm-dp scm-spo scm-eqp1 scm-eqp2
-               scm-dom1 scm-dom2 scm-rng1 scm-rng2))
+               scm-dom1 scm-dom2 scm-rng1 scm-rng2
+               scm-svf1 scm-svf2 scm-avf1 scm-avf2 scm-hv))
   (import prp (apply-prp-rules prp-dom prp-rng prp-fp prp-ifp prp-symp prp-trp
                prp-asyp prp-irp prp-pdw prp-spo1 prp-eqp1 prp-eqp2 prp-inv1 prp-inv2))
-  (import eq  (apply-eq-rules eq-sym eq-trans eq-rep-s eq-rep-p eq-rep-o
+  (import eq  (apply-eq-rules eq-ref eq-sym eq-trans eq-rep-s eq-rep-p eq-rep-o
                eq-diff1 eq-diff2 eq-diff3))
   (import cls (apply-cls-rules cls-nothing2 cls-int1 cls-int2 cls-uni cls-com
                cls-svf1 cls-svf2 cls-avf cls-hv1 cls-hv2 cls-maxc1 cls-maxc2 cls-oo))
@@ -132,12 +133,18 @@
     ;; Apply all rules to get new inferred triples
     (match (apply-all-rules arena (. state graph) (. state delta) (. state config))
       ((ok new-delta)
-        ;; Merge new triples into graph and update state
-        (ok (record-new EngineState
-              (graph (merge-into-graph arena (. state graph) new-delta))
-              (delta new-delta)
-              (iteration (+ (. state iteration) 1))
-              (config (. state config)))))
+        (let ((mut new-graph (merge-into-graph arena (. state graph) new-delta)))
+          ;; eq-ref: add reflexive sameAs directly to graph, not delta
+          ;; These are needed for OWL 2 RL completeness but never trigger
+          ;; productive inference, so keeping them out of delta avoids cascade.
+          (when (not (. (. state config) fast))
+            (for-each (t (eq-ref arena new-graph new-delta))
+              (set! new-graph (indexed-graph-add arena new-graph t))))
+          (ok (record-new EngineState
+                (graph new-graph)
+                (delta new-delta)
+                (iteration (+ (. state iteration) 1))
+                (config (. state config))))))
       ((error report)
         (error report))))
 
@@ -334,7 +341,7 @@
 
       (when (not fast)
         (do
-          ;; scm-class: scm-cls, scm-sco, scm-eqc1, scm-eqc2
+          ;; scm-class: scm-cls, scm-sco, scm-eqc1, scm-eqc2, scm-int, scm-uni
           (list-push workers
             (spawn arena (fn ()
               (let ((t0 (now-ms))
@@ -346,6 +353,10 @@
                 (for-each (t (scm-eqc1 arena-scm-class g delta))
                   (set! result (delta-add arena-scm-class result t)))
                 (for-each (t (scm-eqc2 arena-scm-class g delta))
+                  (set! result (delta-add arena-scm-class result t)))
+                (for-each (t (scm-int arena-scm-class g delta))
+                  (set! result (delta-add arena-scm-class result t)))
+                (for-each (t (scm-uni arena-scm-class g delta))
                   (set! result (delta-add arena-scm-class result t)))
                 (when verbose
                   (do (print "  scm-class: ") (print-ms arena-scm-class (- (now-ms) t0)) (println "")))
@@ -372,7 +383,7 @@
                 (send result-chan (union-new WorkerMessage msg-delta result))
                 (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-          ;; scm-domrng: scm-dom1, scm-dom2, scm-rng1, scm-rng2
+          ;; scm-domrng: scm-dom1, scm-dom2, scm-rng1, scm-rng2, scm-svf1/2, scm-avf1/2, scm-hv
           (list-push workers
             (spawn arena (fn ()
               (let ((t0 (now-ms))
@@ -384,6 +395,16 @@
                 (for-each (t (scm-rng1 arena-scm-domrng g delta))
                   (set! result (delta-add arena-scm-domrng result t)))
                 (for-each (t (scm-rng2 arena-scm-domrng g delta))
+                  (set! result (delta-add arena-scm-domrng result t)))
+                (for-each (t (scm-svf1 arena-scm-domrng g delta))
+                  (set! result (delta-add arena-scm-domrng result t)))
+                (for-each (t (scm-svf2 arena-scm-domrng g delta))
+                  (set! result (delta-add arena-scm-domrng result t)))
+                (for-each (t (scm-avf1 arena-scm-domrng g delta))
+                  (set! result (delta-add arena-scm-domrng result t)))
+                (for-each (t (scm-avf2 arena-scm-domrng g delta))
+                  (set! result (delta-add arena-scm-domrng result t)))
+                (for-each (t (scm-hv arena-scm-domrng g delta))
                   (set! result (delta-add arena-scm-domrng result t)))
                 (when verbose
                   (do (print "  scm-domrng: ") (print-ms arena-scm-domrng (- (now-ms) t0)) (println "")))
@@ -414,10 +435,10 @@
           (spawn arena (fn ()
             (let ((t0 (now-ms)))
               (match (cax-dw arena-cax-check g delta)
-                ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                 ((none)
                   (match (cax-adc arena-cax-check g delta)
-                    ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                     ((none) (do)))))
               (when verbose
                 (do (print "  cax-check: ") (print-ms arena-cax-check (- (now-ms) t0)) (println "")))
@@ -473,13 +494,13 @@
           (spawn arena (fn ()
             (let ((t0 (now-ms)))
               (match (prp-asyp arena-prp-check g delta)
-                ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                 ((none)
                   (match (prp-irp arena-prp-check g delta)
-                    ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                     ((none)
                       (match (prp-pdw arena-prp-check g delta)
-                        ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                        ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                         ((none) (do)))))))
               (when verbose
                 (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
@@ -488,6 +509,7 @@
       ;; ---- EQ sub-workers ----
 
       ;; eq-infer: eq-sym, eq-trans, eq-rep-s, eq-rep-p, eq-rep-o (always runs)
+      ;; Note: eq-ref runs post-merge in engine-run-iteration (graph-only, not delta)
       (list-push workers
         (spawn arena (fn ()
           (let ((t0 (now-ms))
@@ -513,13 +535,13 @@
           (spawn arena (fn ()
             (let ((t0 (now-ms)))
               (match (eq-diff1 arena-eq-check g delta)
-                ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                 ((none)
                   (match (eq-diff2 arena-eq-check g delta)
-                    ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                     ((none)
                       (match (eq-diff3 arena-eq-check g delta)
-                        ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                        ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                         ((none) (do)))))))
               (when verbose
                 (do (print "  eq-check: ") (print-ms arena-eq-check (- (now-ms) t0)) (println "")))
@@ -571,10 +593,10 @@
             (when (not fast)
               (do
                 (match (cls-nothing2 arena-cls-ind g delta)
-                  ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                   ((none)
                     (match (cls-com arena-cls-ind g delta)
-                      ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                       ((none) (do)))))))
             (when verbose
               (do (print "  cls-ind: ") (print-ms arena-cls-ind (- (now-ms) t0)) (println "")))
