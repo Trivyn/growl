@@ -2,9 +2,8 @@
 <http://example.org/Person> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://example.org/Agent> .
 <http://example.org/alice> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Student> .
 <http://example.org/Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://example.org/Agent> .
-<http://example.org/alice> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .
-<http://example.org/Student> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/Student> .
-<http://example.org/Agent> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/Agent> .
-<http://example.org/alice> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/alice> .
+<http://example.org/alice> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person>, <http://example.org/Agent> ;
+  <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/alice> .
 <http://example.org/Person> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/Person> .
-<http://example.org/alice> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Agent> .
+<http://example.org/alice> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/alice> .
+<http://example.org/Agent> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/Agent> .

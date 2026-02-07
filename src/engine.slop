@@ -32,6 +32,7 @@
     engine-run-iteration
     apply-all-rules
     merge-into-graph
+    schema-materialize
     print-ms)
 
   ;; ============================================================
@@ -69,9 +70,17 @@
              ((reason-success s) {(. s iterations) <= (. config max-iterations)})
              ((reason-inconsistent _) true)))
     (let ((initial-size (indexed-graph-size initial))
+          (initial-delta (make-initial-delta arena initial))
+          ;; Phase 1: Schema materialization (skip in fast mode)
+          (materialized-graph
+            (if (. config fast)
+              initial
+              (schema-materialize arena initial
+                (make-initial-delta arena initial) config)))
+          ;; Phase 2: Main fixpoint uses materialized graph + original delta
           (mut state (record-new EngineState
-                       (graph initial)
-                       (delta (make-initial-delta arena initial))
+                       (graph materialized-graph)
+                       (delta initial-delta)
                        (iteration 0)
                        (config config)))
           (mut done false)
@@ -117,6 +126,54 @@
         (fn ((t Triple))
           (set! d (delta-add arena d t))))
       d))
+
+  ;; ============================================================
+  ;; Schema Materialization Phase
+  ;; ============================================================
+
+  (fn schema-materialize ((arena Arena) (g IndexedGraph) (delta Delta) (config ReasonerConfig))
+    (@intent "Run schema rules to fixpoint before main loop")
+    (@spec ((Arena IndexedGraph Delta ReasonerConfig) -> IndexedGraph))
+    (@alloc arena)
+    (let ((mut current-graph g)
+          (mut current-delta delta)
+          (mut scm-iter 0)
+          (mut scm-done false)
+          (verbose (. config verbose)))
+
+      (when verbose
+        (println "[schema] materializing schema closure"))
+
+      (while (and (not scm-done) (< scm-iter (. config max-iterations)))
+        (let ((t0 (now-ms)))
+          (match (apply-scm-rules arena current-graph current-delta)
+            ((ok scm-delta)
+              (if (delta-is-empty scm-delta)
+                (do
+                  (when verbose
+                    (do
+                      (print "[schema] fixpoint at iter ")
+                      (print (int-to-string arena scm-iter))
+                      (print ", graph=")
+                      (print (int-to-string arena (indexed-graph-size current-graph)))
+                      (println "")))
+                  (set! scm-done true))
+                (do
+                  (when verbose
+                    (do
+                      (print "[schema] iter ")
+                      (print (int-to-string arena scm-iter))
+                      (print ": +")
+                      (print (int-to-string arena (list-len (. scm-delta triples))))
+                      (print " triples (")
+                      (print-ms arena (- (now-ms) t0))
+                      (println ")")))
+                  (set! current-graph (merge-into-graph arena current-graph scm-delta))
+                  (set! current-delta scm-delta))))
+            ((error _) (set! scm-done true))))
+        (set! scm-iter (+ scm-iter 1)))
+
+      current-graph))
 
   ;; ============================================================
   ;; Single Iteration
