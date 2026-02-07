@@ -25,7 +25,8 @@
     engine-run
     engine-run-iteration
     apply-all-rules
-    merge-into-graph)
+    merge-into-graph
+    print-ms)
 
   ;; ============================================================
   ;; Types
@@ -36,6 +37,16 @@
     (msg-delta Delta)
     (msg-inconsistent InconsistencyReport)
     (msg-done Unit)))
+
+  ;; ============================================================
+  ;; Timing Helpers
+  ;; ============================================================
+
+  (fn print-ms ((arena Arena) (ms I64))
+    (@intent "Print a millisecond duration like '12ms'")
+    (@spec ((Arena I64) -> Unit))
+    (print (int-to-string arena ms))
+    (print "ms"))
 
   ;; ============================================================
   ;; Main Engine Loop
@@ -63,7 +74,13 @@
       ;; Main fixpoint loop
       (while (and (not done) (< (. state iteration) (. config max-iterations)))
         (@loop-invariant {(. state iteration) <= (. config max-iterations)})
-        (c-inline "fprintf(stderr, \"[engine] iter=%lld graph=%lld global_alloc=%zu MB\\n\", (long long)state.iteration, (long long)index_indexed_graph_size(state.graph), (size_t)(slop_global_allocated / (1024*1024)))")
+        (when (. config verbose)
+          (do
+            (print "[iter ")
+            (print (int-to-string arena (. state iteration)))
+            (print "] graph=")
+            (print (int-to-string arena (indexed-graph-size (. state graph))))
+            (println "")))
         (match (engine-run-iteration arena state)
           ((ok new-state)
             (if (delta-is-empty (. new-state delta))
@@ -135,56 +152,76 @@
     ;; strings in the global intern pool before concurrent access.
     ;; Single-worker config also uses sequential path.
     (if (or (<= (. config worker-count) 1) (== (. delta iteration) 0))
-      (apply-all-rules-sequential arena g delta)
+      (apply-all-rules-sequential arena g delta config)
       (apply-all-rules-parallel arena g delta config)))
 
   ;; ============================================================
   ;; Rule Application: Sequential Path
   ;; ============================================================
 
-  (fn apply-all-rules-sequential ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn apply-all-rules-sequential ((arena Arena) (g IndexedGraph) (delta Delta) (config ReasonerConfig))
     (@intent "Apply all OWL 2 RL rules sequentially, return combined delta")
-    (@spec ((Arena IndexedGraph Delta) -> (Result Delta InconsistencyReport)))
+    (@spec ((Arena IndexedGraph Delta ReasonerConfig) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
              ((ok d) {(. d iteration) == (+ (. delta iteration) 1)})
              ((error _) true)))
     (let ((next-iter (+ (. delta iteration) 1))
-          (mut combined (make-delta arena next-iter)))
+          (mut combined (make-delta arena next-iter))
+          (verbose (. config verbose)))
 
-      ;; Apply each rule group sequentially
+      ;; Apply each rule group sequentially with optional timing
 
-      (c-inline "fprintf(stderr, \"  [seq] before scm: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Schema rules first (often create subclass hierarchies)
-      (match (apply-scm-rules arena g delta)
-        ((ok scm-delta) (set! combined (delta-merge arena combined scm-delta)))
-        ((error report) (return (error report))))
+      (let ((t0 (now-ms)))
+        (match (apply-scm-rules arena g delta)
+          ((ok scm-delta)
+            (do
+              (when verbose
+                (do (print "  scm: ") (print-ms arena (- (now-ms) t0)) (println "")))
+              (set! combined (delta-merge arena combined scm-delta))))
+          ((error report) (return (error report)))))
 
-      (c-inline "fprintf(stderr, \"  [seq] after scm: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Class axiom rules (subclass propagation)
-      (match (apply-cax-rules arena g delta)
-        ((ok cax-delta) (set! combined (delta-merge arena combined cax-delta)))
-        ((error report) (return (error report))))
+      (let ((t0 (now-ms)))
+        (match (apply-cax-rules arena g delta)
+          ((ok cax-delta)
+            (do
+              (when verbose
+                (do (print "  cax: ") (print-ms arena (- (now-ms) t0)) (println "")))
+              (set! combined (delta-merge arena combined cax-delta))))
+          ((error report) (return (error report)))))
 
-      (c-inline "fprintf(stderr, \"  [seq] after cax: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Property rules
-      (match (apply-prp-rules arena g delta)
-        ((ok prp-delta) (set! combined (delta-merge arena combined prp-delta)))
-        ((error report) (return (error report))))
+      (let ((t0 (now-ms)))
+        (match (apply-prp-rules arena g delta)
+          ((ok prp-delta)
+            (do
+              (when verbose
+                (do (print "  prp: ") (print-ms arena (- (now-ms) t0)) (println "")))
+              (set! combined (delta-merge arena combined prp-delta))))
+          ((error report) (return (error report)))))
 
-      (c-inline "fprintf(stderr, \"  [seq] after prp: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Equality rules
-      (match (apply-eq-rules arena g delta)
-        ((ok eq-delta) (set! combined (delta-merge arena combined eq-delta)))
-        ((error report) (return (error report))))
+      (let ((t0 (now-ms)))
+        (match (apply-eq-rules arena g delta)
+          ((ok eq-delta)
+            (do
+              (when verbose
+                (do (print "  eq:  ") (print-ms arena (- (now-ms) t0)) (println "")))
+              (set! combined (delta-merge arena combined eq-delta))))
+          ((error report) (return (error report)))))
 
-      (c-inline "fprintf(stderr, \"  [seq] after eq: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       ;; Class expression rules
-      (match (apply-cls-rules arena g delta)
-        ((ok cls-delta) (set! combined (delta-merge arena combined cls-delta)))
-        ((error report) (return (error report))))
-      (c-inline "fprintf(stderr, \"  [seq] after cls: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
+      (let ((t0 (now-ms)))
+        (match (apply-cls-rules arena g delta)
+          ((ok cls-delta)
+            (do
+              (when verbose
+                (do (print "  cls: ") (print-ms arena (- (now-ms) t0)) (println "")))
+              (set! combined (delta-merge arena combined cls-delta))))
+          ((error report) (return (error report)))))
 
       ;; Each rule already checks (indexed-graph-contains g inferred) before adding,
       ;; and delta-add deduplicates across rules via (set-has seen t).
@@ -214,7 +251,8 @@
 
       ;; Spawn 5 workers, one per rule group, each with its coordinator-owned arena
       (let ((workers (spawn-rule-workers arena g delta result-chan
-                                         arena-scm arena-cax arena-prp arena-eq arena-cls)))
+                                         arena-scm arena-cax arena-prp arena-eq arena-cls
+                                         (. config verbose))))
 
         ;; Collect results from all workers
         (let ((result (collect-worker-results arena result-chan workers next-iter)))
@@ -253,9 +291,10 @@
   (fn spawn-rule-workers ((arena Arena) (g IndexedGraph) (delta Delta)
                           (result-chan (Ptr (Chan WorkerMessage)))
                           (arena-scm Arena) (arena-cax Arena) (arena-prp Arena)
-                          (arena-eq Arena) (arena-cls Arena))
+                          (arena-eq Arena) (arena-cls Arena)
+                          (verbose Bool))
     (@intent "Spawn 5 worker threads, one per rule group, each with coordinator-owned arena")
-    (@spec ((Arena IndexedGraph Delta (Ptr (Chan WorkerMessage)) Arena Arena Arena Arena Arena)
+    (@spec ((Arena IndexedGraph Delta (Ptr (Chan WorkerMessage)) Arena Arena Arena Arena Arena Bool)
             -> (List (Ptr (Thread Unit)))))
     (@alloc arena)
     ;; postcondition removed — verifier can't track list-new + list-push length
@@ -264,42 +303,67 @@
       ;; Worker 1: Schema rules (scm)
       (list-push workers
         (spawn arena (fn ()
-          (match (apply-scm-rules arena-scm g delta)
-            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (send result-chan (union-new WorkerMessage msg-done unit)))))
+          (let ((t0 (now-ms)))
+            (match (apply-scm-rules arena-scm g delta)
+              ((ok d)
+                (do
+                  (when verbose
+                    (do (print "  scm: ") (print-ms arena-scm (- (now-ms) t0)) (println "")))
+                  (send result-chan (union-new WorkerMessage msg-delta d))))
+              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
 
       ;; Worker 2: Class axiom rules (cax)
       (list-push workers
         (spawn arena (fn ()
-          (match (apply-cax-rules arena-cax g delta)
-            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (send result-chan (union-new WorkerMessage msg-done unit)))))
+          (let ((t0 (now-ms)))
+            (match (apply-cax-rules arena-cax g delta)
+              ((ok d)
+                (do
+                  (when verbose
+                    (do (print "  cax: ") (print-ms arena-cax (- (now-ms) t0)) (println "")))
+                  (send result-chan (union-new WorkerMessage msg-delta d))))
+              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
 
       ;; Worker 3: Property rules (prp)
       (list-push workers
         (spawn arena (fn ()
-          (match (apply-prp-rules arena-prp g delta)
-            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (send result-chan (union-new WorkerMessage msg-done unit)))))
+          (let ((t0 (now-ms)))
+            (match (apply-prp-rules arena-prp g delta)
+              ((ok d)
+                (do
+                  (when verbose
+                    (do (print "  prp: ") (print-ms arena-prp (- (now-ms) t0)) (println "")))
+                  (send result-chan (union-new WorkerMessage msg-delta d))))
+              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
 
       ;; Worker 4: Equality rules (eq)
       (list-push workers
         (spawn arena (fn ()
-          (match (apply-eq-rules arena-eq g delta)
-            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (send result-chan (union-new WorkerMessage msg-done unit)))))
+          (let ((t0 (now-ms)))
+            (match (apply-eq-rules arena-eq g delta)
+              ((ok d)
+                (do
+                  (when verbose
+                    (do (print "  eq:  ") (print-ms arena-eq (- (now-ms) t0)) (println "")))
+                  (send result-chan (union-new WorkerMessage msg-delta d))))
+              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
 
       ;; Worker 5: Class expression rules (cls)
       (list-push workers
         (spawn arena (fn ()
-          (match (apply-cls-rules arena-cls g delta)
-            ((ok d) (send result-chan (union-new WorkerMessage msg-delta d)))
-            ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
-          (send result-chan (union-new WorkerMessage msg-done unit)))))
+          (let ((t0 (now-ms)))
+            (match (apply-cls-rules arena-cls g delta)
+              ((ok d)
+                (do
+                  (when verbose
+                    (do (print "  cls: ") (print-ms arena-cls (- (now-ms) t0)) (println "")))
+                  (send result-chan (union-new WorkerMessage msg-delta d))))
+              ((error r) (send result-chan (union-new WorkerMessage msg-inconsistent r))))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
 
       workers))
 

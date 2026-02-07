@@ -182,20 +182,16 @@
           (mut result (make-delta arena next-iter)))
 
       ;; Class schema rules
-      (c-inline "fprintf(stderr, \"    [scm] before cls: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       (for-each (t (scm-cls arena g delta))
         (set! result (delta-add arena result t)))
-      (c-inline "fprintf(stderr, \"    [scm] after cls: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       (for-each (t (scm-sco arena g delta))
         (set! result (delta-add arena result t)))
-      (c-inline "fprintf(stderr, \"    [scm] after sco: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       (for-each (t (scm-eqc1 arena g delta))
         (set! result (delta-add arena result t)))
       (for-each (t (scm-eqc2 arena g delta))
         (set! result (delta-add arena result t)))
 
       ;; Property schema rules
-      (c-inline "fprintf(stderr, \"    [scm] after eqc: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       (for-each (t (scm-op arena g delta))
         (set! result (delta-add arena result t)))
       (for-each (t (scm-dp arena g delta))
@@ -208,7 +204,6 @@
         (set! result (delta-add arena result t)))
 
       ;; Domain/range rules
-      (c-inline "fprintf(stderr, \"    [scm] after prop: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
       (for-each (t (scm-dom1 arena g delta))
         (set! result (delta-add arena result t)))
       (for-each (t (scm-dom2 arena g delta))
@@ -217,7 +212,6 @@
         (set! result (delta-add arena result t)))
       (for-each (t (scm-rng2 arena g delta))
         (set! result (delta-add arena result t)))
-      (c-inline "fprintf(stderr, \"    [scm] after dom/rng: %zu MB\\n\", (size_t)(slop_global_allocated / (1024*1024)))")
 
       (ok result)))
 

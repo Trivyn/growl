@@ -49,12 +49,14 @@
     (@post {(. $result worker-count) == 4})
     (@post {(. $result channel-buffer) == 256})
     (@post {(. $result max-iterations) == 1000})
-    (@example () -> (ReasonerConfig 4 256 1000))
+    (@post {(. $result verbose) == true})
+    (@example () -> (ReasonerConfig 4 256 1000 true))
     :c-name "growl_default_config"
     (record-new ReasonerConfig
       (worker-count 4)
       (channel-buffer 256)
-      (max-iterations 1000)))
+      (max-iterations 1000)
+      (verbose true)))
 
   ;; ============================================================
   ;; Public API

@@ -14,8 +14,8 @@
                  indexed-graph-size))
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
   (import serialize-ttl (SerializeConfig serialize-ttl-file))
-  (import growl (reason ReasonerResult ReasonerSuccess InconsistencyReport
-                 get-inferred-count))
+  (import growl (reason reason-with-config ReasonerConfig ReasonerResult ReasonerSuccess InconsistencyReport
+                 get-inferred-count default-config))
 
   (ffi "string.h"
     (strlen ((s (Ptr U8))) U64))
@@ -175,8 +175,13 @@
                     (println ")"))
 
                   ;; Run reasoner
-                  (let ((reason-start (slop_now_ms)))
-                  (match (reason arena ig)
+                  (let ((reason-start (slop_now_ms))
+                        (config (record-new ReasonerConfig
+                                  (worker-count 4)
+                                  (channel-buffer 256)
+                                  (max-iterations 1000)
+                                  (verbose (not quiet)))))
+                  (match (reason-with-config arena ig config)
                     ((reason-success s)
                       (let ((inferred (. s inferred-count))
                             (iters (. s iterations))
