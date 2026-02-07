@@ -15,13 +15,16 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 
 ## Rule Coverage
 
-| Table | Rules | Description |
-|-------|-------|-------------|
-| Table 4 | eq-* | Equality semantics (sameAs, differentFrom) |
-| Table 5 | prp-* | Property axioms (domain, range, inverse, transitivity) |
-| Table 6 | cls-* | Class expressions (intersectionOf, unionOf, oneOf) |
-| Table 7 | cax-* | Class axioms (subClassOf, equivalentClass, disjointWith) |
-| Table 8 | scm-* | Schema vocabulary (class/property hierarchies) |
+61 of 78 OWL 2 RL rules implemented. See [detailed coverage table](#owl-2-rl-rule-coverage) below.
+
+| Table | Rules | Implemented | Description |
+|-------|-------|-------------|-------------|
+| Table 4 | eq-* | 9/9 | Equality semantics (sameAs, differentFrom) |
+| Table 5 | prp-* | 14/20 | Property axioms (domain, range, inverse, transitivity) |
+| Table 6 | cls-* | 13/19 | Class expressions (intersectionOf, unionOf, oneOf) |
+| Table 7 | cax-* | 5/5 | Class axioms (subClassOf, equivalentClass, disjointWith) |
+| Table 8 | dt-* | 0/5 | Datatype reasoning |
+| Table 9 | scm-* | 20/20 | Schema vocabulary (class/property hierarchies) |
 
 ## API
 
@@ -90,6 +93,118 @@ make benchmark  # run benchmarks
 slop verify src/growl.slop
 slop verify src/rules/*.slop
 ```
+
+## OWL 2 RL Rule Coverage
+
+Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.w3.org/TR/owl2-profiles/#Reasoning_in_OWL_2_RL_and_RDF_Graphs_using_Rules).
+
+### Table 4 — Equality (9/9)
+
+| Rule | Status | Notes |
+|------|--------|-------|
+| eq-ref | ✅ | Reflexivity of equality |
+| eq-sym | ✅ | Symmetry of owl:sameAs |
+| eq-trans | ✅ | Transitivity of owl:sameAs |
+| eq-rep-s | ✅ | Replace subject via owl:sameAs |
+| eq-rep-p | ✅ | Replace predicate via owl:sameAs |
+| eq-rep-o | ✅ | Replace object via owl:sameAs |
+| eq-diff1 | ✅ | owl:differentFrom is symmetric |
+| eq-diff2 | ✅ | Inconsistency: sameAs and differentFrom |
+| eq-diff3 | ✅ | Inconsistency: members of AllDifferent are sameAs |
+
+### Table 5 — Property Axioms (14/20)
+
+| Rule | Status | Notes |
+|------|--------|-------|
+| prp-ap | ❌ | Annotation properties — no inference needed |
+| prp-dom | ✅ | rdfs:domain inference |
+| prp-rng | ✅ | rdfs:range inference |
+| prp-fp | ✅ | Functional property → owl:sameAs |
+| prp-ifp | ✅ | Inverse functional property → owl:sameAs |
+| prp-irp | ✅ | Irreflexive property inconsistency |
+| prp-symp | ✅ | Symmetric property inference |
+| prp-asyp | ✅ | Asymmetric property inconsistency |
+| prp-trp | ✅ | Transitive property inference |
+| prp-spo1 | ✅ | SubPropertyOf inference |
+| prp-spo2 | ❌ | Property chains — not implemented |
+| prp-eqp1 | ✅ | EquivalentProperty forward |
+| prp-eqp2 | ✅ | EquivalentProperty reverse |
+| prp-pdw | ✅ | PropertyDisjointWith inconsistency |
+| prp-adp | ❌ | AllDisjointProperties — not implemented |
+| prp-inv1 | ✅ | InverseOf forward |
+| prp-inv2 | ✅ | InverseOf reverse |
+| prp-key | ❌ | hasKey — not implemented |
+| prp-npa1 | ❌ | Negative property assertion (named individual) — not implemented |
+| prp-npa2 | ❌ | Negative property assertion (literal) — not implemented |
+
+### Table 6 — Class Expressions (13/19)
+
+| Rule | Status | Notes |
+|------|--------|-------|
+| cls-thing | ❌ | Trivial — everything is type owl:Thing |
+| cls-nothing1 | ❌ | Trivial — owl:Nothing type owl:Class |
+| cls-nothing2 | ✅ | Inconsistency: member of owl:Nothing |
+| cls-int1 | ✅ | IntersectionOf: member of all → member of intersection |
+| cls-int2 | ✅ | IntersectionOf: member of intersection → member of all |
+| cls-uni | ✅ | UnionOf: member of component → member of union |
+| cls-com | ✅ | ComplementOf inconsistency |
+| cls-svf1 | ✅ | SomeValuesFrom (stub — existential, limited in RL) |
+| cls-svf2 | ✅ | SomeValuesFrom with owl:Thing |
+| cls-avf | ✅ | AllValuesFrom inference |
+| cls-hv1 | ✅ | HasValue → type inference |
+| cls-hv2 | ✅ | HasValue → property inference |
+| cls-maxc1 | ✅ | MaxCardinality 0 inconsistency (stub — constraint only) |
+| cls-maxc2 | ✅ | MaxCardinality 1 → owl:sameAs |
+| cls-maxqc1 | ❌ | MaxQualifiedCardinality 0 — not implemented |
+| cls-maxqc2 | ❌ | MaxQualifiedCardinality 0 (owl:Thing) — not implemented |
+| cls-maxqc3 | ❌ | MaxQualifiedCardinality 1 → owl:sameAs — not implemented |
+| cls-maxqc4 | ❌ | MaxQualifiedCardinality 1 (owl:Thing) → owl:sameAs — not implemented |
+| cls-oo | ✅ | OneOf enumeration |
+
+### Table 7 — Class Axioms (5/5)
+
+| Rule | Status | Notes |
+|------|--------|-------|
+| cax-sco | ✅ | SubClassOf inference |
+| cax-eqc1 | ✅ | EquivalentClass forward |
+| cax-eqc2 | ✅ | EquivalentClass reverse |
+| cax-dw | ✅ | DisjointWith inconsistency |
+| cax-adc | ✅ | AllDisjointClasses inconsistency |
+
+### Table 8 — Datatypes (0/5)
+
+| Rule | Status | Notes |
+|------|--------|-------|
+| dt-type1 | ❌ | Datatype literal typing — no datatype reasoning |
+| dt-type2 | ❌ | Datatype constraint checking — no datatype reasoning |
+| dt-eq | ❌ | Datatype equality — no datatype reasoning |
+| dt-diff | ❌ | Datatype inequality — no datatype reasoning |
+| dt-not-type | ❌ | Datatype inconsistency — no datatype reasoning |
+
+### Table 9 — Schema Vocabulary (20/20)
+
+| Rule | Status | Notes |
+|------|--------|-------|
+| scm-cls | ✅ | Class is subclass of itself, owl:Thing; superclass of owl:Nothing |
+| scm-sco | ✅ | SubClassOf transitivity |
+| scm-eqc1 | ✅ | EquivalentClass → mutual subClassOf |
+| scm-eqc2 | ✅ | Mutual subClassOf → equivalentClass |
+| scm-op | ✅ | ObjectProperty schema axioms |
+| scm-dp | ✅ | DatatypeProperty schema axioms |
+| scm-spo | ✅ | SubPropertyOf transitivity |
+| scm-eqp1 | ✅ | EquivalentProperty → mutual subPropertyOf |
+| scm-eqp2 | ✅ | Mutual subPropertyOf → equivalentProperty |
+| scm-dom1 | ✅ | Domain propagation through subClassOf |
+| scm-dom2 | ✅ | Domain propagation through subPropertyOf |
+| scm-rng1 | ✅ | Range propagation through subClassOf |
+| scm-rng2 | ✅ | Range propagation through subPropertyOf |
+| scm-hv | ✅ | HasValue + subClassOf interaction |
+| scm-svf1 | ✅ | SomeValuesFrom + subClassOf interaction |
+| scm-svf2 | ✅ | SomeValuesFrom + subPropertyOf interaction |
+| scm-avf1 | ✅ | AllValuesFrom + subClassOf interaction |
+| scm-avf2 | ✅ | AllValuesFrom + subPropertyOf interaction |
+| scm-int | ✅ | IntersectionOf → subClassOf components |
+| scm-uni | ✅ | UnionOf → components subClassOf union |
 
 ## License
 
