@@ -1214,6 +1214,9 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@property novelty
+      (forall (t $result)
+        (not (indexed-graph-contains g t))))
     (@example
       ;; Graph: (HasOneMother maxCardinality 1 on hasMother),
       ;;        (alice type HasOneMother), (alice hasMother mary), (alice hasMother maria)
@@ -1385,6 +1388,9 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@property novelty
+      (forall (t $result)
+        (not (indexed-graph-contains g t))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))
@@ -1444,6 +1450,9 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@property novelty
+      (forall (t $result)
+        (not (indexed-graph-contains g t))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))

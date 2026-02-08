@@ -110,14 +110,15 @@ Growl uses `slop verify`, which encodes contracts into Z3 SMT formulas and prove
 
 **What is proven:**
 
-- **Soundness** (`@property soundness`): For every output triple, there exists a delta triple justifying it — proving the reasoner never fabricates conclusions from nothing. Covers 54 of 77 inference functions, including all high-value rules (cax-sco, prp-dom/rng, eq-ref, cls-hv1/hv2, etc.).
+- **Soundness** (`@property soundness`): For every output triple, there exists a delta triple justifying it — proving the reasoner never fabricates conclusions from nothing. Covers 55 of 77 inference functions, including all high-value rules (cax-sco, prp-dom/rng, eq-ref/sym, cls-hv1/hv2, etc.).
 - **Completeness** (`@property completeness`): For certain rules (eq-sym, scm-eqc1/eqc2, prp-symp, scm-eqp1/eqp2), every applicable delta triple produces the expected output — proving the reasoner doesn't miss inferences. 8 functions.
+- **Novelty** (`@property novelty`): Every output triple is new — not already present in the graph. Proves the rule engine never wastes work emitting redundant inferences. Covers cls-maxc2, cls-maxqc3, cls-maxqc4 (3 functions).
 - **Postconditions** (`@post`): Predicate constraints (e.g. all outputs have `rdf:type` as predicate), witness counts on inconsistency reports, iteration numbering, and result bounds.
 - **Preconditions** (`@pre`): Graph size non-negativity, valid input constraints.
 
 **What is not proven:**
 
-- Soundness for deeply nested callback functions (cls-maxqc3/4 with 5 levels of `indexed-graph-for-each`) times out. These have weaker `@post` predicate checks instead.
+- Soundness for deeply nested callback functions (cls-maxc2/maxqc3/4) that only query the full graph — these don't iterate delta, so the standard delta-sourcing property doesn't apply. They have `@property novelty` and `@post` predicate checks instead.
 - Full join semantics — soundness contracts prove delta-sourcing (every output links to a delta triple) but don't fully encode the multi-way join conditions of rules like cls-int1 (which requires checking all intersection components).
 - Termination of the fixed-point loop is not proven (semi-naive evaluation over finite graphs terminates in practice but isn't formally verified).
 - Memory safety of the generated C code is not verified (relies on arena allocation patterns).

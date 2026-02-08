@@ -282,6 +282,13 @@
               (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-subject dt)))
             (list-contains $result
               (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-subject dt))))))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS))
+            (term-eq (triple-subject t) (triple-object dt))
+            (term-eq (triple-object t) (triple-subject dt))))))
     (@example
       ;; Graph: (alice sameAs alicia)
       ;; Result: (alicia sameAs alice)
