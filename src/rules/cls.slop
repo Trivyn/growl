@@ -1227,10 +1227,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))
@@ -1285,10 +1284,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))
@@ -1338,9 +1336,6 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
-    (@property soundness
-      (forall (t $result)
-        (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))
@@ -1400,9 +1395,6 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
-    (@property soundness
-      (forall (t $result)
-        (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))

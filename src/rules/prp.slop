@@ -885,10 +885,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (let ((adp-class (make-iri arena OWL_ALL_DISJOINT_PROPERTIES))
           (type-pred (make-iri arena RDF_TYPE))
           (members-pred (make-iri arena OWL_MEMBERS))
@@ -939,10 +938,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 1))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 1))))
     (let ((source-pred (make-iri arena OWL_SOURCE_INDIVIDUAL))
           (assert-pred (make-iri arena OWL_ASSERTION_PROPERTY))
           (target-pred (make-iri arena OWL_TARGET_INDIVIDUAL))
@@ -987,10 +985,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 1))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 1))))
     (let ((source-pred (make-iri arena OWL_SOURCE_INDIVIDUAL))
           (assert-pred (make-iri arena OWL_ASSERTION_PROPERTY))
           (target-pred (make-iri arena OWL_TARGET_VALUE))

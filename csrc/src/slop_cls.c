@@ -1036,6 +1036,7 @@ slop_option_types_InconsistencyReport cls_cls_maxqc1(slop_arena* arena, index_In
         return (slop_option_types_InconsistencyReport){.has_value = false};
     }
     SLOP_POST((({ __auto_type _mv = _retval; _mv.has_value ? ({ __auto_type r = _mv.value; (string_len(r.reason) > 0); }) : (1); })), "(match $result ((none) true) ((some r) (> (string-len (. r reason)) 0)))");
+    SLOP_POST((({ __auto_type _mv = _retval; _mv.has_value ? ({ __auto_type r = _mv.value; (((int64_t)((r.witnesses).len)) >= 2); }) : (1); })), "(match $result ((none) true) ((some r) (>= (list-len (. r witnesses)) 2)))");
     return _retval;
 }
 
@@ -1106,6 +1107,7 @@ slop_option_types_InconsistencyReport cls_cls_maxqc2(slop_arena* arena, index_In
         return (slop_option_types_InconsistencyReport){.has_value = false};
     }
     SLOP_POST((({ __auto_type _mv = _retval; _mv.has_value ? ({ __auto_type r = _mv.value; (string_len(r.reason) > 0); }) : (1); })), "(match $result ((none) true) ((some r) (> (string-len (. r reason)) 0)))");
+    SLOP_POST((({ __auto_type _mv = _retval; _mv.has_value ? ({ __auto_type r = _mv.value; (((int64_t)((r.witnesses).len)) >= 2); }) : (1); })), "(match $result ((none) true) ((some r) (>= (list-len (. r witnesses)) 2)))");
     return _retval;
 }
 
