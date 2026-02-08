@@ -15,7 +15,7 @@
   (import index (IndexedGraph indexed-graph-match indexed-graph-for-each indexed-graph-contains indexed-graph-size
                   indexed-graph-create indexed-graph-add))
   (import vocab (RDF_TYPE RDF_FIRST RDF_REST RDF_NIL
-                 OWL_NOTHING OWL_INTERSECTION_OF OWL_UNION_OF OWL_COMPLEMENT_OF
+                 OWL_CLASS OWL_NOTHING OWL_INTERSECTION_OF OWL_UNION_OF OWL_COMPLEMENT_OF
                  OWL_SOME_VALUES_FROM OWL_ALL_VALUES_FROM OWL_HAS_VALUE OWL_ON_PROPERTY
                  OWL_MAX_CARDINALITY OWL_MAX_QUALIFIED_CARDINALITY OWL_ON_CLASS
                  OWL_ONE_OF OWL_SAME_AS OWL_THING))
@@ -24,6 +24,8 @@
 
   (export
     apply-cls-rules
+    cls-thing
+    cls-nothing1
     cls-nothing2
     cls-int1
     cls-int2
@@ -67,6 +69,7 @@
   (const EX_NOT_PARENT String "http://example.org/NotParent")
   (const EX_DOG String "http://example.org/Dog")
   (const EX_DOG_OWNER String "http://example.org/DogOwner")
+  (const EX_PET_OWNER String "http://example.org/PetOwner")
   (const EX_HUMAN String "http://example.org/Human")
   (const EX_PERSON_WITH_HUMAN_CHILDREN String "http://example.org/PersonWithOnlyHumanChildren")
   (const EX_US_CITIZEN String "http://example.org/USCitizen")
@@ -278,6 +281,36 @@
           (dog (make-iri arena EX_DOG))
           (fido (make-iri arena EX_FIDO)))
       (delta-add arena d (make-triple arena fido type-pred dog))))
+
+  ;; Fixture: graph with someValuesFrom owl:Thing restriction (for cls-svf1)
+  ;; PetOwner someValuesFrom owl:Thing on hasPet, alice hasPet fido
+  (fn fixture-g-svf1 ((arena Arena))
+    (@intent "Create graph with someValuesFrom owl:Thing restriction")
+    (@spec ((Arena) -> IndexedGraph))
+    (let ((g (indexed-graph-create arena))
+          (svf-pred (make-iri arena OWL_SOME_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (thing (make-iri arena OWL_THING))
+          (pet-owner (make-iri arena EX_PET_OWNER))
+          (has-pet (make-iri arena EX_HAS_PET))
+          (alice (make-iri arena EX_ALICE))
+          (fido (make-iri arena EX_FIDO)))
+      ;; PetOwner someValuesFrom owl:Thing on hasPet
+      (indexed-graph-add arena g (make-triple arena pet-owner svf-pred thing))
+      (indexed-graph-add arena g (make-triple arena pet-owner on-prop-pred has-pet))
+      ;; alice hasPet fido
+      (indexed-graph-add arena g (make-triple arena alice has-pet fido))
+      g))
+
+  ;; Fixture: delta with (alice hasPet fido) triggering cls-svf1
+  (fn fixture-delta-svf1 ((arena Arena))
+    (@intent "Create delta with alice hasPet fido")
+    (@spec ((Arena) -> Delta))
+    (let ((d (make-delta arena 0))
+          (has-pet (make-iri arena EX_HAS_PET))
+          (alice (make-iri arena EX_ALICE))
+          (fido (make-iri arena EX_FIDO)))
+      (delta-add arena d (make-triple arena alice has-pet fido))))
 
   ;; Fixture: graph with allValuesFrom restriction
   (fn fixture-g-avf ((arena Arena))
@@ -503,6 +536,58 @@
         (set! result (delta-add arena result t)))
 
       (ok result)))
+
+  ;; ============================================================
+  ;; cls-thing: owl:Thing is an owl:Class (Axiomatic Triple)
+  ;;
+  ;; W3C OWL 2 RL Table 6:
+  ;; If: (nothing)
+  ;; Then: T(owl:Thing, rdf:type, owl:Class)
+  ;;
+  ;; This is a single axiom triple, not a per-resource rule.
+  ;; The per-resource "rdf:type owl:Thing" effect comes from
+  ;; scm-cls (C rdfs:subClassOf owl:Thing) + cax-sco.
+  ;; ============================================================
+
+  (fn cls-thing ((arena Arena) (g IndexedGraph))
+    (@intent "Assert owl:Thing rdf:type owl:Class (OWL 2 RL cls-thing axiomatic triple)")
+    (@spec ((Arena IndexedGraph) -> (List Triple)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post {(list-len $result) <= 1})
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (thing (make-iri arena OWL_THING))
+          (owl-class (make-iri arena OWL_CLASS))
+          (mut result (list-new arena Triple))
+          (inferred (make-triple arena thing type-pred owl-class)))
+      (when (not (indexed-graph-contains g inferred))
+        (list-push result inferred))
+      result))
+
+  ;; ============================================================
+  ;; cls-nothing1: owl:Nothing is an owl:Class (Axiomatic Triple)
+  ;;
+  ;; W3C OWL 2 RL Table 6:
+  ;; If: (nothing)
+  ;; Then: T(owl:Nothing, rdf:type, owl:Class)
+  ;; ============================================================
+
+  (fn cls-nothing1 ((arena Arena) (g IndexedGraph))
+    (@intent "Assert owl:Nothing rdf:type owl:Class (OWL 2 RL cls-nothing1 axiomatic triple)")
+    (@spec ((Arena IndexedGraph) -> (List Triple)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post {(list-len $result) <= 1})
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (nothing (make-iri arena OWL_NOTHING))
+          (owl-class (make-iri arena OWL_CLASS))
+          (mut result (list-new arena Triple))
+          (inferred (make-triple arena nothing type-pred owl-class)))
+      (when (not (indexed-graph-contains g inferred))
+        (list-push result inferred))
+      result))
 
   ;; ============================================================
   ;; cls-nothing2: Membership in owl:Nothing is Inconsistent
@@ -748,26 +833,55 @@
       (none)))
 
   ;; ============================================================
-  ;; cls-svf1: someValuesFrom (Type Propagation)
+  ;; cls-svf1: someValuesFrom owl:Thing (Class Membership)
   ;;
-  ;; If (?x owl:someValuesFrom ?y) and (?x owl:onProperty ?p) and
-  ;;    (?u rdf:type ?x)
-  ;; then exists ?v: (?u ?p ?v) and (?v rdf:type ?y)
+  ;; If (?x owl:someValuesFrom owl:Thing) and (?x owl:onProperty ?p) and
+  ;;    (?u ?p ?v)
+  ;; then (?u rdf:type ?x)
   ;;
-  ;; Note: This is existential - we don't infer, but can use for checks
-  ;; In OWL 2 RL, we use the converse direction (cls-svf2)
+  ;; OWL 2 RL Table 6: the owl:Thing special case of someValuesFrom.
+  ;; No type check needed on ?v — any property usage suffices.
   ;; ============================================================
 
   (fn cls-svf1 ((arena Arena) (g IndexedGraph) (delta Delta))
-    (@intent "Handle someValuesFrom restrictions (forward direction - limited in RL)")
+    (@intent "Infer restriction class membership from someValuesFrom owl:Thing")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
-    ;; In OWL 2 RL, svf1 has limited applicability
-    ;; We return empty - the inference happens in svf2
-    (list-new arena Triple))
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@example
+      ;; Graph: (PetOwner someValuesFrom owl:Thing on hasPet), (alice hasPet fido)
+      ;; Result: (alice type PetOwner)
+      (arena (fixture-g-svf1 arena) (fixture-delta-svf1 arena))
+      -> (list _))
+    (let ((svf-pred (make-iri arena OWL_SOME_VALUES_FROM))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (thing (make-iri arena OWL_THING))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find someValuesFrom restrictions where value is owl:Thing
+      (indexed-graph-for-each g no-term (some svf-pred) (some thing)
+        (fn ((svf-triple Triple))
+          (let ((restriction (triple-subject svf-triple)))
+            ;; Find the onProperty for this restriction
+            (indexed-graph-for-each g (some restriction) (some on-prop-pred) no-term
+              (fn ((prop-triple Triple))
+                (let ((property (triple-object prop-triple)))
+                  ;; For each property assertion in delta with this predicate
+                  (match (map-get (. delta by-predicate) property)
+                    ((some pred-triples)
+                      (for-each (dt pred-triples)
+                        (let ((u (triple-subject dt))
+                              (inferred (make-triple arena u type-pred restriction)))
+                          (when (not (indexed-graph-contains g inferred))
+                            (list-push result inferred)))))
+                    ((none) (do)))))))))
+
+      result))
 
   ;; ============================================================
   ;; cls-svf2: someValuesFrom (Class Membership)
@@ -805,7 +919,7 @@
             (indexed-graph-for-each g (some restriction) (some on-prop-pred) no-term
               (fn ((prop-triple Triple))
                 (let ((property (triple-object prop-triple)))
-                  ;; For each type assertion in delta where type is value-class
+                  ;; Direction 1: new type assertion (v rdf:type y) in delta
                   (match (map-get (. delta by-predicate) type-pred)
                     ((some pred-triples)
                       (for-each (dt pred-triples)
@@ -818,6 +932,18 @@
                                       (inferred (make-triple arena u type-pred restriction)))
                                   (when (not (indexed-graph-contains g inferred))
                                     (list-push result inferred)))))))))
+                    ((none) (do)))
+                  ;; Direction 2: new property assertion (u p v) in delta
+                  (match (map-get (. delta by-predicate) property)
+                    ((some pred-triples)
+                      (for-each (dt pred-triples)
+                        (let ((u (triple-subject dt))
+                              (v (triple-object dt))
+                              (v-type (make-triple arena v type-pred value-class)))
+                          (when (indexed-graph-contains g v-type)
+                            (let ((inferred (make-triple arena u type-pred restriction)))
+                              (when (not (indexed-graph-contains g inferred))
+                                (list-push result inferred)))))))
                     ((none) (do)))))))))
 
       result))
@@ -1101,10 +1227,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))
@@ -1159,10 +1284,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))
@@ -1212,9 +1336,6 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
-    (@property soundness
-      (forall (t $result)
-        (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))
@@ -1274,9 +1395,6 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
-    (@property soundness
-      (forall (t $result)
-        (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
     (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (on-class-pred (make-iri arena OWL_ON_CLASS))

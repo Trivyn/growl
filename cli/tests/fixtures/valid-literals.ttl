@@ -1,0 +1,10 @@
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex: <http://example.org/> .
+
+ex:thing1 ex:intVal "42"^^xsd:integer .
+ex:thing2 ex:strVal "hello"^^xsd:string .
+ex:thing3 ex:boolVal "true"^^xsd:boolean .
+ex:thing4 ex:boolVal2 "0"^^xsd:boolean .
+ex:thing5 ex:decVal "3.14"^^xsd:decimal .
+ex:thing6 ex:shortVal "100"^^xsd:short .
+ex:thing7 ex:negIntVal "-5"^^xsd:negativeInteger .

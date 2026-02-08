@@ -15,6 +15,7 @@
   (import index (IndexedGraph indexed-graph-match indexed-graph-for-each indexed-graph-contains indexed-graph-size
                  indexed-graph-create indexed-graph-add))
   (import vocab (RDF_TYPE RDFS_DOMAIN RDFS_RANGE RDFS_SUBPROPERTY_OF
+                 RDFS_LABEL RDFS_COMMENT RDFS_SEE_ALSO RDFS_IS_DEFINED_BY
                  OWL_SAME_AS OWL_DIFFERENT_FROM OWL_EQUIVALENT_PROPERTY
                  OWL_FUNCTIONAL_PROPERTY OWL_INVERSE_FUNCTIONAL_PROPERTY
                  OWL_SYMMETRIC_PROPERTY OWL_ASYMMETRIC_PROPERTY
@@ -23,7 +24,10 @@
                  OWL_PROPERTY_CHAIN_AXIOM OWL_HAS_KEY
                  OWL_NEGATIVE_PROPERTY_ASSERTION OWL_SOURCE_INDIVIDUAL
                  OWL_ASSERTION_PROPERTY OWL_TARGET_INDIVIDUAL OWL_TARGET_VALUE
-                 OWL_ALL_DISJOINT_PROPERTIES OWL_MEMBERS OWL_THING))
+                 OWL_ALL_DISJOINT_PROPERTIES OWL_MEMBERS OWL_THING
+                 OWL_ANNOTATION_PROPERTY OWL_VERSION_IRI
+                 OWL_DEPRECATED OWL_VERSION_INFO OWL_PRIOR_VERSION
+                 OWL_BACKWARD_COMPATIBLE_WITH OWL_INCOMPATIBLE_WITH))
   (import list (rdf-list-elements rdf-list-elements-indexed))
   (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
 
@@ -47,7 +51,8 @@
     prp-adp
     prp-key
     prp-npa1
-    prp-npa2)
+    prp-npa2
+    prp-ap)
 
   ;; ============================================================
   ;; Test Fixture URIs (for @example annotations)
@@ -880,10 +885,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (let ((adp-class (make-iri arena OWL_ALL_DISJOINT_PROPERTIES))
           (type-pred (make-iri arena RDF_TYPE))
           (members-pred (make-iri arena OWL_MEMBERS))
@@ -934,10 +938,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 1))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 1))))
     (let ((source-pred (make-iri arena OWL_SOURCE_INDIVIDUAL))
           (assert-pred (make-iri arena OWL_ASSERTION_PROPERTY))
           (target-pred (make-iri arena OWL_TARGET_INDIVIDUAL))
@@ -982,10 +985,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
-    (@property witness-validity
-      (match $result
-        ((none) true)
-        ((some r) (>= (list-len (. r witnesses)) 1))))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 1))))
     (let ((source-pred (make-iri arena OWL_SOURCE_INDIVIDUAL))
           (assert-pred (make-iri arena OWL_ASSERTION_PROPERTY))
           (target-pred (make-iri arena OWL_TARGET_VALUE))
@@ -1455,4 +1457,40 @@
                         (witnesses (list Triple dt conflict pdw-triple)))))))))
               ((none) (do))))))
 
-      (none))))  ;; close fn, module
+      (none)))
+
+  ;; ============================================================
+  ;; prp-ap: Annotation Property Declaration
+  ;;
+  ;; Assert standard annotation properties as owl:AnnotationProperty.
+  ;; This is a one-time materialization rule (like dt-type1).
+  ;;
+  ;; Behind --complete flag (noise triples with no inference value).
+  ;; ============================================================
+
+  (fn prp-ap ((arena Arena) (g IndexedGraph))
+    (@intent "Assert standard annotation properties as owl:AnnotationProperty (OWL 2 RL prp-ap)")
+    (@spec ((Arena IndexedGraph) -> (List Triple)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (annot-class (make-iri arena OWL_ANNOTATION_PROPERTY))
+          (mut result (list-new arena Triple))
+          (mut props (list-new arena String)))
+      (list-push props RDFS_LABEL)
+      (list-push props RDFS_COMMENT)
+      (list-push props RDFS_SEE_ALSO)
+      (list-push props RDFS_IS_DEFINED_BY)
+      (list-push props OWL_DEPRECATED)
+      (list-push props OWL_VERSION_INFO)
+      (list-push props OWL_PRIOR_VERSION)
+      (list-push props OWL_BACKWARD_COMPATIBLE_WITH)
+      (list-push props OWL_INCOMPATIBLE_WITH)
+      (for-each (p-iri props)
+        (let ((p-term (make-iri arena p-iri))
+              (inferred (make-triple arena p-term type-pred annot-class)))
+          (when (not (indexed-graph-contains g inferred))
+            (list-push result inferred))))
+      result)))  ;; close fn, module

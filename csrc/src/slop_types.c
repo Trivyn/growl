@@ -27,11 +27,11 @@ types_Delta types_delta_add(slop_arena* arena, types_Delta d, rdf_Triple t) {
         {
             __auto_type pred = rdf_triple_predicate(t);
             __auto_type pred_map = d.by_predicate;
-            __auto_type _mv_42 = ({ void* _ptr = slop_map_get(pred_map, &(pred)); _ptr ? (slop_option_ptr){ .has_value = true, .value = *(void**)_ptr } : (slop_option_ptr){ .has_value = false }; });
-            if (_mv_42.has_value) {
-                __auto_type pred_set = _mv_42.value;
+            __auto_type _mv_47 = ({ void* _ptr = slop_map_get(pred_map, &(pred)); _ptr ? (slop_option_ptr){ .has_value = true, .value = *(void**)_ptr } : (slop_option_ptr){ .has_value = false }; });
+            if (_mv_47.has_value) {
+                __auto_type pred_set = _mv_47.value;
                 ({ uint8_t _dummy = 1; slop_map_put(arena, pred_set, &(t), &_dummy); });
-            } else if (!_mv_42.has_value) {
+            } else if (!_mv_47.has_value) {
                 {
                     __auto_type new_set = slop_map_new_ptr(arena, 16, sizeof(rdf_Triple), slop_hash_rdf_Triple, slop_eq_rdf_Triple);
                     ({ uint8_t _dummy = 1; slop_map_put(arena, new_set, &(t), &_dummy); });
@@ -80,11 +80,11 @@ uint8_t types_all_triples_have_predicate(slop_list_rdf_Triple triples, slop_stri
                 __auto_type t = _coll.data[_i];
                 {
                     __auto_type pred = rdf_triple_predicate(t);
-                    __auto_type _mv_43 = pred;
-                    switch (_mv_43.tag) {
+                    __auto_type _mv_48 = pred;
+                    switch (_mv_48.tag) {
                         case rdf_Term_term_iri:
                         {
-                            __auto_type iri = _mv_43.data.term_iri;
+                            __auto_type iri = _mv_48.data.term_iri;
                             if (!(string_eq(iri.value, pred_iri))) {
                                 result = 0;
                             }

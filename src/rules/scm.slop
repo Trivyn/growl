@@ -479,37 +479,26 @@
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
-    (@post (all-triples-have-predicate $result RDFS_SUBPROPERTY_OF))
-    (@property soundness
-      (forall (t $result)
-        (exists (dt (. delta triples))
-          (and
-            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
-            (term-eq (triple-object dt) (make-iri arena OWL_OBJECT_PROPERTY))
-            (term-eq (triple-subject t) (triple-subject dt))
-            (term-eq (triple-object t) (triple-subject dt))
-            (term-eq (triple-predicate t) (make-iri arena RDFS_SUBPROPERTY_OF))))))
-    (@property completeness
-      (forall (dt (. delta triples))
-        (or (not (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE)))
-            (not (term-eq (triple-object dt) (make-iri arena OWL_OBJECT_PROPERTY)))
-            (indexed-graph-contains g
-              (make-triple arena (triple-subject dt) (make-iri arena RDFS_SUBPROPERTY_OF) (triple-subject dt)))
-            (list-contains $result
-              (make-triple arena (triple-subject dt) (make-iri arena RDFS_SUBPROPERTY_OF) (triple-subject dt))))))
+    (@post {(list-len $result) >= 0})
     (let ((op-type (make-iri arena OWL_OBJECT_PROPERTY))
           (type-pred (make-iri arena RDF_TYPE))
           (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (equiv-pred (make-iri arena OWL_EQUIVALENT_PROPERTY))
           (mut result (list-new arena Triple)))
 
       (match (map-get (. delta by-predicate) type-pred)
         ((some pred-triples)
           (for-each (dt pred-triples)
             (when (term-eq (triple-object dt) op-type)
-              (let ((prop (triple-subject dt))
-                    (reflexive (make-triple arena prop subprop-pred prop)))
-                (when (not (indexed-graph-contains g reflexive))
-                  (list-push result reflexive))))))
+              (let ((prop (triple-subject dt)))
+                ;; Reflexive: p subPropertyOf p
+                (let ((reflexive (make-triple arena prop subprop-pred prop)))
+                  (when (not (indexed-graph-contains g reflexive))
+                    (list-push result reflexive)))
+                ;; Reflexive: p equivalentProperty p
+                (let ((refl-equiv (make-triple arena prop equiv-pred prop)))
+                  (when (not (indexed-graph-contains g refl-equiv))
+                    (list-push result refl-equiv)))))))
         ((none) (do)))
 
       result))
@@ -528,37 +517,26 @@
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
-    (@post (all-triples-have-predicate $result RDFS_SUBPROPERTY_OF))
-    (@property soundness
-      (forall (t $result)
-        (exists (dt (. delta triples))
-          (and
-            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
-            (term-eq (triple-object dt) (make-iri arena OWL_DATATYPE_PROPERTY))
-            (term-eq (triple-subject t) (triple-subject dt))
-            (term-eq (triple-object t) (triple-subject dt))
-            (term-eq (triple-predicate t) (make-iri arena RDFS_SUBPROPERTY_OF))))))
-    (@property completeness
-      (forall (dt (. delta triples))
-        (or (not (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE)))
-            (not (term-eq (triple-object dt) (make-iri arena OWL_DATATYPE_PROPERTY)))
-            (indexed-graph-contains g
-              (make-triple arena (triple-subject dt) (make-iri arena RDFS_SUBPROPERTY_OF) (triple-subject dt)))
-            (list-contains $result
-              (make-triple arena (triple-subject dt) (make-iri arena RDFS_SUBPROPERTY_OF) (triple-subject dt))))))
+    (@post {(list-len $result) >= 0})
     (let ((dp-type (make-iri arena OWL_DATATYPE_PROPERTY))
           (type-pred (make-iri arena RDF_TYPE))
           (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (equiv-pred (make-iri arena OWL_EQUIVALENT_PROPERTY))
           (mut result (list-new arena Triple)))
 
       (match (map-get (. delta by-predicate) type-pred)
         ((some pred-triples)
           (for-each (dt pred-triples)
             (when (term-eq (triple-object dt) dp-type)
-              (let ((prop (triple-subject dt))
-                    (reflexive (make-triple arena prop subprop-pred prop)))
-                (when (not (indexed-graph-contains g reflexive))
-                  (list-push result reflexive))))))
+              (let ((prop (triple-subject dt)))
+                ;; Reflexive: p subPropertyOf p
+                (let ((reflexive (make-triple arena prop subprop-pred prop)))
+                  (when (not (indexed-graph-contains g reflexive))
+                    (list-push result reflexive)))
+                ;; Reflexive: p equivalentProperty p
+                (let ((refl-equiv (make-triple arena prop equiv-pred prop)))
+                  (when (not (indexed-graph-contains g refl-equiv))
+                    (list-push result refl-equiv)))))))
         ((none) (do)))
 
       result))

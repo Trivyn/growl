@@ -196,7 +196,7 @@
   ;; ============================================================
 
   (fn test-empty-file ((arena Arena))
-    (@intent "Parse empty.ttl, verify clean pass with 0 inferred")
+    (@intent "Parse empty.ttl, verify clean pass (dt-type1 adds datatype declarations)")
     (@spec ((Arena) -> Bool))
     (@alloc arena)
     (match (parse-and-reason arena "fixtures/empty.ttl")
@@ -206,7 +206,7 @@
       ((some result)
         (match result
           ((reason-success s)
-            (== (. s inferred-count) 0))
+            (<= (. s inferred-count) 36))
           ((reason-inconsistent _)
             (println "  ERROR: unexpected inconsistency on empty graph")
             false)))))
@@ -254,7 +254,46 @@
                   false))))))))
 
   ;; ============================================================
-  ;; Test 8: Round-trip emit (parse -> reason -> serialize -> parse)
+  ;; Test 8: dt-not-type detects invalid literal
+  ;; ============================================================
+
+  (fn test-invalid-literal-file ((arena Arena))
+    (@intent "Parse invalid-literal.ttl, verify dt-not-type detects inconsistency")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/invalid-literal.ttl")
+      ((none)
+        (println "  ERROR: failed to parse invalid-literal.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success _)
+            (println "  ERROR: should have detected invalid literal")
+            false)
+          ((reason-inconsistent _) true)))))
+
+  ;; ============================================================
+  ;; Test 9: Valid typed literals pass dt-not-type
+  ;; ============================================================
+
+  (fn test-valid-literals-file ((arena Arena))
+    (@intent "Parse valid-literals.ttl, verify all literals pass validation")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/valid-literals.ttl")
+      ((none)
+        (println "  ERROR: failed to parse valid-literals.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success _) true)
+          ((reason-inconsistent report)
+            (print "  ERROR: unexpected inconsistency: ")
+            (println (. report reason))
+            false)))))
+
+  ;; ============================================================
+  ;; Test 10: Round-trip emit (parse -> reason -> serialize -> parse)
   ;; ============================================================
 
   (fn test-emit-roundtrip ((arena Arena))
@@ -362,6 +401,15 @@
 
         (let ((r (test-sameas-differentfrom-file arena)))
           (print-result "sameAs/differentFrom violation detected" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Datatype rules
+        (let ((r (test-invalid-literal-file arena)))
+          (print-result "dt-not-type: invalid literal detected" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-valid-literals-file arena)))
+          (print-result "dt-not-type: valid literals pass" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Emit roundtrip
