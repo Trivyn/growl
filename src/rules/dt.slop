@@ -1,0 +1,99 @@
+;; ============================================================
+;; OWL 2 RL Table 8: Datatype Rules (dt-*)
+;;
+;; dt-type1: Assert supported XSD datatypes as rdfs:Datatype
+;; dt-not-type: Detect typed literals with invalid lexical forms
+;;
+;; Reference: https://www.w3.org/TR/owl2-profiles/#OWL_2_RL
+;; ============================================================
+
+(module dt
+  (@doc "OWL 2 RL datatype rules for lexical validation and datatype declarations")
+
+  (import rdf (Term Triple Literal term-eq triple-eq make-iri make-triple
+               triple-subject triple-predicate triple-object))
+  (import index (IndexedGraph indexed-graph-match indexed-graph-contains indexed-graph-size))
+  (import vocab (RDF_TYPE RDFS_DATATYPE
+                 XSD_STRING XSD_BOOLEAN XSD_DECIMAL XSD_FLOAT XSD_DOUBLE
+                 XSD_INTEGER XSD_LONG XSD_INT XSD_SHORT XSD_BYTE
+                 XSD_NON_NEGATIVE_INTEGER XSD_NON_POSITIVE_INTEGER
+                 XSD_POSITIVE_INTEGER XSD_NEGATIVE_INTEGER
+                 XSD_UNSIGNED_LONG XSD_UNSIGNED_INT XSD_UNSIGNED_SHORT XSD_UNSIGNED_BYTE))
+  (import xsd (xsd-validate-lexical))
+  (import types (InconsistencyReport))
+
+  (export
+    dt-type1
+    dt-not-type)
+
+  ;; ============================================================
+  ;; dt-type1: Datatype Declarations
+  ;;
+  ;; For each supported XSD datatype dt:
+  ;;   assert (dt rdf:type rdfs:Datatype)
+  ;; ============================================================
+
+  (fn dt-type1 ((arena Arena) (g IndexedGraph))
+    (@intent "Assert supported XSD datatypes as rdfs:Datatype (OWL 2 RL dt-type1)")
+    (@spec ((Arena IndexedGraph) -> (List Triple)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (datatype-class (make-iri arena RDFS_DATATYPE))
+          (mut result (list-new arena Triple)))
+      ;; Assert each supported datatype as rdfs:Datatype
+      (let ((mut datatypes (list-new arena String)))
+        (list-push datatypes XSD_STRING)
+        (list-push datatypes XSD_BOOLEAN)
+        (list-push datatypes XSD_DECIMAL)
+        (list-push datatypes XSD_FLOAT)
+        (list-push datatypes XSD_DOUBLE)
+        (list-push datatypes XSD_INTEGER)
+        (list-push datatypes XSD_LONG)
+        (list-push datatypes XSD_INT)
+        (list-push datatypes XSD_SHORT)
+        (list-push datatypes XSD_BYTE)
+        (list-push datatypes XSD_NON_NEGATIVE_INTEGER)
+        (list-push datatypes XSD_NON_POSITIVE_INTEGER)
+        (list-push datatypes XSD_POSITIVE_INTEGER)
+        (list-push datatypes XSD_NEGATIVE_INTEGER)
+        (list-push datatypes XSD_UNSIGNED_LONG)
+        (list-push datatypes XSD_UNSIGNED_INT)
+        (list-push datatypes XSD_UNSIGNED_SHORT)
+        (list-push datatypes XSD_UNSIGNED_BYTE)
+        (for-each (dt-iri datatypes)
+          (let ((dt-term (make-iri arena dt-iri))
+                (inferred (make-triple arena dt-term type-pred datatype-class)))
+            (when (not (indexed-graph-contains g inferred))
+              (list-push result inferred)))))
+      result))
+
+  ;; ============================================================
+  ;; dt-not-type: Invalid Lexical Form Detection
+  ;;
+  ;; For each typed literal "lex"^^dt in the graph:
+  ;;   if dt is a supported datatype and lex is not a valid
+  ;;   lexical form for dt, then INCONSISTENT
+  ;; ============================================================
+
+  (fn dt-not-type ((arena Arena) (g IndexedGraph))
+    (@intent "Detect typed literals with invalid lexical forms (OWL 2 RL dt-not-type)")
+    (@spec ((Arena IndexedGraph) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some report) {(string-len (. report reason)) > 0})))
+    (for-each (t (. g triples))
+      (match (triple-object t)
+        ((term-literal lit)
+          (match (. lit datatype)
+            ((some dt-iri)
+              (when (not (xsd-validate-lexical (. lit value) dt-iri))
+                (return (some (record-new InconsistencyReport
+                  (reason "dt-not-type: typed literal has invalid lexical form for its datatype")
+                  (witnesses (list Triple t)))))))
+            ((none) (do))))
+        (_ (do))))
+    (none)))

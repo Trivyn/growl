@@ -15,7 +15,7 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 
 ## Rule Coverage
 
-70 of 78 OWL 2 RL rules implemented (90% coverage). See [detailed coverage table](#owl-2-rl-rule-coverage) below.
+72 of 78 OWL 2 RL rules implemented (92% coverage). See [detailed coverage table](#owl-2-rl-rule-coverage) below.
 
 | Table | Rules | Implemented | Description |
 |-------|-------|-------------|-------------|
@@ -23,7 +23,7 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 | Table 5 | prp-* | 19/20 | Property axioms (domain, range, inverse, transitivity, chains, keys) |
 | Table 6 | cls-* | 17/19 | Class expressions (intersectionOf, unionOf, oneOf, qualified cardinality) |
 | Table 7 | cax-* | 5/5 | Class axioms (subClassOf, equivalentClass, disjointWith) |
-| Table 8 | dt-* | 0/5 | Datatype reasoning |
+| Table 8 | dt-* | 2/5 | Datatype validation |
 | Table 9 | scm-* | 20/20 | Schema vocabulary (class/property hierarchies) |
 
 ## API
@@ -68,7 +68,7 @@ Options:
 
 ### Fast Mode
 
-The `--fast` flag skips schema vocabulary rules (scm-\*), consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2, eq-diff1/2/3, cls-nothing2, cls-com, cls-maxqc1/2), and cardinality rules (cls-maxc1/2, cls-maxqc3/4). This matches the inference depth of reasoners like `reasonable` that skip schema closure. Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
+The `--fast` flag skips schema vocabulary rules (scm-\*), datatype rules (dt-type1, dt-not-type), consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2, eq-diff1/2/3, cls-nothing2, cls-com, cls-maxqc1/2), and cardinality rules (cls-maxc1/2, cls-maxqc3/4). This matches the inference depth of reasoners like `reasonable` that skip schema closure. Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
 
 ## Building
 
@@ -171,15 +171,15 @@ Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.
 | cax-dw | ✅ | DisjointWith inconsistency |
 | cax-adc | ✅ | AllDisjointClasses inconsistency |
 
-### Table 8 — Datatypes (0/5)
+### Table 8 — Datatypes (2/5)
 
 | Rule | Status | Notes |
 |------|--------|-------|
-| dt-type1 | ❌ | Datatype literal typing — no datatype reasoning |
-| dt-type2 | ❌ | Datatype constraint checking — no datatype reasoning |
-| dt-eq | ❌ | Datatype equality — no datatype reasoning |
-| dt-diff | ❌ | Datatype inequality — no datatype reasoning |
-| dt-not-type | ❌ | Datatype inconsistency — no datatype reasoning |
+| dt-type1 | ✅ | Assert recognized datatypes as rdfs:Datatype |
+| dt-type2 | ❌ | Literal typing — non-standard literal-as-subject triples |
+| dt-eq | ❌ | Datatype equality — even owlrl skips |
+| dt-diff | ❌ | Datatype inequality — even owlrl skips |
+| dt-not-type | ✅ | Detect invalid lexical forms (e.g. "abc"^^xsd:integer) |
 
 ### Table 9 — Schema Vocabulary (20/20)
 
