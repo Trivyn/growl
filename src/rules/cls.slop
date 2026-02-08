@@ -605,6 +605,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 1))))
     (@example
       ;; Graph: (alice type owl:Nothing)
       ;; Result: inconsistency (owl:Nothing is the empty class)
@@ -640,6 +643,13 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (term-eq (triple-subject t) (triple-subject dt))))))
     (@example
       ;; Graph: (FemaleParent intersectionOf [Female Parent])
       ;;        (alice type Female), (alice type Parent)
@@ -699,6 +709,13 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (term-eq (triple-subject t) (triple-subject dt))))))
     (@example
       ;; Graph: (FemaleParent intersectionOf [Female Parent]), (alice type FemaleParent)
       ;; Result: (alice type Female), (alice type Parent)
@@ -746,6 +763,13 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (term-eq (triple-subject t) (triple-subject dt))))))
     (@example
       ;; Graph: (Person unionOf [Man Woman]), (alice type Woman)
       ;; Result: (alice type Person)
@@ -794,6 +818,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 3))))
     (@example
       ;; Graph: (NotParent complementOf Parent), (alice type Parent), (alice type NotParent)
       ;; Result: inconsistency
@@ -851,6 +878,12 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (term-eq (triple-subject t) (triple-subject dt))))))
     (@example
       ;; Graph: (PetOwner someValuesFrom owl:Thing on hasPet), (alice hasPet fido)
       ;; Result: (alice type PetOwner)
@@ -899,6 +932,14 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (or
+              (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+              (term-eq (triple-subject t) (triple-subject dt)))))))
     (@example
       ;; Graph: (DogOwner someValuesFrom Dog on hasPet), (alice hasPet fido), (fido type Dog)
       ;; Result: (alice type DogOwner)
@@ -964,6 +1005,14 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (or
+              (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+              (term-eq (triple-subject t) (triple-object dt)))))))
     (@example
       ;; Graph: (PersonWithOnlyHumanChildren allValuesFrom Human on hasChild)
       ;;        (alice type PersonWithOnlyHumanChildren), (alice hasChild bob)
@@ -1447,6 +1496,12 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+            (term-eq (triple-object t) (triple-subject dt))))))
     (@example
       ;; Graph: (DaysOfWeek oneOf [Monday Tuesday Wednesday])
       ;; Result: (Monday type DaysOfWeek), (Tuesday type DaysOfWeek), (Wednesday type DaysOfWeek)

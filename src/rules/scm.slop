@@ -996,6 +996,12 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDFS_SUBCLASS_OF))
+            (term-eq (triple-predicate dt) (make-iri arena RDFS_SUBCLASS_OF))))))
     (let ((svf-pred (make-iri arena OWL_SOME_VALUES_FROM))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
@@ -1048,6 +1054,12 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDFS_SUBCLASS_OF))
+            (term-eq (triple-predicate dt) (make-iri arena RDFS_SUBPROPERTY_OF))))))
     (let ((svf-pred (make-iri arena OWL_SOME_VALUES_FROM))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
@@ -1099,6 +1111,12 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDFS_SUBCLASS_OF))
+            (term-eq (triple-predicate dt) (make-iri arena RDFS_SUBCLASS_OF))))))
     (let ((avf-pred (make-iri arena OWL_ALL_VALUES_FROM))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
@@ -1149,6 +1167,12 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDFS_SUBCLASS_OF))
+            (term-eq (triple-predicate dt) (make-iri arena RDFS_SUBPROPERTY_OF))))))
     (let ((avf-pred (make-iri arena OWL_ALL_VALUES_FROM))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
@@ -1201,6 +1225,12 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDFS_SUBCLASS_OF))
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-predicate t) (make-iri arena RDFS_SUBCLASS_OF))
+            (term-eq (triple-predicate dt) (make-iri arena RDFS_SUBPROPERTY_OF))))))
     (let ((hv-pred (make-iri arena OWL_HAS_VALUE))
           (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
           (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))

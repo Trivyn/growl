@@ -737,6 +737,9 @@
     (@alloc arena)
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (@example
       ;; Graph: (hasParent type AsymmetricProperty), (alice hasParent bob), (bob hasParent alice)
       ;; Result: inconsistency
@@ -842,6 +845,9 @@
     (@alloc arena)
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 1))))
     (@example
       ;; Graph: (hasParent type IrreflexiveProperty), (alice hasParent alice)
       ;; Result: inconsistency
@@ -1420,6 +1426,9 @@
     (@alloc arena)
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (@example
       ;; Graph: (likes propertyDisjointWith hates), (alice likes bob), (alice hates bob)
       ;; Result: inconsistency

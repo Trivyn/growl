@@ -381,6 +381,10 @@
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))))
     (@example
       ;; Graph: (alice sameAs alicia), (alice knows bob)
       ;; Result: (alicia knows bob)
@@ -444,6 +448,10 @@
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))))
     (@example
       ;; Graph: (knows sameAs acquaintedWith), (alice knows bob)
       ;; Result: (alice acquaintedWith bob)
@@ -487,6 +495,10 @@
     (@pure)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
+    (@property soundness
+      (forall (t $result)
+        (exists (dt (. delta triples))
+          (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))))
     (@example
       ;; Graph: (bob sameAs robert), (alice knows bob)
       ;; Result: (alice knows robert)
@@ -550,6 +562,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (@example
       ;; Graph: (alice sameAs bob), (alice differentFrom bob)
       ;; Result: inconsistency
@@ -607,6 +622,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (@example
       ;; Graph: (alice sameAs bob), (bob differentFrom alice)
       ;; Result: inconsistency
@@ -645,6 +663,9 @@
     (@post (match $result
              ((none) true)
              ((some r) {(string-len (. r reason)) > 0})))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (let ((same-as (make-iri arena OWL_SAME_AS))
           (different-from (make-iri arena OWL_DIFFERENT_FROM)))
 
