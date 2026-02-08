@@ -15,14 +15,14 @@
 SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
 #endif
 
-#ifndef SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
-#define SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
-SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
-#endif
-
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
 #define SLOP_OPTION_RDF_TRIPLE_DEFINED
 SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
+#endif
+
+#ifndef SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
+#define SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
+SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
 #endif
 
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
@@ -49,6 +49,8 @@ index_IndexedGraph cls_fixture_g_complement_violation(slop_arena* arena);
 types_Delta cls_fixture_delta_complement(slop_arena* arena);
 index_IndexedGraph cls_fixture_g_svf(slop_arena* arena);
 types_Delta cls_fixture_delta_svf(slop_arena* arena);
+index_IndexedGraph cls_fixture_g_svf1(slop_arena* arena);
+types_Delta cls_fixture_delta_svf1(slop_arena* arena);
 index_IndexedGraph cls_fixture_g_avf(slop_arena* arena);
 types_Delta cls_fixture_delta_avf(slop_arena* arena);
 index_IndexedGraph cls_fixture_g_hv(slop_arena* arena);
@@ -59,6 +61,8 @@ types_Delta cls_fixture_delta_maxc(slop_arena* arena);
 index_IndexedGraph cls_fixture_g_one_of(slop_arena* arena);
 types_Delta cls_fixture_delta_one_of(slop_arena* arena);
 slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
+slop_list_rdf_Triple cls_cls_thing(slop_arena* arena, index_IndexedGraph g);
+slop_list_rdf_Triple cls_cls_nothing1(slop_arena* arena, index_IndexedGraph g);
 slop_option_types_InconsistencyReport cls_cls_nothing2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cls_cls_int1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cls_cls_int2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
@@ -77,14 +81,14 @@ slop_list_rdf_Triple cls_cls_maxqc3(slop_arena* arena, index_IndexedGraph g, typ
 slop_list_rdf_Triple cls_cls_maxqc4(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cls_cls_oo(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 
-#ifndef SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
-#define SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
-SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
-#endif
-
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
 #define SLOP_OPTION_RDF_TRIPLE_DEFINED
 SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
+#endif
+
+#ifndef SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
+#define SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
+SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
 #endif
 
 

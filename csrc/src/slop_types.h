@@ -63,6 +63,7 @@ struct types_ReasonerConfig {
     uint16_t max_iterations;
     uint8_t verbose;
     uint8_t fast;
+    uint8_t complete;
 };
 typedef struct types_ReasonerConfig types_ReasonerConfig;
 

@@ -14,6 +14,7 @@
 #include "slop_prp.h"
 #include "slop_eq.h"
 #include "slop_cls.h"
+#include "slop_dt.h"
 
 typedef struct engine_WorkerMessage engine_WorkerMessage;
 

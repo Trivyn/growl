@@ -78,6 +78,7 @@ slop_list_rdf_Triple prp_prp_inv2(slop_arena* arena, index_IndexedGraph g, types
 slop_list_rdf_Triple prp_prp_eqp1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_eqp2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_option_types_InconsistencyReport prp_prp_pdw(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple prp_prp_ap(slop_arena* arena, index_IndexedGraph g);
 
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
 #define SLOP_OPTION_RDF_TRIPLE_DEFINED

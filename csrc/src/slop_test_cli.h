@@ -29,6 +29,8 @@ uint8_t test_cli_test_sameas_differentfrom_file(slop_arena* arena);
 uint8_t test_cli_test_sameas_chain_file(slop_arena* arena);
 uint8_t test_cli_test_empty_file(slop_arena* arena);
 uint8_t test_cli_test_bfo_consistent(slop_arena* arena);
+uint8_t test_cli_test_invalid_literal_file(slop_arena* arena);
+uint8_t test_cli_test_valid_literals_file(slop_arena* arena);
 uint8_t test_cli_test_emit_roundtrip(slop_arena* arena);
 uint8_t test_cli_test_missing_file(slop_arena* arena);
 int main(void);
