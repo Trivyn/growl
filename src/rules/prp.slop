@@ -22,8 +22,9 @@
                  OWL_INVERSE_OF OWL_PROPERTY_DISJOINT_WITH
                  OWL_PROPERTY_CHAIN_AXIOM OWL_HAS_KEY
                  OWL_NEGATIVE_PROPERTY_ASSERTION OWL_SOURCE_INDIVIDUAL
-                 OWL_ASSERTION_PROPERTY OWL_TARGET_INDIVIDUAL OWL_TARGET_VALUE))
-  (import list (rdf-list-elements))
+                 OWL_ASSERTION_PROPERTY OWL_TARGET_INDIVIDUAL OWL_TARGET_VALUE
+                 OWL_ALL_DISJOINT_PROPERTIES OWL_MEMBERS OWL_THING))
+  (import list (rdf-list-elements rdf-list-elements-indexed))
   (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
 
   (export
@@ -37,11 +38,16 @@
     prp-trp
     prp-irp
     prp-spo1
+    prp-spo2
     prp-inv1
     prp-inv2
     prp-eqp1
     prp-eqp2
-    prp-pdw)
+    prp-pdw
+    prp-adp
+    prp-key
+    prp-npa1
+    prp-npa2)
 
   ;; ============================================================
   ;; Test Fixture URIs (for @example annotations)
@@ -398,6 +404,15 @@
             ((none) (do)))
           (match (prp-pdw arena g delta)
             ((some report) (return (error report)))
+            ((none) (do)))
+          (match (prp-adp arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))
+          (match (prp-npa1 arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))
+          (match (prp-npa2 arena g delta)
+            ((some report) (return (error report)))
             ((none) (do)))))
 
       ;; Subproperty and equivalence
@@ -412,6 +427,12 @@
       (for-each (t (prp-inv1 arena g delta))
         (set! result (delta-add arena result t)))
       (for-each (t (prp-inv2 arena g delta))
+        (set! result (delta-add arena result t)))
+
+      ;; Property chains and hasKey
+      (for-each (t (prp-spo2 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (prp-key arena g delta))
         (set! result (delta-add arena result t)))
 
       (ok result)))
@@ -840,6 +861,323 @@
               ((none) (do))))))
 
       (none)))
+
+  ;; ============================================================
+  ;; prp-adp: AllDisjointProperties Inconsistency
+  ;;
+  ;; If (?x rdf:type owl:AllDisjointProperties) and
+  ;;    (?x owl:members ?list) and LIST(?list, ?p1, ..., ?pn) and
+  ;;    (?a ?pi ?b) and (?a ?pj ?b) for i != j
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn prp-adp ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect AllDisjointProperties violations - same pair via two disjoint properties")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@property witness-validity
+      (match $result
+        ((none) true)
+        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (let ((adp-class (make-iri arena OWL_ALL_DISJOINT_PROPERTIES))
+          (type-pred (make-iri arena RDF_TYPE))
+          (members-pred (make-iri arena OWL_MEMBERS))
+          (no-term (Option Term) (none)))
+
+      ;; Find all AllDisjointProperties declarations
+      (let ((adp-triples (indexed-graph-match arena g no-term (some type-pred) (some adp-class))))
+        (for-each (adp-triple adp-triples)
+          (let ((adp-node (triple-subject adp-triple)))
+            ;; Get the members list
+            (let ((m-triples (indexed-graph-match arena g (some adp-node) (some members-pred) no-term)))
+              (for-each (m-triple m-triples)
+                (let ((list-head (triple-object m-triple))
+                      (props (rdf-list-elements-indexed arena g list-head)))
+                  ;; For each pair of properties in the list
+                  (for-each (pi props)
+                    (for-each (pj props)
+                      (when (not (term-eq pi pj))
+                        ;; Check delta for pi assertions, look in graph for matching pj
+                        (match (map-get (. delta by-predicate) pi)
+                          ((some pred-triples)
+                            (for-each (dt pred-triples)
+                              (let ((a (triple-subject dt))
+                                    (b (triple-object dt))
+                                    (conflict (make-triple arena a pj b)))
+                                (when (indexed-graph-contains g conflict)
+                                  (return (some (record-new InconsistencyReport
+                                    (reason "prp-adp: same pair asserted via two properties in AllDisjointProperties")
+                                    (witnesses (list Triple dt conflict adp-triple)))))))))
+                          ((none) (do))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; prp-npa1: Negative Property Assertion (Named Individual)
+  ;;
+  ;; If (?x owl:sourceIndividual ?s) and (?x owl:assertionProperty ?p) and
+  ;;    (?x owl:targetIndividual ?o) and (?s ?p ?o)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn prp-npa1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect negative property assertion violation for named individuals")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@property witness-validity
+      (match $result
+        ((none) true)
+        ((some r) (>= (list-len (. r witnesses)) 1))))
+    (let ((source-pred (make-iri arena OWL_SOURCE_INDIVIDUAL))
+          (assert-pred (make-iri arena OWL_ASSERTION_PROPERTY))
+          (target-pred (make-iri arena OWL_TARGET_INDIVIDUAL))
+          (no-term (Option Term) (none)))
+
+      ;; Find all negative property assertions: (?x sourceIndividual ?s)
+      (let ((npa-triples (indexed-graph-match arena g no-term (some source-pred) no-term)))
+        (for-each (npa-triple npa-triples)
+          (let ((x (triple-subject npa-triple))
+                (s (triple-object npa-triple)))
+            ;; Get the assertion property
+            (let ((ap-triples (indexed-graph-match arena g (some x) (some assert-pred) no-term)))
+              (for-each (ap-triple ap-triples)
+                (let ((p (triple-object ap-triple)))
+                  ;; Get the target individual
+                  (let ((ti-triples (indexed-graph-match arena g (some x) (some target-pred) no-term)))
+                    (for-each (ti-triple ti-triples)
+                      (let ((o (triple-object ti-triple))
+                            (asserted (make-triple arena s p o)))
+                        ;; Check if the asserted triple exists in graph
+                        (when (indexed-graph-contains g asserted)
+                          (return (some (record-new InconsistencyReport
+                            (reason "prp-npa1: negative property assertion violated (named individual)")
+                            (witnesses (list Triple asserted npa-triple ap-triple ti-triple)))))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; prp-npa2: Negative Property Assertion (Literal)
+  ;;
+  ;; If (?x owl:sourceIndividual ?s) and (?x owl:assertionProperty ?p) and
+  ;;    (?x owl:targetValue ?v) and (?s ?p ?v)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn prp-npa2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect negative property assertion violation for literal values")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@property witness-validity
+      (match $result
+        ((none) true)
+        ((some r) (>= (list-len (. r witnesses)) 1))))
+    (let ((source-pred (make-iri arena OWL_SOURCE_INDIVIDUAL))
+          (assert-pred (make-iri arena OWL_ASSERTION_PROPERTY))
+          (target-pred (make-iri arena OWL_TARGET_VALUE))
+          (no-term (Option Term) (none)))
+
+      ;; Find all negative property assertions: (?x sourceIndividual ?s)
+      (let ((npa-triples (indexed-graph-match arena g no-term (some source-pred) no-term)))
+        (for-each (npa-triple npa-triples)
+          (let ((x (triple-subject npa-triple))
+                (s (triple-object npa-triple)))
+            ;; Get the assertion property
+            (let ((ap-triples (indexed-graph-match arena g (some x) (some assert-pred) no-term)))
+              (for-each (ap-triple ap-triples)
+                (let ((p (triple-object ap-triple)))
+                  ;; Get the target value
+                  (let ((tv-triples (indexed-graph-match arena g (some x) (some target-pred) no-term)))
+                    (for-each (tv-triple tv-triples)
+                      (let ((v (triple-object tv-triple))
+                            (asserted (make-triple arena s p v)))
+                        ;; Check if the asserted triple exists in graph
+                        (when (indexed-graph-contains g asserted)
+                          (return (some (record-new InconsistencyReport
+                            (reason "prp-npa2: negative property assertion violated (literal)")
+                            (witnesses (list Triple asserted npa-triple ap-triple tv-triple)))))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; prp-spo2: Property Chain Axiom
+  ;;
+  ;; If (?p owl:propertyChainAxiom ?list) and LIST(?list, ?p1, ..., ?pn) and
+  ;;    (?x0 ?p1 ?x1) and (?x1 ?p2 ?x2) and ... and (?xn-1 ?pn ?xn)
+  ;; then (?x0 ?p ?xn)
+  ;; ============================================================
+
+  (fn prp-spo2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer property assertions from property chain axioms")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@property soundness
+      (forall (t $result)
+        ;; Every inferred triple's predicate is a chain head property
+        (indexed-graph-contains g
+          (make-triple arena (triple-predicate t)
+            (make-iri arena OWL_PROPERTY_CHAIN_AXIOM)
+            (triple-predicate t)))))  ;; simplified — full chain validation beyond annotation
+    (let ((chain-pred (make-iri arena OWL_PROPERTY_CHAIN_AXIOM))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find all property chain axioms: (?p propertyChainAxiom ?list)
+      ;; Use indexed-graph-match + for-each because list-push in
+      ;; indexed-graph-for-each callbacks doesn't capture arena.
+      (let ((chain-triples (indexed-graph-match arena g no-term (some chain-pred) no-term)))
+        (for-each (chain-triple chain-triples)
+          (let ((target-prop (triple-subject chain-triple))
+                (list-head (triple-object chain-triple))
+                (chain-props (rdf-list-elements-indexed arena g list-head))
+                (chain-len (list-len chain-props)))
+            ;; Only process chains with at least 2 properties
+            (when (>= chain-len 2)
+              ;; For each triple in delta, check if it matches any property in the chain
+              (for-each (dt (. delta triples))
+                (let ((dt-pred (triple-predicate dt)))
+                  ;; Try starting from each position in the chain
+                  (let ((mut ci 0))
+                    (while (< ci chain-len)
+                      (match (list-get chain-props ci)
+                        ((some chain-p)
+                          (when (term-eq dt-pred chain-p)
+                            ;; Delta triple matches chain[ci]
+                            ;; Walk backward from ci to find the chain start
+                            (let ((mut starts (list-new arena Term)))
+                              (list-push starts (triple-subject dt))
+                              (let ((mut bi (- ci 1)))
+                                (while (>= bi 0)
+                                  (match (list-get chain-props bi)
+                                    ((some prev-p)
+                                      (let ((mut new-starts (list-new arena Term)))
+                                        (for-each (s starts)
+                                          ;; Find (? prev-p s) — things linked to s via prev-p
+                                          (let ((back-triples (indexed-graph-match arena g no-term (some prev-p) (some s))))
+                                            (for-each (bt back-triples)
+                                              (list-push new-starts (triple-subject bt)))))
+                                        (set! starts new-starts)))
+                                    ((none) (do)))
+                                  (set! bi (- bi 1))))
+                              ;; Walk forward from ci to find the chain end
+                              (let ((mut ends (list-new arena Term)))
+                                (list-push ends (triple-object dt))
+                                (let ((mut fi (+ ci 1)))
+                                  (while (< fi chain-len)
+                                    (match (list-get chain-props fi)
+                                      ((some next-p)
+                                        (let ((mut new-ends (list-new arena Term)))
+                                          (for-each (e ends)
+                                            ;; Find (e next-p ?)
+                                            (let ((fwd-triples (indexed-graph-match arena g (some e) (some next-p) no-term)))
+                                              (for-each (ft fwd-triples)
+                                                (list-push new-ends (triple-object ft)))))
+                                          (set! ends new-ends)))
+                                      ((none) (do)))
+                                    (set! fi (+ fi 1))))
+                                ;; Create inferred triples for all start-end combinations
+                                (for-each (s starts)
+                                  (for-each (e ends)
+                                    (let ((inferred (make-triple arena s target-prop e)))
+                                      (when (not (indexed-graph-contains g inferred))
+                                        (list-push result inferred)))))))))
+                        ((none) (do)))
+                      (set! ci (+ ci 1))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; prp-key: hasKey
+  ;;
+  ;; If (?c owl:hasKey ?list) and LIST(?list, ?k1, ..., ?kn) and
+  ;;    (?x rdf:type ?c) and (?y rdf:type ?c) and
+  ;;    (?x ?k1 ?v1) and (?y ?k1 ?v1) and ... and (?x ?kn ?vn) and (?y ?kn ?vn)
+  ;; then (?x owl:sameAs ?y)
+  ;; ============================================================
+
+  (fn prp-key ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer sameAs from hasKey — individuals with same key values are equal")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@property soundness
+      (forall (t $result)
+        (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
+    (let ((key-pred (make-iri arena OWL_HAS_KEY))
+          (type-pred (make-iri arena RDF_TYPE))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find all hasKey declarations: (?c owl:hasKey ?list)
+      ;; Use indexed-graph-match + for-each because match/list-push
+      ;; inside indexed-graph-for-each callbacks don't transpile correctly.
+      (let ((key-triples (indexed-graph-match arena g no-term (some key-pred) no-term)))
+        (for-each (key-triple key-triples)
+          (let ((key-class (triple-subject key-triple))
+                (list-head (triple-object key-triple))
+                (key-props (rdf-list-elements-indexed arena g list-head))
+                (num-keys (list-len key-props)))
+            ;; Only process if there are key properties
+            (when (> num-keys 0)
+              ;; For each new type assertion in delta matching the key class
+              (match (map-get (. delta by-predicate) type-pred)
+                ((some type-triples)
+                  (for-each (dt type-triples)
+                    (when (term-eq (triple-object dt) key-class)
+                      (let ((x (triple-subject dt)))
+                        ;; Check if x has values for all key properties
+                        (let ((mut x-has-all-keys true))
+                          (for-each (kp key-props)
+                            (let ((x-vals (indexed-graph-match arena g (some x) (some kp) no-term)))
+                              (when (== (list-len x-vals) 0)
+                                (set! x-has-all-keys false))))
+                          ;; Only proceed if x has values for all key properties
+                          (when x-has-all-keys
+                            ;; Find all other instances of key-class in the graph
+                            (let ((y-triples (indexed-graph-match arena g no-term (some type-pred) (some key-class))))
+                              (for-each (yt y-triples)
+                                (let ((y (triple-subject yt)))
+                                  (when (not (term-eq x y))
+                                    ;; Check if y shares a value with x for every key property
+                                    (let ((mut all-match true))
+                                      (for-each (kp key-props)
+                                        (when all-match
+                                          (let ((x-vals (indexed-graph-match arena g (some x) (some kp) no-term))
+                                                (mut found-match false))
+                                            (for-each (xvt x-vals)
+                                              (let ((y-has (make-triple arena y kp (triple-object xvt))))
+                                                (when (indexed-graph-contains g y-has)
+                                                  (set! found-match true))))
+                                            (when (not found-match)
+                                              (set! all-match false)))))
+                                      (when all-match
+                                        (let ((inferred (make-triple arena x same-as y)))
+                                          (when (not (indexed-graph-contains g inferred))
+                                            (list-push result inferred)))))))))))))))
+                ((none) (do)))))))
+
+      result))
 
   ;; ============================================================
   ;; prp-spo1: Subproperty Propagation

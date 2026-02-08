@@ -22,11 +22,13 @@
                scm-dom1 scm-dom2 scm-rng1 scm-rng2
                scm-svf1 scm-svf2 scm-avf1 scm-avf2 scm-hv))
   (import prp (apply-prp-rules prp-dom prp-rng prp-fp prp-ifp prp-symp prp-trp
-               prp-asyp prp-irp prp-pdw prp-spo1 prp-eqp1 prp-eqp2 prp-inv1 prp-inv2))
+               prp-asyp prp-irp prp-pdw prp-adp prp-npa1 prp-npa2
+               prp-spo1 prp-spo2 prp-eqp1 prp-eqp2 prp-inv1 prp-inv2 prp-key))
   (import eq  (apply-eq-rules eq-ref eq-sym eq-trans eq-rep-s eq-rep-p eq-rep-o
                eq-diff1 eq-diff2 eq-diff3))
   (import cls (apply-cls-rules cls-nothing2 cls-int1 cls-int2 cls-uni cls-com
-               cls-svf1 cls-svf2 cls-avf cls-hv1 cls-hv2 cls-maxc1 cls-maxc2 cls-oo))
+               cls-svf1 cls-svf2 cls-avf cls-hv1 cls-hv2 cls-maxc1 cls-maxc2
+               cls-maxqc1 cls-maxqc2 cls-maxqc3 cls-maxqc4 cls-oo))
 
   (export
     engine-run
@@ -657,12 +659,14 @@
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; prp-chain: prp-spo1, prp-eqp1, prp-eqp2, prp-inv1, prp-inv2 (always runs)
+      ;; prp-chain: prp-spo1, prp-spo2, prp-eqp1, prp-eqp2, prp-inv1, prp-inv2, prp-key (always runs)
       (list-push workers
         (spawn arena (fn ()
           (let ((t0 (now-ms))
                 (mut result (make-delta arena-prp-chain next-iter)))
             (for-each (t (prp-spo1 arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
+            (for-each (t (prp-spo2 arena-prp-chain g delta))
               (set! result (delta-add arena-prp-chain result t)))
             (for-each (t (prp-eqp1 arena-prp-chain g delta))
               (set! result (delta-add arena-prp-chain result t)))
@@ -672,12 +676,14 @@
               (set! result (delta-add arena-prp-chain result t)))
             (for-each (t (prp-inv2 arena-prp-chain g delta))
               (set! result (delta-add arena-prp-chain result t)))
+            (for-each (t (prp-key arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
             (when verbose
               (do (print "  prp-chain: ") (print-ms arena-prp-chain (- (now-ms) t0)) (println "")))
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; prp-check: prp-asyp, prp-irp, prp-pdw (skipped in fast mode)
+      ;; prp-check: prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2 (skipped in fast mode)
       (when (not fast)
         (list-push workers
           (spawn arena (fn ()
@@ -690,7 +696,16 @@
                     ((none)
                       (match (prp-pdw arena-prp-check g delta)
                         ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                        ((none) (do)))))))
+                        ((none)
+                          (match (prp-adp arena-prp-check g delta)
+                            ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                            ((none)
+                              (match (prp-npa1 arena-prp-check g delta)
+                                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                                ((none)
+                                  (match (prp-npa2 arena-prp-check g delta)
+                                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                                    ((none) (do)))))))))))))
               (when verbose
                 (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
               (send result-chan (union-new WorkerMessage msg-done unit)))))))
@@ -775,6 +790,18 @@
                 (for-each (t (cls-maxc1 arena-cls-ind g delta))
                   (set! result (delta-add arena-cls-ind result t)))
                 (for-each (t (cls-maxc2 arena-cls-ind g delta))
+                  (set! result (delta-add arena-cls-ind result t)))
+                ;; Qualified cardinality checks
+                (match (cls-maxqc1 arena-cls-ind g delta)
+                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                  ((none)
+                    (match (cls-maxqc2 arena-cls-ind g delta)
+                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                      ((none) (do)))))
+                ;; Qualified cardinality inferences
+                (for-each (t (cls-maxqc3 arena-cls-ind g delta))
+                  (set! result (delta-add arena-cls-ind result t)))
+                (for-each (t (cls-maxqc4 arena-cls-ind g delta))
                   (set! result (delta-add arena-cls-ind result t)))))
             (for-each (t (cls-oo arena-cls-ind g delta))
               (set! result (delta-add arena-cls-ind result t)))

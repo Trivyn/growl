@@ -15,13 +15,13 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 
 ## Rule Coverage
 
-61 of 78 OWL 2 RL rules implemented. See [detailed coverage table](#owl-2-rl-rule-coverage) below.
+70 of 78 OWL 2 RL rules implemented (90% coverage). See [detailed coverage table](#owl-2-rl-rule-coverage) below.
 
 | Table | Rules | Implemented | Description |
 |-------|-------|-------------|-------------|
 | Table 4 | eq-* | 9/9 | Equality semantics (sameAs, differentFrom) |
-| Table 5 | prp-* | 14/20 | Property axioms (domain, range, inverse, transitivity) |
-| Table 6 | cls-* | 13/19 | Class expressions (intersectionOf, unionOf, oneOf) |
+| Table 5 | prp-* | 19/20 | Property axioms (domain, range, inverse, transitivity, chains, keys) |
+| Table 6 | cls-* | 17/19 | Class expressions (intersectionOf, unionOf, oneOf, qualified cardinality) |
 | Table 7 | cax-* | 5/5 | Class axioms (subClassOf, equivalentClass, disjointWith) |
 | Table 8 | dt-* | 0/5 | Datatype reasoning |
 | Table 9 | scm-* | 20/20 | Schema vocabulary (class/property hierarchies) |
@@ -68,7 +68,7 @@ Options:
 
 ### Fast Mode
 
-The `--fast` flag skips schema vocabulary rules (scm-\*), consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, eq-diff1/2/3, cls-nothing2, cls-com), and cardinality rules (cls-maxc1/2). This matches the inference depth of reasoners like `reasonable` that skip schema closure. Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
+The `--fast` flag skips schema vocabulary rules (scm-\*), consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2, eq-diff1/2/3, cls-nothing2, cls-com, cls-maxqc1/2), and cardinality rules (cls-maxc1/2, cls-maxqc3/4). This matches the inference depth of reasoners like `reasonable` that skip schema closure. Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
 
 ## Building
 
@@ -112,11 +112,11 @@ Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.
 | eq-diff2 | ✅ | Inconsistency: sameAs and differentFrom |
 | eq-diff3 | ✅ | Inconsistency: members of AllDifferent are sameAs |
 
-### Table 5 — Property Axioms (14/20)
+### Table 5 — Property Axioms (19/20)
 
 | Rule | Status | Notes |
 |------|--------|-------|
-| prp-ap | ❌ | Annotation properties — no inference needed |
+| prp-ap | ❌ | Annotation properties — no useful inference |
 | prp-dom | ✅ | rdfs:domain inference |
 | prp-rng | ✅ | rdfs:range inference |
 | prp-fp | ✅ | Functional property → owl:sameAs |
@@ -126,23 +126,23 @@ Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.
 | prp-asyp | ✅ | Asymmetric property inconsistency |
 | prp-trp | ✅ | Transitive property inference |
 | prp-spo1 | ✅ | SubPropertyOf inference |
-| prp-spo2 | ❌ | Property chains — not implemented |
+| prp-spo2 | ✅ | Property chain axiom inference |
 | prp-eqp1 | ✅ | EquivalentProperty forward |
 | prp-eqp2 | ✅ | EquivalentProperty reverse |
 | prp-pdw | ✅ | PropertyDisjointWith inconsistency |
-| prp-adp | ❌ | AllDisjointProperties — not implemented |
+| prp-adp | ✅ | AllDisjointProperties inconsistency |
 | prp-inv1 | ✅ | InverseOf forward |
 | prp-inv2 | ✅ | InverseOf reverse |
-| prp-key | ❌ | hasKey — not implemented |
-| prp-npa1 | ❌ | Negative property assertion (named individual) — not implemented |
-| prp-npa2 | ❌ | Negative property assertion (literal) — not implemented |
+| prp-key | ✅ | hasKey → owl:sameAs inference |
+| prp-npa1 | ✅ | Negative property assertion (named individual) inconsistency |
+| prp-npa2 | ✅ | Negative property assertion (literal) inconsistency |
 
-### Table 6 — Class Expressions (13/19)
+### Table 6 — Class Expressions (17/19)
 
 | Rule | Status | Notes |
 |------|--------|-------|
-| cls-thing | ❌ | Trivial — everything is type owl:Thing |
-| cls-nothing1 | ❌ | Trivial — owl:Nothing type owl:Class |
+| cls-thing | ❌ | Skipped — triple explosion (every resource gets type owl:Thing) |
+| cls-nothing1 | ❌ | Skipped — scm-cls already handles |
 | cls-nothing2 | ✅ | Inconsistency: member of owl:Nothing |
 | cls-int1 | ✅ | IntersectionOf: member of all → member of intersection |
 | cls-int2 | ✅ | IntersectionOf: member of intersection → member of all |
@@ -153,12 +153,12 @@ Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.
 | cls-avf | ✅ | AllValuesFrom inference |
 | cls-hv1 | ✅ | HasValue → type inference |
 | cls-hv2 | ✅ | HasValue → property inference |
-| cls-maxc1 | ✅ | MaxCardinality 0 inconsistency (stub — constraint only) |
+| cls-maxc1 | ✅ | MaxCardinality 0 (constraint only) |
 | cls-maxc2 | ✅ | MaxCardinality 1 → owl:sameAs |
-| cls-maxqc1 | ❌ | MaxQualifiedCardinality 0 — not implemented |
-| cls-maxqc2 | ❌ | MaxQualifiedCardinality 0 (owl:Thing) — not implemented |
-| cls-maxqc3 | ❌ | MaxQualifiedCardinality 1 → owl:sameAs — not implemented |
-| cls-maxqc4 | ❌ | MaxQualifiedCardinality 1 (owl:Thing) → owl:sameAs — not implemented |
+| cls-maxqc1 | ✅ | MaxQualifiedCardinality 0 inconsistency (with onClass) |
+| cls-maxqc2 | ✅ | MaxQualifiedCardinality 0 inconsistency (owl:Thing) |
+| cls-maxqc3 | ✅ | MaxQualifiedCardinality 1 → owl:sameAs (with onClass) |
+| cls-maxqc4 | ✅ | MaxQualifiedCardinality 1 → owl:sameAs (owl:Thing) |
 | cls-oo | ✅ | OneOf enumeration |
 
 ### Table 7 — Class Axioms (5/5)
