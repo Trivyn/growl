@@ -25,7 +25,9 @@
                  OWL_NEGATIVE_PROPERTY_ASSERTION OWL_SOURCE_INDIVIDUAL
                  OWL_ASSERTION_PROPERTY OWL_TARGET_INDIVIDUAL OWL_TARGET_VALUE
                  OWL_ALL_DISJOINT_PROPERTIES OWL_MEMBERS OWL_THING
-                 OWL_ANNOTATION_PROPERTY OWL_VERSION_IRI))
+                 OWL_ANNOTATION_PROPERTY OWL_VERSION_IRI
+                 OWL_DEPRECATED OWL_VERSION_INFO OWL_PRIOR_VERSION
+                 OWL_BACKWARD_COMPATIBLE_WITH OWL_INCOMPATIBLE_WITH))
   (import list (rdf-list-elements rdf-list-elements-indexed))
   (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
 
@@ -1484,7 +1486,11 @@
       (list-push props RDFS_COMMENT)
       (list-push props RDFS_SEE_ALSO)
       (list-push props RDFS_IS_DEFINED_BY)
-      (list-push props OWL_VERSION_IRI)
+      (list-push props OWL_DEPRECATED)
+      (list-push props OWL_VERSION_INFO)
+      (list-push props OWL_PRIOR_VERSION)
+      (list-push props OWL_BACKWARD_COMPATIBLE_WITH)
+      (list-push props OWL_INCOMPATIBLE_WITH)
       (for-each (p-iri props)
         (let ((p-term (make-iri arena p-iri))
               (inferred (make-triple arena p-term type-pred annot-class)))

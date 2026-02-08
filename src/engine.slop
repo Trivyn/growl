@@ -12,7 +12,7 @@
 
   (import rdf (Term Triple triple-eq make-iri make-triple triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match indexed-graph-for-each))
-  (import vocab (RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF))
+  (import vocab (RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_SAME_AS))
   (import thread (chan-buffered send recv spawn join))
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
@@ -103,6 +103,21 @@
                   (set! cg (indexed-graph-add arena cg t)))
                 (for-each (t (cls-nothing1 arena cg))
                   (set! cg (indexed-graph-add arena cg t)))
+                ;; Generate scm-cls triples for Thing and Nothing
+                ;; (scm-cls already ran, but these axioms were added after)
+                (let ((thing (make-iri arena OWL_THING))
+                      (nothing (make-iri arena OWL_NOTHING))
+                      (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+                      (equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS)))
+                  (set! cg (indexed-graph-add arena cg (make-triple arena thing subclass-pred thing)))
+                  (set! cg (indexed-graph-add arena cg (make-triple arena thing equiv-pred thing)))
+                  (set! cg (indexed-graph-add arena cg (make-triple arena nothing subclass-pred nothing)))
+                  (set! cg (indexed-graph-add arena cg (make-triple arena nothing equiv-pred nothing))))
+                ;; eq-ref axiomatic: sameAs sameAs sameAs
+                ;; (eq-ref adds results to graph not delta, so this self-referential
+                ;; triple can't emerge from the fixpoint loop)
+                (let ((same-as (make-iri arena OWL_SAME_AS)))
+                  (set! cg (indexed-graph-add arena cg (make-triple arena same-as same-as same-as))))
                 cg)
               dt-graph))
           ;; Phase 2: Main fixpoint uses materialized graph + original delta

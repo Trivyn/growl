@@ -206,7 +206,7 @@
       ((some result)
         (match result
           ((reason-success s)
-            (<= (. s inferred-count) 18))
+            (<= (. s inferred-count) 36))
           ((reason-inconsistent _)
             (println "  ERROR: unexpected inconsistency on empty graph")
             false)))))

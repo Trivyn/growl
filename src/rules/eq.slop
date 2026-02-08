@@ -671,7 +671,7 @@
   ;; ============================================================
 
   (fn eq-ref ((arena Arena) (g IndexedGraph) (delta Delta))
-    (@intent "Infer reflexive sameAs for subjects and objects of all delta triples")
+    (@intent "Infer reflexive sameAs for subjects, predicates, and objects of all delta triples")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
     (@pure)
@@ -684,14 +684,19 @@
     (let ((same-as (make-iri arena OWL_SAME_AS))
           (mut result (list-new arena Triple)))
 
-      ;; For every triple in delta, emit sameAs-self for subject and object
+      ;; For every triple in delta, emit sameAs-self for subject, predicate, and object
       (for-each (dt (. delta triples))
         (let ((s (triple-subject dt))
+              (p (triple-predicate dt))
               (o (triple-object dt)))
           ;; s sameAs s
           (let ((s-self (make-triple arena s same-as s)))
             (when (not (indexed-graph-contains g s-self))
               (list-push result s-self)))
+          ;; p sameAs p
+          (let ((p-self (make-triple arena p same-as p)))
+            (when (not (indexed-graph-contains g p-self))
+              (list-push result p-self)))
           ;; o sameAs o
           (let ((o-self (make-triple arena o same-as o)))
             (when (not (indexed-graph-contains g o-self))

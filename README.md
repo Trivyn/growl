@@ -187,7 +187,7 @@ Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.
 
 | Rule | Status | Notes |
 |------|--------|-------|
-| dt-type1 | ✅ | Assert recognized datatypes as rdfs:Datatype |
+| dt-type1 | ✅ | Assert all OWL 2 datatypes as rdfs:Datatype (36 types) |
 | dt-type2 | ❌ | Literal typing — non-standard literal-as-subject triples |
 | dt-eq | ❌ | Datatype equality — even owlrl skips |
 | dt-diff | ❌ | Datatype inequality — even owlrl skips |
