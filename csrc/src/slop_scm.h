@@ -7,6 +7,7 @@
 #include "slop_rdf.h"
 #include "slop_index.h"
 #include "slop_vocab.h"
+#include "slop_list.h"
 #include "slop_types.h"
 
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
@@ -53,6 +54,13 @@ slop_list_rdf_Triple scm_scm_dom1(slop_arena* arena, index_IndexedGraph g, types
 slop_list_rdf_Triple scm_scm_dom2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_rng1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_rng2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_int(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_uni(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_svf1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_svf2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_avf1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_avf2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_hv(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
 #define SLOP_OPTION_RDF_TRIPLE_DEFINED

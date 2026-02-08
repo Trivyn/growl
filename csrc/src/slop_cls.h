@@ -71,6 +71,10 @@ slop_list_rdf_Triple cls_cls_hv1(slop_arena* arena, index_IndexedGraph g, types_
 slop_list_rdf_Triple cls_cls_hv2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cls_cls_maxc1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cls_cls_maxc2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_option_types_InconsistencyReport cls_cls_maxqc1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_option_types_InconsistencyReport cls_cls_maxqc2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple cls_cls_maxqc3(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple cls_cls_maxqc4(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cls_cls_oo(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 
 #ifndef SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED

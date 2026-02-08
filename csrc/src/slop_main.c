@@ -113,16 +113,16 @@ int main(int64_t argc, uint8_t** argv) {
         slop_arena* arena = &_arena;
         {
             __auto_type args = main_parse_args(arena, argc, argv);
-            __auto_type _mv_230 = args.input_file;
-            if (!_mv_230.has_value) {
+            __auto_type _mv_271 = args.input_file;
+            if (!_mv_271.has_value) {
                 main_print_usage();
                 if (args.show_help) {
                     return 0;
                 } else {
                     return 1;
                 }
-            } else if (_mv_230.has_value) {
-                __auto_type input_path = _mv_230.value;
+            } else if (_mv_271.has_value) {
+                __auto_type input_path = _mv_271.value;
                 if (args.show_help) {
                     main_print_usage();
                     return 0;
@@ -130,16 +130,16 @@ int main(int64_t argc, uint8_t** argv) {
                     {
                         __auto_type quiet = args.quiet;
                         __auto_type parse_start = slop_now_ms();
-                        __auto_type _mv_231 = ttl_parse_ttl_file(arena, input_path);
-                        if (!_mv_231.is_ok) {
-                            __auto_type e = _mv_231.data.err;
+                        __auto_type _mv_272 = ttl_parse_ttl_file(arena, input_path);
+                        if (!_mv_272.is_ok) {
+                            __auto_type e = _mv_272.data.err;
                             printf("%s", "Error: failed to parse ");
                             printf("%.*s\n", (int)(input_path).len, (input_path).data);
-                            __auto_type _mv_232 = e;
-                            switch (_mv_232.tag) {
+                            __auto_type _mv_273 = e;
+                            switch (_mv_273.tag) {
                                 case ttl_TtlFileError_parse_error:
                                 {
-                                    __auto_type pe = _mv_232.data.parse_error;
+                                    __auto_type pe = _mv_273.data.parse_error;
                                     printf("%s", "  at line ");
                                     printf("%.*s", (int)(int_to_string(arena, pe.position.line)).len, (int_to_string(arena, pe.position.line)).data);
                                     printf("%s", ", column ");
@@ -149,13 +149,13 @@ int main(int64_t argc, uint8_t** argv) {
                                 }
                                 case ttl_TtlFileError_file_error:
                                 {
-                                    __auto_type _ = _mv_232.data.file_error;
+                                    __auto_type _ = _mv_273.data.file_error;
                                     return printf("%s\n", "  (file error)");
                                 }
                             }
                             return 1;
-                        } else if (_mv_231.is_ok) {
-                            __auto_type g = _mv_231.data.ok;
+                        } else if (_mv_272.is_ok) {
+                            __auto_type g = _mv_272.data.ok;
                             {
                                 __auto_type ig = main_graph_to_indexed(arena, g);
                                 __auto_type input_size = rdf_indexed_graph_size(ig);
@@ -172,11 +172,11 @@ int main(int64_t argc, uint8_t** argv) {
                                 {
                                     __auto_type reason_start = slop_now_ms();
                                     __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet), .fast = args.fast});
-                                    __auto_type _mv_233 = growl_reason_with_config(arena, ig, config);
-                                    switch (_mv_233.tag) {
+                                    __auto_type _mv_274 = growl_reason_with_config(arena, ig, config);
+                                    switch (_mv_274.tag) {
                                         case types_ReasonerResult_reason_success:
                                         {
-                                            __auto_type s = _mv_233.data.reason_success;
+                                            __auto_type s = _mv_274.data.reason_success;
                                             {
                                                 __auto_type inferred = s.inferred_count;
                                                 __auto_type iters = s.iterations;
@@ -205,36 +205,36 @@ int main(int64_t argc, uint8_t** argv) {
                                                     printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(s.graph))).len, (int_to_string(arena, rdf_indexed_graph_size(s.graph))).data);
                                                     printf("%s\n", " triples");
                                                 }
-                                                __auto_type _mv_234 = args.emit_file;
-                                                if (_mv_234.has_value) {
-                                                    __auto_type emit_path = _mv_234.value;
+                                                __auto_type _mv_275 = args.emit_file;
+                                                if (_mv_275.has_value) {
+                                                    __auto_type emit_path = _mv_275.value;
                                                     {
                                                         __auto_type out_graph = main_indexed_to_graph(arena, s.graph);
                                                         slop_option_string no_base = (slop_option_string){.has_value = false};
                                                         __auto_type config = ((serialize_ttl_SerializeConfig){.prefixes = ttl_make_prefix_map(arena), .base_iri = no_base, .indent_width = 2});
-                                                        __auto_type _mv_235 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
-                                                        if (_mv_235.is_ok) {
-                                                            __auto_type _ = _mv_235.data.ok;
+                                                        __auto_type _mv_276 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
+                                                        if (_mv_276.is_ok) {
+                                                            __auto_type _ = _mv_276.data.ok;
                                                             if (!(quiet)) {
                                                                 printf("%s", "Wrote materialized graph to ");
                                                                 printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
                                                             }
                                                             return 0;
-                                                        } else if (!_mv_235.is_ok) {
-                                                            __auto_type _ = _mv_235.data.err;
+                                                        } else if (!_mv_276.is_ok) {
+                                                            __auto_type _ = _mv_276.data.err;
                                                             printf("%s", "Error: failed to write ");
                                                             printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
                                                             return 1;
                                                         }
                                                     }
-                                                } else if (!_mv_234.has_value) {
+                                                } else if (!_mv_275.has_value) {
                                                     return 0;
                                                 }
                                             }
                                         }
                                         case types_ReasonerResult_reason_inconsistent:
                                         {
-                                            __auto_type report = _mv_233.data.reason_inconsistent;
+                                            __auto_type report = _mv_274.data.reason_inconsistent;
                                             {
                                                 __auto_type reason_elapsed = (slop_now_ms() - reason_start);
                                                 if (quiet) {

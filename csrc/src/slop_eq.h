@@ -57,6 +57,7 @@ slop_list_rdf_Triple eq_eq_rep_o(slop_arena* arena, index_IndexedGraph g, types_
 slop_option_types_InconsistencyReport eq_eq_diff1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_option_types_InconsistencyReport eq_eq_diff2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_option_types_InconsistencyReport eq_eq_diff3(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple eq_eq_ref(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
 #define SLOP_OPTION_RDF_TRIPLE_DEFINED
