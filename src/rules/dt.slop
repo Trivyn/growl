@@ -24,7 +24,7 @@
                  XSD_DATE_TIME XSD_DATE_TIME_STAMP XSD_DATE XSD_TIME
                  XSD_HEX_BINARY XSD_BASE64_BINARY XSD_ANY_URI))
   (import xsd (xsd-validate-lexical))
-  (import types (InconsistencyReport))
+  (import types (InconsistencyReport all-triples-have-predicate))
 
   (export
     dt-type1
@@ -43,6 +43,12 @@
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (and
+          (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+          (term-eq (triple-object t) (make-iri arena RDFS_DATATYPE)))))
     (let ((type-pred (make-iri arena RDF_TYPE))
           (datatype-class (make-iri arena RDFS_DATATYPE))
           (mut result (list-new arena Triple)))
@@ -112,6 +118,9 @@
     (@post (match $result
              ((none) true)
              ((some report) {(string-len (. report reason)) > 0})))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 1))))
     (for-each (t (. g triples))
       (match (triple-object t)
         ((term-literal lit)

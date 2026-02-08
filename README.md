@@ -1,14 +1,14 @@
 # Growl
 
-An OWL 2 RL reasoner with formally verified inference rules.
+An OWL 2 RL reasoner with Z3-verified inference rules.
 
 ## Overview
 
-Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL_2_RL) inference rules with Z3-verified contracts. Written in SLOP, it compiles to efficient C code while guaranteeing correctness through formal verification.
+Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL_2_RL) inference rules with Z3-verified contracts on every inference function. Written in SLOP, it compiles to efficient C code while using SMT solving to prove properties about the inference logic.
 
 ## Features
 
-- **Formally Verified**: All inference rules have Z3-verified pre/post conditions
+- **Z3-Verified Contracts**: Every inference function has machine-checked pre/postconditions; soundness properties prove each output triple is justified by a delta/graph premise (see [Verification](#verification) for scope)
 - **OWL 2 RL Compliant**: Implements W3C specification tables 4-9
 - **Parallel Execution**: Fork-join parallel semi-naive evaluation
 - **Inconsistency Detection**: Reports violations with witness triples
@@ -102,9 +102,26 @@ make benchmark  # run benchmarks
 ## Verification
 
 ```bash
-slop verify src/growl.slop
-slop verify src/rules/*.slop
+slop verify              # verify all files in [verify].sources
+slop verify -v           # verbose — shows per-function results
 ```
+
+Growl uses `slop verify`, which encodes contracts into Z3 SMT formulas and proves them with weakest-precondition calculus. 101 function-level contracts are verified across the codebase.
+
+**What is proven:**
+
+- **Soundness** (`@property soundness`): For every output triple, there exists a delta triple justifying it — proving the reasoner never fabricates conclusions from nothing. Covers 55 of 77 inference functions, including all high-value rules (cax-sco, prp-dom/rng, eq-ref/sym, cls-hv1/hv2, etc.).
+- **Completeness** (`@property completeness`): For certain rules (eq-sym, scm-eqc1/eqc2, prp-symp, scm-eqp1/eqp2), every applicable delta triple produces the expected output — proving the reasoner doesn't miss inferences. 8 functions.
+- **Novelty** (`@property novelty`): Every output triple is new — not already present in the graph. Proves the rule engine never wastes work emitting redundant inferences. Covers cls-maxc2, cls-maxqc3, cls-maxqc4 (3 functions).
+- **Postconditions** (`@post`): Predicate constraints (e.g. all outputs have `rdf:type` as predicate), witness counts on inconsistency reports, iteration numbering, and result bounds.
+- **Preconditions** (`@pre`): Graph size non-negativity, valid input constraints.
+
+**What is not proven:**
+
+- Soundness for deeply nested callback functions (cls-maxc2/maxqc3/4) that only query the full graph — these don't iterate delta, so the standard delta-sourcing property doesn't apply. They have `@property novelty` and `@post` predicate checks instead.
+- Full join semantics — soundness contracts prove delta-sourcing (every output links to a delta triple) but don't fully encode the multi-way join conditions of rules like cls-int1 (which requires checking all intersection components).
+- Termination of the fixed-point loop is not proven (semi-naive evaluation over finite graphs terminates in practice but isn't formally verified).
+- Memory safety of the generated C code is not verified (relies on arena allocation patterns).
 
 ## OWL 2 RL Rule Coverage
 

@@ -440,6 +440,9 @@
     (@post (match $result
              ((none) true)  ;; No violation
              ((some report) {(string-len (. report reason)) > 0})))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 3))))
     (@example
       ;; Graph: (Cat disjointWith Dog), (fido type Dog)
       ;; Delta: (fido type Cat) - triggers violation check
@@ -507,6 +510,9 @@
     (@post (match $result
              ((none) true)
              ((some report) {(string-len (. report reason)) > 0})))
+    (@post (match $result
+             ((none) true)
+             ((some r) (>= (list-len (. r witnesses)) 2))))
     (@example
       ;; Graph: AllDisjointClasses with members [Cat, Dog, Bird]
       ;;        (fido type Cat), (fido type Dog)
