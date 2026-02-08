@@ -5,7 +5,7 @@ entry = "main.slop"
 
 [build]
 output = "build/growl"
-arena_cap = 8589934592  # 8GB cap
+no_arena_cap = true
 # sources = [".", "../src", "../src/rules"]
 include = ["../../slop-rdf/src", "../../slop-rdf/src/parse", "../../slop-rdf/src/serialize", "../src", "../src/rules", "${SLOP_HOME}/lib/std/"]
 type = "executable"

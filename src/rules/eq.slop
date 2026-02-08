@@ -19,6 +19,7 @@
 
   (export
     apply-eq-rules
+    eq-ref
     eq-sym
     eq-trans
     eq-rep-s
@@ -395,16 +396,18 @@
           (for-each (dt pred-triples)
             (let ((s (triple-subject dt))
                   (s-prime (triple-object dt)))
-              ;; Find all triples with s as subject
-              (indexed-graph-for-each g (some s) no-term no-term
-                (fn ((s-triple Triple))
-                  (let ((p (triple-predicate s-triple))
-                        (o (triple-object s-triple)))
-                    ;; Don't duplicate sameAs triples themselves
-                    (when (not (term-eq p same-as))
-                      (let ((inferred (make-triple arena s-prime p o)))
-                        (when (not (indexed-graph-contains g inferred))
-                          (list-push result inferred))))))))))
+              ;; Skip reflexive sameAs (s sameAs s) — replacing s with s is a no-op
+              (when (not (term-eq s s-prime))
+                ;; Find all triples with s as subject
+                (indexed-graph-for-each g (some s) no-term no-term
+                  (fn ((s-triple Triple))
+                    (let ((p (triple-predicate s-triple))
+                          (o (triple-object s-triple)))
+                      ;; Don't duplicate sameAs triples themselves
+                      (when (not (term-eq p same-as))
+                        (let ((inferred (make-triple arena s-prime p o)))
+                          (when (not (indexed-graph-contains g inferred))
+                            (list-push result inferred)))))))))))
         ((none) (do)))
 
       ;; Also check: for new triples, find sameAs for their subjects
@@ -416,10 +419,12 @@
             ;; Find s sameAs s'
             (indexed-graph-for-each g (some s) (some same-as) no-term
               (fn ((same-triple Triple))
-                (let ((s-prime (triple-object same-triple))
-                      (inferred (make-triple arena s-prime p o)))
-                  (when (not (indexed-graph-contains g inferred))
-                    (list-push result inferred))))))))
+                (let ((s-prime (triple-object same-triple)))
+                  ;; Skip reflexive sameAs
+                  (when (not (term-eq s-prime s))
+                    (let ((inferred (make-triple arena s-prime p o)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred))))))))))
 
       result))
 
@@ -454,14 +459,16 @@
           (for-each (dt pred-triples)
             (let ((p (triple-subject dt))
                   (p-prime (triple-object dt)))
-              ;; Find all triples with p as predicate
-              (indexed-graph-for-each g no-term (some p) no-term
-                (fn ((p-triple Triple))
-                  (let ((s (triple-subject p-triple))
-                        (o (triple-object p-triple))
-                        (inferred (make-triple arena s p-prime o)))
-                    (when (not (indexed-graph-contains g inferred))
-                      (list-push result inferred))))))))
+              ;; Skip reflexive sameAs (p sameAs p) — replacing p with p is a no-op
+              (when (not (term-eq p p-prime))
+                ;; Find all triples with p as predicate
+                (indexed-graph-for-each g no-term (some p) no-term
+                  (fn ((p-triple Triple))
+                    (let ((s (triple-subject p-triple))
+                          (o (triple-object p-triple))
+                          (inferred (make-triple arena s p-prime o)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred)))))))))
         ((none) (do)))
 
       result))
@@ -495,16 +502,18 @@
           (for-each (dt pred-triples)
             (let ((o (triple-subject dt))
                   (o-prime (triple-object dt)))
-              ;; Find all triples with o as object
-              (indexed-graph-for-each g no-term no-term (some o)
-                (fn ((o-triple Triple))
-                  (let ((s (triple-subject o-triple))
-                        (p (triple-predicate o-triple)))
-                    ;; Don't duplicate sameAs triples themselves
-                    (when (not (term-eq p same-as))
-                      (let ((inferred (make-triple arena s p o-prime)))
-                        (when (not (indexed-graph-contains g inferred))
-                          (list-push result inferred))))))))))
+              ;; Skip reflexive sameAs (o sameAs o) — replacing o with o is a no-op
+              (when (not (term-eq o o-prime))
+                ;; Find all triples with o as object
+                (indexed-graph-for-each g no-term no-term (some o)
+                  (fn ((o-triple Triple))
+                    (let ((s (triple-subject o-triple))
+                          (p (triple-predicate o-triple)))
+                      ;; Don't duplicate sameAs triples themselves
+                      (when (not (term-eq p same-as))
+                        (let ((inferred (make-triple arena s p o-prime)))
+                          (when (not (indexed-graph-contains g inferred))
+                            (list-push result inferred)))))))))))
         ((none) (do)))
 
       ;; Also check: for new triples, find sameAs for their objects
@@ -516,10 +525,12 @@
             ;; Find o sameAs o'
             (indexed-graph-for-each g (some o) (some same-as) no-term
               (fn ((same-triple Triple))
-                (let ((o-prime (triple-object same-triple))
-                      (inferred (make-triple arena s p o-prime)))
-                  (when (not (indexed-graph-contains g inferred))
-                    (list-push result inferred))))))))
+                (let ((o-prime (triple-object same-triple)))
+                  ;; Skip reflexive sameAs
+                  (when (not (term-eq o-prime o))
+                    (let ((inferred (make-triple arena s p o-prime)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred))))))))))
 
       result))
 
@@ -650,4 +661,40 @@
                   (witnesses (list Triple dt same-triple)))))))))
         ((none) (do)))
 
-      (none))))
+      (none)))
+
+  ;; ============================================================
+  ;; eq-ref: Reflexive sameAs
+  ;;
+  ;; If (?s ?p ?o) — for any triple
+  ;; then (?s owl:sameAs ?s), (?o owl:sameAs ?o)
+  ;; ============================================================
+
+  (fn eq-ref ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer reflexive sameAs for subjects and objects of all delta triples")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@property soundness
+      (forall (t $result)
+        (term-eq (triple-subject t) (triple-object t))))
+    (let ((same-as (make-iri arena OWL_SAME_AS))
+          (mut result (list-new arena Triple)))
+
+      ;; For every triple in delta, emit sameAs-self for subject and object
+      (for-each (dt (. delta triples))
+        (let ((s (triple-subject dt))
+              (o (triple-object dt)))
+          ;; s sameAs s
+          (let ((s-self (make-triple arena s same-as s)))
+            (when (not (indexed-graph-contains g s-self))
+              (list-push result s-self)))
+          ;; o sameAs o
+          (let ((o-self (make-triple arena o same-as o)))
+            (when (not (indexed-graph-contains g o-self))
+              (list-push result o-self)))))
+
+      result)))

@@ -18,7 +18,7 @@
                  OWL_NOTHING OWL_INTERSECTION_OF OWL_UNION_OF OWL_COMPLEMENT_OF
                  OWL_SOME_VALUES_FROM OWL_ALL_VALUES_FROM OWL_HAS_VALUE OWL_ON_PROPERTY
                  OWL_MAX_CARDINALITY OWL_MAX_QUALIFIED_CARDINALITY OWL_ON_CLASS
-                 OWL_ONE_OF OWL_SAME_AS))
+                 OWL_ONE_OF OWL_SAME_AS OWL_THING))
   (import list (rdf-list-elements-indexed))
   (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
 
@@ -36,6 +36,10 @@
     cls-hv2
     cls-maxc1
     cls-maxc2
+    cls-maxqc1
+    cls-maxqc2
+    cls-maxqc3
+    cls-maxqc4
     cls-oo)
 
   ;; ============================================================
@@ -480,6 +484,18 @@
           (for-each (t (cls-maxc1 arena g delta))
             (set! result (delta-add arena result t)))
           (for-each (t (cls-maxc2 arena g delta))
+            (set! result (delta-add arena result t)))
+          ;; Qualified cardinality checks
+          (match (cls-maxqc1 arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))
+          (match (cls-maxqc2 arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))
+          ;; Qualified cardinality inferences
+          (for-each (t (cls-maxqc3 arena g delta))
+            (set! result (delta-add arena result t)))
+          (for-each (t (cls-maxqc4 arena g delta))
             (set! result (delta-add arena result t)))))
 
       ;; OneOf enumeration
@@ -1066,6 +1082,236 @@
                                   (let ((inferred (make-triple arena fv same-as val)))
                                     (when (not (indexed-graph-contains g inferred))
                                       (list-push result inferred)))))))))))))))))
+      result))
+
+  ;; ============================================================
+  ;; cls-maxqc1: Max Qualified Cardinality 0 (with onClass)
+  ;;
+  ;; If (?x owl:maxQualifiedCardinality 0) and (?x owl:onProperty ?p) and
+  ;;    (?x owl:onClass ?c) and (?u rdf:type ?x) and (?u ?p ?y) and (?y rdf:type ?c)
+  ;; then INCONSISTENT
+  ;; ============================================================
+
+  (fn cls-maxqc1 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect maxQualifiedCardinality 0 violation — no qualified values allowed")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@property witness-validity
+      (match $result
+        ((none) true)
+        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (on-class-pred (make-iri arena OWL_ON_CLASS))
+          (type-pred (make-iri arena RDF_TYPE))
+          (thing (make-iri arena OWL_THING))
+          (no-term (Option Term) (none)))
+
+      ;; Find maxQualifiedCardinality restrictions
+      ;; Use indexed-graph-match + for-each (not indexed-graph-for-each)
+      ;; because return doesn't work inside indexed-graph-for-each callbacks.
+      (let ((mqc-triples (indexed-graph-match arena g no-term (some mqc-pred) no-term)))
+        (for-each (mqc-triple mqc-triples)
+          (let ((restriction (triple-subject mqc-triple))
+                (prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
+            (for-each (prop-triple prop-triples)
+              (let ((property (triple-object prop-triple))
+                    (class-triples (indexed-graph-match arena g (some restriction) (some on-class-pred) no-term)))
+                (for-each (class-triple class-triples)
+                  (let ((qual-class (triple-object class-triple)))
+                    (when (not (term-eq qual-class thing))
+                      ;; Find instances of this restriction
+                      (let ((inst-triples (indexed-graph-match arena g no-term (some type-pred) (some restriction))))
+                        (for-each (inst-triple inst-triples)
+                          (let ((u (triple-subject inst-triple))
+                                (val-triples (indexed-graph-match arena g (some u) (some property) no-term)))
+                            (for-each (val-triple val-triples)
+                              (let ((y (triple-object val-triple))
+                                    (y-type (make-triple arena y type-pred qual-class)))
+                                (when (indexed-graph-contains g y-type)
+                                  (return (some (record-new InconsistencyReport
+                                    (reason "cls-maxqc1: maxQualifiedCardinality 0 violated")
+                                    (witnesses (list Triple inst-triple val-triple y-type mqc-triple)))))))))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; cls-maxqc2: Max Qualified Cardinality 0 with owl:Thing
+  ;;
+  ;; If (?x owl:maxQualifiedCardinality 0) and (?x owl:onProperty ?p) and
+  ;;    (?x owl:onClass owl:Thing) and (?u rdf:type ?x) and (?u ?p ?y)
+  ;; then INCONSISTENT
+  ;;
+  ;; When onClass is owl:Thing, any value counts (equivalent to cls-maxc1).
+  ;; ============================================================
+
+  (fn cls-maxqc2 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Detect maxQualifiedCardinality 0 + owl:Thing violation — no values allowed")
+    (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post (match $result
+             ((none) true)
+             ((some r) {(string-len (. r reason)) > 0})))
+    (@property witness-validity
+      (match $result
+        ((none) true)
+        ((some r) (>= (list-len (. r witnesses)) 2))))
+    (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (on-class-pred (make-iri arena OWL_ON_CLASS))
+          (type-pred (make-iri arena RDF_TYPE))
+          (thing (make-iri arena OWL_THING))
+          (no-term (Option Term) (none)))
+
+      ;; Find maxQualifiedCardinality restrictions with onClass owl:Thing
+      ;; Use indexed-graph-match + for-each because return doesn't work
+      ;; inside indexed-graph-for-each callbacks.
+      (let ((mqc-triples (indexed-graph-match arena g no-term (some mqc-pred) no-term)))
+        (for-each (mqc-triple mqc-triples)
+          (let ((restriction (triple-subject mqc-triple))
+                (prop-triples (indexed-graph-match arena g (some restriction) (some on-prop-pred) no-term)))
+            (for-each (prop-triple prop-triples)
+              (let ((property (triple-object prop-triple))
+                    (class-triples (indexed-graph-match arena g (some restriction) (some on-class-pred) no-term)))
+                (for-each (class-triple class-triples)
+                  (let ((qual-class (triple-object class-triple)))
+                    (when (term-eq qual-class thing)
+                      ;; owl:Thing — any value violates maxQC 0
+                      (let ((inst-triples (indexed-graph-match arena g no-term (some type-pred) (some restriction))))
+                        (for-each (inst-triple inst-triples)
+                          (let ((u (triple-subject inst-triple))
+                                (val-triples (indexed-graph-match arena g (some u) (some property) no-term)))
+                            (for-each (val-triple val-triples)
+                              (return (some (record-new InconsistencyReport
+                                (reason "cls-maxqc2: maxQualifiedCardinality 0 (owl:Thing) violated")
+                                (witnesses (list Triple inst-triple val-triple mqc-triple)))))))))))))))))
+
+      (none)))
+
+  ;; ============================================================
+  ;; cls-maxqc3: Max Qualified Cardinality 1 → sameAs (with onClass)
+  ;;
+  ;; If (?x owl:maxQualifiedCardinality 1) and (?x owl:onProperty ?p) and
+  ;;    (?x owl:onClass ?c) and (?u rdf:type ?x) and
+  ;;    (?u ?p ?y1) and (?y1 rdf:type ?c) and (?u ?p ?y2) and (?y2 rdf:type ?c)
+  ;; then (?y1 owl:sameAs ?y2)
+  ;; ============================================================
+
+  (fn cls-maxqc3 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer sameAs from maxQualifiedCardinality 1 with onClass qualification")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@property soundness
+      (forall (t $result)
+        (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
+    (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (on-class-pred (make-iri arena OWL_ON_CLASS))
+          (type-pred (make-iri arena RDF_TYPE))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (thing (make-iri arena OWL_THING))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find maxQualifiedCardinality restrictions with onClass (not owl:Thing)
+      (indexed-graph-for-each g no-term (some mqc-pred) no-term
+        (fn ((mqc-triple Triple))
+          (let ((restriction (triple-subject mqc-triple)))
+            (indexed-graph-for-each g (some restriction) (some on-prop-pred) no-term
+              (fn ((prop-triple Triple))
+                (let ((property (triple-object prop-triple)))
+                  (indexed-graph-for-each g (some restriction) (some on-class-pred) no-term
+                    (fn ((class-triple Triple))
+                      (let ((qual-class (triple-object class-triple)))
+                        (when (not (term-eq qual-class thing))
+                          ;; Find instances of this restriction
+                          (indexed-graph-for-each g no-term (some type-pred) (some restriction)
+                            (fn ((inst-triple Triple))
+                              (let ((u (triple-subject inst-triple))
+                                    (mut first-qualified (Option Term) (none)))
+                                ;; Find all values via property, filter by qualified class
+                                (indexed-graph-for-each g (some u) (some property) no-term
+                                  (fn ((val-triple Triple))
+                                    (let ((y (triple-object val-triple))
+                                          (y-type (make-triple arena y type-pred qual-class)))
+                                      (when (indexed-graph-contains g y-type)
+                                        (match first-qualified
+                                          ((none) (set! first-qualified (some y)))
+                                          ((some fv)
+                                            (let ((inferred (make-triple arena fv same-as y)))
+                                              (when (not (indexed-graph-contains g inferred))
+                                                (list-push result inferred))))))))))))))))))))))
+
+      result))
+
+  ;; ============================================================
+  ;; cls-maxqc4: Max Qualified Cardinality 1 + owl:Thing → sameAs
+  ;;
+  ;; If (?x owl:maxQualifiedCardinality 1) and (?x owl:onProperty ?p) and
+  ;;    (?x owl:onClass owl:Thing) and (?u rdf:type ?x) and
+  ;;    (?u ?p ?y1) and (?u ?p ?y2)
+  ;; then (?y1 owl:sameAs ?y2)
+  ;;
+  ;; When onClass is owl:Thing, equivalent to cls-maxc2.
+  ;; ============================================================
+
+  (fn cls-maxqc4 ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Infer sameAs from maxQualifiedCardinality 1 with owl:Thing (any value)")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@property soundness
+      (forall (t $result)
+        (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
+    (let ((mqc-pred (make-iri arena OWL_MAX_QUALIFIED_CARDINALITY))
+          (on-prop-pred (make-iri arena OWL_ON_PROPERTY))
+          (on-class-pred (make-iri arena OWL_ON_CLASS))
+          (type-pred (make-iri arena RDF_TYPE))
+          (same-as (make-iri arena OWL_SAME_AS))
+          (thing (make-iri arena OWL_THING))
+          (no-term (Option Term) (none))
+          (mut result (list-new arena Triple)))
+
+      ;; Find maxQualifiedCardinality restrictions with onClass owl:Thing
+      (indexed-graph-for-each g no-term (some mqc-pred) no-term
+        (fn ((mqc-triple Triple))
+          (let ((restriction (triple-subject mqc-triple)))
+            (indexed-graph-for-each g (some restriction) (some on-prop-pred) no-term
+              (fn ((prop-triple Triple))
+                (let ((property (triple-object prop-triple)))
+                  (indexed-graph-for-each g (some restriction) (some on-class-pred) no-term
+                    (fn ((class-triple Triple))
+                      (let ((qual-class (triple-object class-triple)))
+                        (when (term-eq qual-class thing)
+                          ;; owl:Thing — all values count, equivalent to cls-maxc2
+                          (indexed-graph-for-each g no-term (some type-pred) (some restriction)
+                            (fn ((inst-triple Triple))
+                              (let ((u (triple-subject inst-triple))
+                                    (mut first-val (Option Term) (none)))
+                                (indexed-graph-for-each g (some u) (some property) no-term
+                                  (fn ((val-triple Triple))
+                                    (let ((y (triple-object val-triple)))
+                                      (match first-val
+                                        ((none) (set! first-val (some y)))
+                                        ((some fv)
+                                          (let ((inferred (make-triple arena fv same-as y)))
+                                            (when (not (indexed-graph-contains g inferred))
+                                              (list-push result inferred)))))))))))))))))))))
+
       result))
 
   ;; ============================================================

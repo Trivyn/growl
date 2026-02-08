@@ -67,6 +67,11 @@ slop_list_rdf_Triple prp_prp_symp(slop_arena* arena, index_IndexedGraph g, types
 slop_option_types_InconsistencyReport prp_prp_asyp(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_trp(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_option_types_InconsistencyReport prp_prp_irp(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_option_types_InconsistencyReport prp_prp_adp(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_option_types_InconsistencyReport prp_prp_npa1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_option_types_InconsistencyReport prp_prp_npa2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple prp_prp_spo2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple prp_prp_key(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_spo1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_inv1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_inv2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);

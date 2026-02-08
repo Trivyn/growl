@@ -2,10 +2,9 @@
 # Build from transpiled C sources — no SLOP toolchain required.
 
 CC      ?= cc
-ARENA   ?= 8589934592
 CFLAGS  ?= -O2 -Wall -Wno-unused-function -Wno-unused-variable \
            -Wno-return-type -Wno-pointer-sign \
-           -DSLOP_ARENA_MAX_TOTAL_BYTES=$(ARENA)UL
+           -DSLOP_ARENA_NO_CAP
 LDFLAGS ?= -lpthread
 
 CSRC    = csrc/src
@@ -42,6 +41,6 @@ clean:
 
 release: CFLAGS = -O3 -Wall -Wno-unused-function -Wno-unused-variable \
                   -Wno-return-type -Wno-pointer-sign -DNDEBUG \
-                  -DSLOP_ARENA_MAX_TOTAL_BYTES=$(ARENA)UL
+                  -DSLOP_ARENA_NO_CAP
 release: clean cli
 	@echo "Release binary built: $(BIN)/growl"

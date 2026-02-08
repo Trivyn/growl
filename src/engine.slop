@@ -10,27 +10,32 @@
 (module engine
   (@doc "Parallel fixpoint rule engine with fork-join pattern")
 
-  (import rdf (Term Triple triple-eq))
+  (import rdf (Term Triple triple-eq make-iri make-triple triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match indexed-graph-for-each))
+  (import vocab (RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF))
   (import thread (chan-buffered send recv spawn join))
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
   (import cax (apply-cax-rules cax-sco cax-eqc1 cax-eqc2 cax-dw cax-adc))
-  (import scm (apply-scm-rules scm-cls scm-sco scm-eqc1 scm-eqc2
-               scm-op scm-dp scm-spo scm-eqp1 scm-eqp2
-               scm-dom1 scm-dom2 scm-rng1 scm-rng2))
+  (import scm (scm-cls scm-eqc1 scm-eqc2 scm-int scm-uni
+               scm-op scm-dp scm-eqp1 scm-eqp2
+               scm-dom1 scm-dom2 scm-rng1 scm-rng2
+               scm-svf1 scm-svf2 scm-avf1 scm-avf2 scm-hv))
   (import prp (apply-prp-rules prp-dom prp-rng prp-fp prp-ifp prp-symp prp-trp
-               prp-asyp prp-irp prp-pdw prp-spo1 prp-eqp1 prp-eqp2 prp-inv1 prp-inv2))
-  (import eq  (apply-eq-rules eq-sym eq-trans eq-rep-s eq-rep-p eq-rep-o
+               prp-asyp prp-irp prp-pdw prp-adp prp-npa1 prp-npa2
+               prp-spo1 prp-spo2 prp-eqp1 prp-eqp2 prp-inv1 prp-inv2 prp-key))
+  (import eq  (apply-eq-rules eq-ref eq-sym eq-trans eq-rep-s eq-rep-p eq-rep-o
                eq-diff1 eq-diff2 eq-diff3))
   (import cls (apply-cls-rules cls-nothing2 cls-int1 cls-int2 cls-uni cls-com
-               cls-svf1 cls-svf2 cls-avf cls-hv1 cls-hv2 cls-maxc1 cls-maxc2 cls-oo))
+               cls-svf1 cls-svf2 cls-avf cls-hv1 cls-hv2 cls-maxc1 cls-maxc2
+               cls-maxqc1 cls-maxqc2 cls-maxqc3 cls-maxqc4 cls-oo))
 
   (export
     engine-run
     engine-run-iteration
     apply-all-rules
     merge-into-graph
+    schema-materialize
     print-ms)
 
   ;; ============================================================
@@ -68,9 +73,17 @@
              ((reason-success s) {(. s iterations) <= (. config max-iterations)})
              ((reason-inconsistent _) true)))
     (let ((initial-size (indexed-graph-size initial))
+          (initial-delta (make-initial-delta arena initial))
+          ;; Phase 1: Schema materialization (skip in fast mode)
+          (materialized-graph
+            (if (. config fast)
+              initial
+              (schema-materialize arena initial
+                (make-initial-delta arena initial) config)))
+          ;; Phase 2: Main fixpoint uses materialized graph + original delta
           (mut state (record-new EngineState
-                       (graph initial)
-                       (delta (make-initial-delta arena initial))
+                       (graph materialized-graph)
+                       (delta initial-delta)
                        (iteration 0)
                        (config config)))
           (mut done false)
@@ -118,6 +131,275 @@
       d))
 
   ;; ============================================================
+  ;; Direct Transitive Closure (BFS)
+  ;; ============================================================
+
+  (fn compute-tc ((arena Arena) (g IndexedGraph) (pred Term))
+    (@intent "Direct transitive closure via BFS for a single predicate")
+    (@spec ((Arena IndexedGraph Term) -> (List Triple)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@property novelty
+      ;; No output triple is already in the graph
+      (forall (t $result) (not (indexed-graph-contains g t))))
+    (@property predicate-preservation
+      ;; Every output triple uses the given predicate
+      (forall (t $result)
+        (term-eq (triple-predicate t) pred)))
+    (let ((no-term (Option Term) (none))
+          (mut result (list-new arena Triple))
+          ;; Collect all triples with this predicate to find unique subjects
+          (all-pred-triples (indexed-graph-match arena g no-term (some pred) no-term))
+          (mut all-subjects (list-new arena Term))
+          (mut seen-subjects (set-new arena Term)))
+      ;; Deduplicate subjects
+      (for-each (t all-pred-triples)
+        (let ((s (triple-subject t)))
+          (when (not (set-has seen-subjects s))
+            (do
+              (set-put seen-subjects s)
+              (list-push all-subjects s)))))
+      ;; BFS from each subject to find all ancestors
+      (for-each (start all-subjects)
+        (let ((mut bfs-visited (set-new arena Term))
+              (mut bfs-queue (list-new arena Term)))
+          ;; Seed: direct parents of start
+          (let ((direct-parents (indexed-graph-match arena g (some start) (some pred) no-term)))
+            (for-each (t direct-parents)
+              (let ((parent (triple-object t)))
+                (when (not (set-has bfs-visited parent))
+                  (do
+                    (set-put bfs-visited parent)
+                    (list-push bfs-queue parent))))))
+          ;; BFS loop
+          (let ((mut qi 0))
+            (while (< qi (list-len bfs-queue))
+              (match (list-get bfs-queue qi)
+                ((some current)
+                  (do
+                    (let ((inferred (make-triple arena start pred current)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred)))
+                    ;; Enqueue current's parents
+                    (let ((parents (indexed-graph-match arena g (some current) (some pred) no-term)))
+                      (for-each (t parents)
+                        (let ((parent (triple-object t)))
+                          (when (not (set-has bfs-visited parent))
+                            (do
+                              (set-put bfs-visited parent)
+                              (list-push bfs-queue parent))))))))
+                ((none) (do)))
+              (set! qi (+ qi 1))))))
+      result))
+
+  ;; ============================================================
+  ;; Schema Materialization Phase
+  ;; ============================================================
+
+  (fn schema-materialize ((arena Arena) (g IndexedGraph) (delta Delta) (config ReasonerConfig))
+    (@intent "Run schema rules via phased pipeline with direct transitive closure")
+    (@spec ((Arena IndexedGraph Delta ReasonerConfig) -> IndexedGraph))
+    (@alloc arena)
+    (let ((mut graph g)
+          (verbose (. config verbose))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF)))
+
+      (when verbose
+        (println "[schema] phased materialization"))
+
+      ;; Phase 1: Bootstrap — scm-cls, scm-op, scm-dp
+      ;; These read rdf:type (never produced by scm rules), single pass
+      (let ((t0 (now-ms))
+            (mut count 0))
+        (for-each (t (scm-cls arena graph delta))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-op arena graph delta))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-dp arena graph delta))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (when verbose
+          (do
+            (print "[schema] phase 1 (bootstrap): +")
+            (print (int-to-string arena count))
+            (print " triples (")
+            (print-ms arena (- (now-ms) t0))
+            (println ")"))))
+
+      ;; Phase 2: Edge generation — scm-eqc1/2, scm-eqp1/2, scm-int, scm-uni
+      ;; These read equivalentClass/Property, intersectionOf, unionOf (never produced by scm rules)
+      (let ((t0 (now-ms))
+            (full-d (make-initial-delta arena graph))
+            (mut count 0))
+        (for-each (t (scm-eqc1 arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-eqc2 arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-eqp1 arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-eqp2 arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-int arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-uni arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (when verbose
+          (do
+            (print "[schema] phase 2 (edges): +")
+            (print (int-to-string arena count))
+            (print " triples (")
+            (print-ms arena (- (now-ms) t0))
+            (println ")"))))
+
+      ;; Phase 3: Direct transitive closure for subClassOf and subPropertyOf
+      (let ((t0 (now-ms))
+            (mut count 0))
+        (for-each (t (compute-tc arena graph subclass-pred))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (compute-tc arena graph subprop-pred))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (when verbose
+          (do
+            (print "[schema] phase 3 (TC): +")
+            (print (int-to-string arena count))
+            (print " triples (")
+            (print-ms arena (- (now-ms) t0))
+            (println ")"))))
+
+      ;; Phase 4: Propagation — scm-dom1/2, scm-rng1/2
+      ;; These read complete hierarchies + domain/range declarations
+      (let ((t0 (now-ms))
+            (full-d (make-initial-delta arena graph))
+            (mut count 0))
+        (for-each (t (scm-dom1 arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-dom2 arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-rng1 arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-rng2 arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (when verbose
+          (do
+            (print "[schema] phase 4 (dom/rng): +")
+            (print (int-to-string arena count))
+            (print " triples (")
+            (print-ms arena (- (now-ms) t0))
+            (println ")"))))
+
+      ;; Phase 5+6: Structural rules + fixpoint check
+      ;; scm-svf1/2, scm-avf1/2, scm-hv may produce new subClassOf edges
+      ;; If they do, re-run TC + propagation with incremental delta
+      (let ((mut phase-done false)
+            (mut phase-iter 0)
+            ;; First structural pass uses full-graph delta
+            (mut struct-delta (make-initial-delta arena graph)))
+        (while (and (not phase-done) (< phase-iter (. config max-iterations)))
+          (let ((t0 (now-ms))
+                (mut count 0)
+                ;; Collect new triples for incremental re-prop delta
+                (mut new-delta (make-delta arena 0)))
+            (for-each (t (scm-svf1 arena graph struct-delta))
+              (do (set! graph (indexed-graph-add arena graph t))
+                  (set! new-delta (delta-add arena new-delta t))
+                  (set! count (+ count 1))))
+            (for-each (t (scm-svf2 arena graph struct-delta))
+              (do (set! graph (indexed-graph-add arena graph t))
+                  (set! new-delta (delta-add arena new-delta t))
+                  (set! count (+ count 1))))
+            (for-each (t (scm-avf1 arena graph struct-delta))
+              (do (set! graph (indexed-graph-add arena graph t))
+                  (set! new-delta (delta-add arena new-delta t))
+                  (set! count (+ count 1))))
+            (for-each (t (scm-avf2 arena graph struct-delta))
+              (do (set! graph (indexed-graph-add arena graph t))
+                  (set! new-delta (delta-add arena new-delta t))
+                  (set! count (+ count 1))))
+            (for-each (t (scm-hv arena graph struct-delta))
+              (do (set! graph (indexed-graph-add arena graph t))
+                  (set! new-delta (delta-add arena new-delta t))
+                  (set! count (+ count 1))))
+            (when verbose
+              (do
+                (print "[schema] phase 5 (structural iter ")
+                (print (int-to-string arena phase-iter))
+                (print "): +")
+                (print (int-to-string arena count))
+                (print " triples (")
+                (print-ms arena (- (now-ms) t0))
+                (println ")")))
+            (if (== count 0)
+              (set! phase-done true)
+              (do
+                ;; New subClassOf edges may exist — re-run TC
+                (let ((t1 (now-ms))
+                      (mut tc-count 0))
+                  (for-each (t (compute-tc arena graph subclass-pred))
+                    (do (set! graph (indexed-graph-add arena graph t))
+                        (set! new-delta (delta-add arena new-delta t))
+                        (set! tc-count (+ tc-count 1))))
+                  (for-each (t (compute-tc arena graph subprop-pred))
+                    (do (set! graph (indexed-graph-add arena graph t))
+                        (set! new-delta (delta-add arena new-delta t))
+                        (set! tc-count (+ tc-count 1))))
+                  (when verbose
+                    (do
+                      (print "[schema] phase 6 (re-TC): +")
+                      (print (int-to-string arena tc-count))
+                      (print " triples (")
+                      (print-ms arena (- (now-ms) t1))
+                      (println ")"))))
+                ;; Re-run propagation with incremental delta (only new triples)
+                (let ((t2 (now-ms))
+                      (mut prop-count 0))
+                  (for-each (t (scm-dom1 arena graph new-delta))
+                    (do (set! graph (indexed-graph-add arena graph t))
+                        (set! prop-count (+ prop-count 1))))
+                  (for-each (t (scm-dom2 arena graph new-delta))
+                    (do (set! graph (indexed-graph-add arena graph t))
+                        (set! prop-count (+ prop-count 1))))
+                  (for-each (t (scm-rng1 arena graph new-delta))
+                    (do (set! graph (indexed-graph-add arena graph t))
+                        (set! prop-count (+ prop-count 1))))
+                  (for-each (t (scm-rng2 arena graph new-delta))
+                    (do (set! graph (indexed-graph-add arena graph t))
+                        (set! prop-count (+ prop-count 1))))
+                  (when verbose
+                    (do
+                      (print "[schema] phase 6 (re-prop): +")
+                      (print (int-to-string arena prop-count))
+                      (print " triples (")
+                      (print-ms arena (- (now-ms) t2))
+                      (println ")"))))
+                ;; Next structural iteration uses only new triples as delta
+                (set! struct-delta new-delta))))
+          (set! phase-iter (+ phase-iter 1))))
+
+      (when verbose
+        (do
+          (print "[schema] done, graph=")
+          (print (int-to-string arena (indexed-graph-size graph)))
+          (println "")))
+
+      graph))
+
+  ;; ============================================================
   ;; Single Iteration
   ;; ============================================================
 
@@ -132,12 +414,18 @@
     ;; Apply all rules to get new inferred triples
     (match (apply-all-rules arena (. state graph) (. state delta) (. state config))
       ((ok new-delta)
-        ;; Merge new triples into graph and update state
-        (ok (record-new EngineState
-              (graph (merge-into-graph arena (. state graph) new-delta))
-              (delta new-delta)
-              (iteration (+ (. state iteration) 1))
-              (config (. state config)))))
+        (let ((mut new-graph (merge-into-graph arena (. state graph) new-delta)))
+          ;; eq-ref: add reflexive sameAs directly to graph, not delta
+          ;; These are needed for OWL 2 RL completeness but never trigger
+          ;; productive inference, so keeping them out of delta avoids cascade.
+          (when (not (. (. state config) fast))
+            (for-each (t (eq-ref arena new-graph new-delta))
+              (set! new-graph (indexed-graph-add arena new-graph t))))
+          (ok (record-new EngineState
+                (graph new-graph)
+                (delta new-delta)
+                (iteration (+ (. state iteration) 1))
+                (config (. state config))))))
       ((error report)
         (error report))))
 
@@ -178,18 +466,8 @@
           (fast (. config fast)))
 
       ;; Apply each rule group sequentially with optional timing
-
-      ;; Schema rules first (often create subclass hierarchies)
-      ;; Skipped entirely in fast mode
-      (when (not fast)
-        (let ((t0 (now-ms)))
-          (match (apply-scm-rules arena g delta)
-            ((ok scm-delta)
-              (do
-                (when verbose
-                  (do (print "  scm: ") (print-ms arena (- (now-ms) t0)) (println "")))
-                (set! combined (delta-merge arena combined scm-delta))))
-            ((error report) (return (error report))))))
+      ;; Note: scm rules are handled by schema-materialize (phased pipeline),
+      ;; so they are always skipped in the main loop.
 
       ;; Class axiom rules (subclass propagation)
       (let ((t0 (now-ms)))
@@ -252,10 +530,7 @@
           (fast (. config fast))
           (result-chan (chan-buffered WorkerMessage arena (. config channel-buffer)))
           ;; Allocate coordinator-owned per-worker arenas so data survives until collect
-          ;; In fast mode, skip scm and check arenas (allocate minimal 64 bytes as placeholder)
-          (arena-scm-class  (arena-new (if fast 64 1048576)))
-          (arena-scm-prop   (arena-new (if fast 64 1048576)))
-          (arena-scm-domrng (arena-new (if fast 64 1048576)))
+          ;; SCM arenas removed: schema rules handled by schema-materialize
           (arena-cax-infer  (arena-new 1048576))
           (arena-cax-check  (arena-new (if fast 64 1048576)))
           (arena-prp-char   (arena-new 1048576))
@@ -268,7 +543,6 @@
 
       ;; Spawn sub-workers (count varies with fast mode)
       (let ((workers (spawn-rule-workers arena g delta result-chan
-                                         arena-scm-class arena-scm-prop arena-scm-domrng
                                          arena-cax-infer arena-cax-check
                                          arena-prp-char arena-prp-chain arena-prp-check
                                          arena-eq-infer arena-eq-check
@@ -279,9 +553,6 @@
         (let ((result (collect-worker-results arena result-chan workers next-iter)))
 
           ;; Free worker arenas now that results have been merged into coordinator arena
-          (arena-free arena-scm-class)
-          (arena-free arena-scm-prop)
-          (arena-free arena-scm-domrng)
           (arena-free arena-cax-infer)
           (arena-free arena-cax-check)
           (arena-free arena-prp-char)
@@ -316,7 +587,6 @@
 
   (fn spawn-rule-workers ((arena Arena) (g IndexedGraph) (delta Delta)
                           (result-chan (Ptr (Chan WorkerMessage)))
-                          (arena-scm-class Arena) (arena-scm-prop Arena) (arena-scm-domrng Arena)
                           (arena-cax-infer Arena) (arena-cax-check Arena)
                           (arena-prp-char Arena) (arena-prp-chain Arena) (arena-prp-check Arena)
                           (arena-eq-infer Arena) (arena-eq-check Arena)
@@ -324,71 +594,13 @@
                           (verbose Bool) (fast Bool))
     (@intent "Spawn sub-worker threads, each handling a semantic subset of rules")
     (@spec ((Arena IndexedGraph Delta (Ptr (Chan WorkerMessage))
-             Arena Arena Arena Arena Arena Arena Arena Arena Arena Arena Arena Arena Bool Bool)
+             Arena Arena Arena Arena Arena Arena Arena Arena Arena Bool Bool)
             -> (List (Ptr (Thread Unit)))))
     (@alloc arena)
     (let ((mut workers (list-new arena (Ptr (Thread Unit))))
           (next-iter (+ (. delta iteration) 1)))
 
-      ;; ---- SCM sub-workers (3) — skipped in fast mode ----
-
-      (when (not fast)
-        (do
-          ;; scm-class: scm-cls, scm-sco, scm-eqc1, scm-eqc2
-          (list-push workers
-            (spawn arena (fn ()
-              (let ((t0 (now-ms))
-                    (mut result (make-delta arena-scm-class next-iter)))
-                (for-each (t (scm-cls arena-scm-class g delta))
-                  (set! result (delta-add arena-scm-class result t)))
-                (for-each (t (scm-sco arena-scm-class g delta))
-                  (set! result (delta-add arena-scm-class result t)))
-                (for-each (t (scm-eqc1 arena-scm-class g delta))
-                  (set! result (delta-add arena-scm-class result t)))
-                (for-each (t (scm-eqc2 arena-scm-class g delta))
-                  (set! result (delta-add arena-scm-class result t)))
-                (when verbose
-                  (do (print "  scm-class: ") (print-ms arena-scm-class (- (now-ms) t0)) (println "")))
-                (send result-chan (union-new WorkerMessage msg-delta result))
-                (send result-chan (union-new WorkerMessage msg-done unit))))))
-
-          ;; scm-prop: scm-op, scm-dp, scm-spo, scm-eqp1, scm-eqp2
-          (list-push workers
-            (spawn arena (fn ()
-              (let ((t0 (now-ms))
-                    (mut result (make-delta arena-scm-prop next-iter)))
-                (for-each (t (scm-op arena-scm-prop g delta))
-                  (set! result (delta-add arena-scm-prop result t)))
-                (for-each (t (scm-dp arena-scm-prop g delta))
-                  (set! result (delta-add arena-scm-prop result t)))
-                (for-each (t (scm-spo arena-scm-prop g delta))
-                  (set! result (delta-add arena-scm-prop result t)))
-                (for-each (t (scm-eqp1 arena-scm-prop g delta))
-                  (set! result (delta-add arena-scm-prop result t)))
-                (for-each (t (scm-eqp2 arena-scm-prop g delta))
-                  (set! result (delta-add arena-scm-prop result t)))
-                (when verbose
-                  (do (print "  scm-prop: ") (print-ms arena-scm-prop (- (now-ms) t0)) (println "")))
-                (send result-chan (union-new WorkerMessage msg-delta result))
-                (send result-chan (union-new WorkerMessage msg-done unit))))))
-
-          ;; scm-domrng: scm-dom1, scm-dom2, scm-rng1, scm-rng2
-          (list-push workers
-            (spawn arena (fn ()
-              (let ((t0 (now-ms))
-                    (mut result (make-delta arena-scm-domrng next-iter)))
-                (for-each (t (scm-dom1 arena-scm-domrng g delta))
-                  (set! result (delta-add arena-scm-domrng result t)))
-                (for-each (t (scm-dom2 arena-scm-domrng g delta))
-                  (set! result (delta-add arena-scm-domrng result t)))
-                (for-each (t (scm-rng1 arena-scm-domrng g delta))
-                  (set! result (delta-add arena-scm-domrng result t)))
-                (for-each (t (scm-rng2 arena-scm-domrng g delta))
-                  (set! result (delta-add arena-scm-domrng result t)))
-                (when verbose
-                  (do (print "  scm-domrng: ") (print-ms arena-scm-domrng (- (now-ms) t0)) (println "")))
-                (send result-chan (union-new WorkerMessage msg-delta result))
-                (send result-chan (union-new WorkerMessage msg-done unit))))))))
+      ;; ---- SCM sub-workers skipped: handled by schema-materialize ----
 
       ;; ---- CAX sub-workers ----
 
@@ -414,10 +626,10 @@
           (spawn arena (fn ()
             (let ((t0 (now-ms)))
               (match (cax-dw arena-cax-check g delta)
-                ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                 ((none)
                   (match (cax-adc arena-cax-check g delta)
-                    ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                     ((none) (do)))))
               (when verbose
                 (do (print "  cax-check: ") (print-ms arena-cax-check (- (now-ms) t0)) (println "")))
@@ -447,12 +659,14 @@
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; prp-chain: prp-spo1, prp-eqp1, prp-eqp2, prp-inv1, prp-inv2 (always runs)
+      ;; prp-chain: prp-spo1, prp-spo2, prp-eqp1, prp-eqp2, prp-inv1, prp-inv2, prp-key (always runs)
       (list-push workers
         (spawn arena (fn ()
           (let ((t0 (now-ms))
                 (mut result (make-delta arena-prp-chain next-iter)))
             (for-each (t (prp-spo1 arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
+            (for-each (t (prp-spo2 arena-prp-chain g delta))
               (set! result (delta-add arena-prp-chain result t)))
             (for-each (t (prp-eqp1 arena-prp-chain g delta))
               (set! result (delta-add arena-prp-chain result t)))
@@ -462,25 +676,36 @@
               (set! result (delta-add arena-prp-chain result t)))
             (for-each (t (prp-inv2 arena-prp-chain g delta))
               (set! result (delta-add arena-prp-chain result t)))
+            (for-each (t (prp-key arena-prp-chain g delta))
+              (set! result (delta-add arena-prp-chain result t)))
             (when verbose
               (do (print "  prp-chain: ") (print-ms arena-prp-chain (- (now-ms) t0)) (println "")))
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; prp-check: prp-asyp, prp-irp, prp-pdw (skipped in fast mode)
+      ;; prp-check: prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2 (skipped in fast mode)
       (when (not fast)
         (list-push workers
           (spawn arena (fn ()
             (let ((t0 (now-ms)))
               (match (prp-asyp arena-prp-check g delta)
-                ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                 ((none)
                   (match (prp-irp arena-prp-check g delta)
-                    ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                     ((none)
                       (match (prp-pdw arena-prp-check g delta)
-                        ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
-                        ((none) (do)))))))
+                        ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                        ((none)
+                          (match (prp-adp arena-prp-check g delta)
+                            ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                            ((none)
+                              (match (prp-npa1 arena-prp-check g delta)
+                                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                                ((none)
+                                  (match (prp-npa2 arena-prp-check g delta)
+                                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                                    ((none) (do)))))))))))))
               (when verbose
                 (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
               (send result-chan (union-new WorkerMessage msg-done unit)))))))
@@ -488,6 +713,7 @@
       ;; ---- EQ sub-workers ----
 
       ;; eq-infer: eq-sym, eq-trans, eq-rep-s, eq-rep-p, eq-rep-o (always runs)
+      ;; Note: eq-ref runs post-merge in engine-run-iteration (graph-only, not delta)
       (list-push workers
         (spawn arena (fn ()
           (let ((t0 (now-ms))
@@ -513,13 +739,13 @@
           (spawn arena (fn ()
             (let ((t0 (now-ms)))
               (match (eq-diff1 arena-eq-check g delta)
-                ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                 ((none)
                   (match (eq-diff2 arena-eq-check g delta)
-                    ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                     ((none)
                       (match (eq-diff3 arena-eq-check g delta)
-                        ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                        ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                         ((none) (do)))))))
               (when verbose
                 (do (print "  eq-check: ") (print-ms arena-eq-check (- (now-ms) t0)) (println "")))
@@ -564,6 +790,18 @@
                 (for-each (t (cls-maxc1 arena-cls-ind g delta))
                   (set! result (delta-add arena-cls-ind result t)))
                 (for-each (t (cls-maxc2 arena-cls-ind g delta))
+                  (set! result (delta-add arena-cls-ind result t)))
+                ;; Qualified cardinality checks
+                (match (cls-maxqc1 arena-cls-ind g delta)
+                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                  ((none)
+                    (match (cls-maxqc2 arena-cls-ind g delta)
+                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                      ((none) (do)))))
+                ;; Qualified cardinality inferences
+                (for-each (t (cls-maxqc3 arena-cls-ind g delta))
+                  (set! result (delta-add arena-cls-ind result t)))
+                (for-each (t (cls-maxqc4 arena-cls-ind g delta))
                   (set! result (delta-add arena-cls-ind result t)))))
             (for-each (t (cls-oo arena-cls-ind g delta))
               (set! result (delta-add arena-cls-ind result t)))
@@ -571,10 +809,10 @@
             (when (not fast)
               (do
                 (match (cls-nothing2 arena-cls-ind g delta)
-                  ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                   ((none)
                     (match (cls-com arena-cls-ind g delta)
-                      ((some report) (send result-chan (union-new WorkerMessage msg-inconsistent report)))
+                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                       ((none) (do)))))))
             (when verbose
               (do (print "  cls-ind: ") (print-ms arena-cls-ind (- (now-ms) t0)) (println "")))
