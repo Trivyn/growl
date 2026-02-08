@@ -52,6 +52,7 @@
     (emit-file (Option String))
     (quiet Bool)
     (fast Bool)
+    (complete Bool)
     (show-help Bool)))
 
   (fn argv-to-string ((argv (Ptr (Ptr U8))) (index Int))
@@ -68,6 +69,7 @@
           (mut emit (Option String) (none))
           (mut quiet false)
           (mut fast false)
+          (mut complete false)
           (mut help false)
           (mut i 1))
       (while (< i argc)
@@ -81,6 +83,9 @@
               (set! i (+ i 1)))
             ((or (string-eq arg "--fast") (string-eq arg "-f"))
               (set! fast true)
+              (set! i (+ i 1)))
+            ((or (string-eq arg "--complete") (string-eq arg "-c"))
+              (set! complete true)
               (set! i (+ i 1)))
             ((or (string-eq arg "--emit") (string-eq arg "-o"))
               (if (< (+ i 1) argc)
@@ -99,6 +104,7 @@
         (emit-file emit)
         (quiet quiet)
         (fast fast)
+        (complete complete)
         (show-help help))))
 
   (fn print-usage ()
@@ -112,7 +118,8 @@
     (println "  -h, --help       Show this help message")
     (println "  -q, --quiet      Only print failures and inconsistencies")
     (println "  -o, --emit FILE  Write materialized graph to TTL file")
-    (println "  -f, --fast       Skip schema rules and consistency checks"))
+    (println "  -f, --fast       Skip schema rules and consistency checks")
+    (println "  -c, --complete   Enable cls-thing and prp-ap for spec completeness"))
 
   ;; ============================================================
   ;; Graph Conversion
@@ -199,7 +206,8 @@
                                   (channel-buffer 256)
                                   (max-iterations 1000)
                                   (verbose (not quiet))
-                                  (fast (. args fast)))))
+                                  (fast (. args fast))
+                                  (complete (. args complete)))))
                   (match (reason-with-config arena ig config)
                     ((reason-success s)
                       (let ((inferred (. s inferred-count))

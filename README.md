@@ -15,13 +15,13 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 
 ## Rule Coverage
 
-72 of 78 OWL 2 RL rules implemented (92% coverage). See [detailed coverage table](#owl-2-rl-rule-coverage) below.
+75 of 78 OWL 2 RL rules implemented (96% coverage). See [detailed coverage table](#owl-2-rl-rule-coverage) below.
 
 | Table | Rules | Implemented | Description |
 |-------|-------|-------------|-------------|
 | Table 4 | eq-* | 9/9 | Equality semantics (sameAs, differentFrom) |
-| Table 5 | prp-* | 19/20 | Property axioms (domain, range, inverse, transitivity, chains, keys) |
-| Table 6 | cls-* | 17/19 | Class expressions (intersectionOf, unionOf, oneOf, qualified cardinality) |
+| Table 5 | prp-* | 20/20 | Property axioms (domain, range, inverse, transitivity, chains, keys) |
+| Table 6 | cls-* | 19/19 | Class expressions (intersectionOf, unionOf, oneOf, qualified cardinality) |
 | Table 7 | cax-* | 5/5 | Class axioms (subClassOf, equivalentClass, disjointWith) |
 | Table 8 | dt-* | 2/5 | Datatype validation |
 | Table 9 | scm-* | 20/20 | Schema vocabulary (class/property hierarchies) |
@@ -51,7 +51,8 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
   (channel-buffer Int)    ;; Message buffer size (default: 256)
   (max-iterations Int)    ;; Iteration limit (default: 1000)
   (verbose Bool)          ;; Print per-iteration timing (default: true)
-  (fast Bool))            ;; Skip schema rules & checks (default: false)
+  (fast Bool)             ;; Skip schema rules & checks (default: false)
+  (complete Bool))        ;; Enable cls-thing & prp-ap (default: false)
 ```
 
 ## CLI Usage
@@ -63,8 +64,19 @@ Options:
   -h, --help       Show help message
   -q, --quiet      Only print failures and inconsistencies
   -f, --fast       Skip schema rules and consistency checks
+  -c, --complete   Enable cls-thing and prp-ap for spec completeness
   -o, --emit FILE  Write materialized graph to TTL file
 ```
+
+### Complete Mode
+
+The `--complete` flag enables axiom rules that are skipped by default for performance:
+
+- **cls-thing**: Asserts `owl:Thing rdf:type owl:Class`
+- **cls-nothing1**: Asserts `owl:Nothing rdf:type owl:Class`
+- **prp-ap**: Asserts standard annotation properties (rdfs:label, rdfs:comment, etc.) as `owl:AnnotationProperty`
+
+These rules are spec-correct but produce triples with zero practical inference value. Use `--complete` for conformance testing against other reasoners like owlrl.
 
 ### Fast Mode
 
@@ -112,11 +124,11 @@ Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.
 | eq-diff2 | ✅ | Inconsistency: sameAs and differentFrom |
 | eq-diff3 | ✅ | Inconsistency: members of AllDifferent are sameAs |
 
-### Table 5 — Property Axioms (19/20)
+### Table 5 — Property Axioms (20/20)
 
 | Rule | Status | Notes |
 |------|--------|-------|
-| prp-ap | ❌ | Annotation properties — no useful inference |
+| prp-ap | ✅ | Annotation property declarations (behind `--complete` flag) |
 | prp-dom | ✅ | rdfs:domain inference |
 | prp-rng | ✅ | rdfs:range inference |
 | prp-fp | ✅ | Functional property → owl:sameAs |
@@ -137,12 +149,12 @@ Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.
 | prp-npa1 | ✅ | Negative property assertion (named individual) inconsistency |
 | prp-npa2 | ✅ | Negative property assertion (literal) inconsistency |
 
-### Table 6 — Class Expressions (17/19)
+### Table 6 — Class Expressions (19/19)
 
 | Rule | Status | Notes |
 |------|--------|-------|
-| cls-thing | ❌ | Skipped — triple explosion (every resource gets type owl:Thing) |
-| cls-nothing1 | ❌ | Skipped — scm-cls already handles |
+| cls-thing | ✅ | owl:Thing rdf:type owl:Class (behind `--complete` flag) |
+| cls-nothing1 | ✅ | owl:Nothing rdf:type owl:Class (behind `--complete` flag) |
 | cls-nothing2 | ✅ | Inconsistency: member of owl:Nothing |
 | cls-int1 | ✅ | IntersectionOf: member of all → member of intersection |
 | cls-int2 | ✅ | IntersectionOf: member of intersection → member of all |

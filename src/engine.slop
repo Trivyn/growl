@@ -23,10 +23,11 @@
                scm-svf1 scm-svf2 scm-avf1 scm-avf2 scm-hv))
   (import prp (apply-prp-rules prp-dom prp-rng prp-fp prp-ifp prp-symp prp-trp
                prp-asyp prp-irp prp-pdw prp-adp prp-npa1 prp-npa2
-               prp-spo1 prp-spo2 prp-eqp1 prp-eqp2 prp-inv1 prp-inv2 prp-key))
+               prp-spo1 prp-spo2 prp-eqp1 prp-eqp2 prp-inv1 prp-inv2 prp-key
+               prp-ap))
   (import eq  (apply-eq-rules eq-ref eq-sym eq-trans eq-rep-s eq-rep-p eq-rep-o
                eq-diff1 eq-diff2 eq-diff3))
-  (import cls (apply-cls-rules cls-nothing2 cls-int1 cls-int2 cls-uni cls-com
+  (import cls (apply-cls-rules cls-thing cls-nothing1 cls-nothing2 cls-int1 cls-int2 cls-uni cls-com
                cls-svf1 cls-svf2 cls-avf cls-hv1 cls-hv2 cls-maxc1 cls-maxc2
                cls-maxqc1 cls-maxqc2 cls-maxqc3 cls-maxqc4 cls-oo))
   (import dt (dt-type1 dt-not-type))
@@ -89,9 +90,24 @@
                 (for-each (t (dt-type1 arena mg))
                   (set! mg (indexed-graph-add arena mg t)))
                 mg)))
+          ;; One-time axioms (only with --complete, skip in fast mode):
+          ;; prp-ap: assert standard annotation properties
+          ;; cls-thing: owl:Thing rdf:type owl:Class
+          ;; cls-nothing1: owl:Nothing rdf:type owl:Class
+          (complete-graph
+            (if (and (not (. config fast)) (. config complete))
+              (let ((mut cg dt-graph))
+                (for-each (t (prp-ap arena cg))
+                  (set! cg (indexed-graph-add arena cg t)))
+                (for-each (t (cls-thing arena cg))
+                  (set! cg (indexed-graph-add arena cg t)))
+                (for-each (t (cls-nothing1 arena cg))
+                  (set! cg (indexed-graph-add arena cg t)))
+                cg)
+              dt-graph))
           ;; Phase 2: Main fixpoint uses materialized graph + original delta
           (mut state (record-new EngineState
-                       (graph dt-graph)
+                       (graph complete-graph)
                        (delta initial-delta)
                        (iteration 0)
                        (config config)))
@@ -117,9 +133,9 @@
             (println "")))
         (match (engine-run-iteration arena state)
           ((ok new-state)
-            (if (delta-is-empty (. new-state delta))
-              (set! done true)
-              (set! state new-state)))
+            (set! state new-state)
+            (when (delta-is-empty (. new-state delta))
+              (set! done true)))
           ((error report)
             (do
               (set! done true)
@@ -129,10 +145,17 @@
       (match inconsistency
         ((some report) (union-new ReasonerResult reason-inconsistent report))
         ((none)
-          (union-new ReasonerResult reason-success (record-new ReasonerSuccess
-            (graph (. state graph))
-            (inferred-count (- (indexed-graph-size (. state graph)) initial-size))
-            (iterations (. state iteration))))))))
+          ;; In complete mode, do one final eq-ref pass on full graph
+          ;; to cover schema-materialized resources
+          (let ((mut final-graph (. state graph)))
+            (when (. config complete)
+              (let ((full-delta (make-initial-delta arena final-graph)))
+                (for-each (t (eq-ref arena final-graph full-delta))
+                  (set! final-graph (indexed-graph-add arena final-graph t)))))
+            (union-new ReasonerResult reason-success (record-new ReasonerSuccess
+              (graph final-graph)
+              (inferred-count (- (indexed-graph-size final-graph) initial-size))
+              (iterations (. state iteration)))))))))
 
   (fn make-initial-delta ((arena Arena) (g IndexedGraph))
     (@intent "Create initial delta containing all triples in graph")
