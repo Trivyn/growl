@@ -168,10 +168,13 @@ struct xsd_XsdValue {
 typedef struct xsd_XsdValue xsd_XsdValue;
 
 /* Public API */
+slop_map* growl_collect_annotation_properties(slop_arena* arena, rdf_Graph g);
 types_ReasonerConfig growl_default_config(void);
 int64_t growl_get_inferred_count(types_ReasonerResult result);
 slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rdf_Term individual);
 slop_list_rdf_Term growl_get_types(slop_arena* arena, index_IndexedGraph g, rdf_Term individual);
+index_IndexedGraph growl_graph_to_indexed(slop_arena* arena, rdf_Graph g, slop_map* annot_set);
+rdf_Graph growl_indexed_to_graph(slop_arena* arena, index_IndexedGraph ig);
 uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input);
 types_ReasonerResult growl_reason(slop_arena* arena, index_IndexedGraph input);
 types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGraph input, types_ReasonerConfig config);
@@ -218,6 +221,9 @@ uint8_t xsd_types_compatible(xsd_XsdType t1, xsd_XsdType t2);
 uint8_t xsd_validate_lexical(slop_string lexical, slop_string datatype_iri);
 uint8_t xsd_values_equal(xsd_XsdValue a, xsd_XsdValue b);
 
+#define filter_collect_annotation_properties growl_collect_annotation_properties
+#define filter_graph_to_indexed growl_graph_to_indexed
+#define filter_indexed_to_graph growl_indexed_to_graph
 #define index_indexed_graph_add rdf_indexed_graph_add
 #define index_indexed_graph_contains rdf_indexed_graph_contains
 #define index_indexed_graph_create rdf_indexed_graph_create

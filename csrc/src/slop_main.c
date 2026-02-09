@@ -5,8 +5,6 @@ void main_print_elapsed(slop_arena* arena, int64_t elapsed);
 slop_string main_argv_to_string(uint8_t** argv, int64_t index);
 main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
 void main_print_usage(void);
-index_IndexedGraph main_graph_to_indexed(slop_arena* arena, rdf_Graph g);
-rdf_Graph main_indexed_to_graph(slop_arena* arena, index_IndexedGraph ig);
 int main(int64_t argc, uint8_t** argv);
 
 void main_print_elapsed(slop_arena* arena, int64_t elapsed) {
@@ -88,24 +86,6 @@ void main_print_usage(void) {
     printf("%s\n", "  -c, --complete   Enable cls-thing and prp-ap for spec completeness");
 }
 
-index_IndexedGraph main_graph_to_indexed(slop_arena* arena, rdf_Graph g) {
-    {
-        __auto_type ig = rdf_indexed_graph_create(arena);
-        {
-            __auto_type _coll = g.triples;
-            for (size_t _i = 0; _i < _coll.len; _i++) {
-                __auto_type t = _coll.data[_i];
-                ig = rdf_indexed_graph_add(arena, ig, t);
-            }
-        }
-        return ig;
-    }
-}
-
-rdf_Graph main_indexed_to_graph(slop_arena* arena, index_IndexedGraph ig) {
-    return ((rdf_Graph){.triples = ig.triples, .size = ((rdf_GraphSize)(rdf_indexed_graph_size(ig)))});
-}
-
 int main(int64_t argc, uint8_t** argv) {
     {
         #ifdef SLOP_DEBUG
@@ -162,14 +142,22 @@ int main(int64_t argc, uint8_t** argv) {
                         } else if (_mv_316.is_ok) {
                             __auto_type g = _mv_316.data.ok;
                             {
-                                __auto_type ig = main_graph_to_indexed(arena, g);
+                                __auto_type annot_set = growl_collect_annotation_properties(arena, g);
+                                __auto_type original_size = rdf_graph_size(g);
+                                __auto_type ig = growl_graph_to_indexed(arena, g, annot_set);
                                 __auto_type input_size = rdf_indexed_graph_size(ig);
+                                __auto_type filtered_count = (original_size - ((rdf_GraphSize)(input_size)));
                                 __auto_type parse_elapsed = (slop_now_ms() - parse_start);
                                 if (!(quiet)) {
                                     printf("%s", "Parsed ");
                                     printf("%.*s", (int)(int_to_string(arena, input_size)).len, (int_to_string(arena, input_size)).data);
                                     printf("%s", " triples from ");
                                     printf("%.*s", (int)(input_path).len, (input_path).data);
+                                    if ((filtered_count > 0)) {
+                                        printf("%s", " (filtered ");
+                                        printf("%.*s", (int)(int_to_string(arena, filtered_count)).len, (int_to_string(arena, filtered_count)).data);
+                                        printf("%s", " annotations)");
+                                    }
                                     printf("%s", " (");
                                     main_print_elapsed(arena, parse_elapsed);
                                     printf("%s\n", ")");
@@ -214,22 +202,37 @@ int main(int64_t argc, uint8_t** argv) {
                                                 if (_mv_319.has_value) {
                                                     __auto_type emit_path = _mv_319.value;
                                                     {
-                                                        __auto_type out_graph = main_indexed_to_graph(arena, s.graph);
-                                                        slop_option_string no_base = (slop_option_string){.has_value = false};
-                                                        __auto_type config = ((serialize_ttl_SerializeConfig){.prefixes = ttl_make_prefix_map(arena), .base_iri = no_base, .indent_width = 2});
-                                                        __auto_type _mv_320 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
-                                                        if (_mv_320.is_ok) {
-                                                            __auto_type _ = _mv_320.data.ok;
-                                                            if (!(quiet)) {
-                                                                printf("%s", "Wrote materialized graph to ");
-                                                                printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
+                                                        __auto_type out_ig = s.graph;
+                                                        {
+                                                            __auto_type _coll = g.triples;
+                                                            for (size_t _i = 0; _i < _coll.len; _i++) {
+                                                                __auto_type t = _coll.data[_i];
+                                                                {
+                                                                    __auto_type pred = t.predicate;
+                                                                    if ((slop_map_get(annot_set, &(pred)) != NULL)) {
+                                                                        out_ig = rdf_indexed_graph_add(arena, out_ig, t);
+                                                                    }
+                                                                }
                                                             }
-                                                            return 0;
-                                                        } else if (!_mv_320.is_ok) {
-                                                            __auto_type _ = _mv_320.data.err;
-                                                            printf("%s", "Error: failed to write ");
-                                                            printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
-                                                            return 1;
+                                                        }
+                                                        {
+                                                            __auto_type out_graph = growl_indexed_to_graph(arena, out_ig);
+                                                            slop_option_string no_base = (slop_option_string){.has_value = false};
+                                                            __auto_type config = ((serialize_ttl_SerializeConfig){.prefixes = ttl_make_prefix_map(arena), .base_iri = no_base, .indent_width = 2});
+                                                            __auto_type _mv_320 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
+                                                            if (_mv_320.is_ok) {
+                                                                __auto_type _ = _mv_320.data.ok;
+                                                                if (!(quiet)) {
+                                                                    printf("%s", "Wrote materialized graph to ");
+                                                                    printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
+                                                                }
+                                                                return 0;
+                                                            } else if (!_mv_320.is_ok) {
+                                                                __auto_type _ = _mv_320.data.err;
+                                                                printf("%s", "Error: failed to write ");
+                                                                printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
+                                                                return 1;
+                                                            }
                                                         }
                                                     }
                                                 } else if (!_mv_319.has_value) {

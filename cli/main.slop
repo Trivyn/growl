@@ -10,14 +10,16 @@
 (module main
   (@doc "CLI interface for growl OWL 2 RL reasoner")
 
-  (import rdf (Term Triple Graph GraphSize make-graph graph-size))
+  (import rdf (Term Triple Graph GraphSize make-graph graph-size make-iri term-eq
+               triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-size))
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file TtlFileError))
   (import common (ParseError Position))
   (import serialize-ttl (SerializeConfig serialize-ttl-stream))
   (import growl (reason reason-with-config ReasonerConfig ReasonerResult ReasonerSuccess InconsistencyReport
-                 get-inferred-count default-config))
+                 get-inferred-count default-config
+                 collect-annotation-properties graph-to-indexed indexed-to-graph))
 
   (ffi "string.h"
     (strlen ((s (Ptr U8))) U64))
@@ -122,27 +124,6 @@
     (println "  -c, --complete   Enable cls-thing and prp-ap for spec completeness"))
 
   ;; ============================================================
-  ;; Graph Conversion
-  ;; ============================================================
-
-  (fn graph-to-indexed ((arena Arena) (g Graph))
-    (@intent "Convert a Graph to an IndexedGraph for reasoning")
-    (@spec ((Arena Graph) -> IndexedGraph))
-    (@alloc arena)
-    (let ((mut ig (indexed-graph-create arena)))
-      (for-each (t (. g triples))
-        (set! ig (indexed-graph-add arena ig t)))
-      ig))
-
-  (fn indexed-to-graph ((arena Arena) (ig IndexedGraph))
-    (@intent "Convert an IndexedGraph back to a Graph for serialization")
-    (@spec ((Arena IndexedGraph) -> Graph))
-    (@alloc arena)
-    (record-new Graph
-      (triples (. ig triples))
-      (size (cast GraphSize (indexed-graph-size ig)))))
-
-  ;; ============================================================
   ;; Main
   ;; ============================================================
 
@@ -185,9 +166,12 @@
                 1)
 
               ((ok g)
-                ;; Convert to indexed graph and run reasoner
-                (let ((ig (graph-to-indexed arena g))
+                ;; Filter annotation triples and convert to indexed graph
+                (let ((annot-set (collect-annotation-properties arena g))
+                      (original-size (graph-size g))
+                      (ig (graph-to-indexed arena g annot-set))
                       (input-size (indexed-graph-size ig))
+                      (filtered-count (- original-size (cast GraphSize input-size)))
                       (parse-elapsed (- (slop_now_ms) parse-start)))
 
                   (when (not quiet)
@@ -195,6 +179,11 @@
                     (print (int-to-string arena input-size))
                     (print " triples from ")
                     (print input-path)
+                    (when (> filtered-count 0)
+                      (do
+                        (print " (filtered ")
+                        (print (int-to-string arena filtered-count))
+                        (print " annotations)")))
                     (print " (")
                     (print-elapsed arena parse-elapsed)
                     (println ")"))
@@ -242,22 +231,28 @@
                         ;; Emit materialized graph if requested
                         (match (. args emit-file)
                           ((some emit-path)
-                            (let ((out-graph (indexed-to-graph arena (. s graph)))
-                                  (no-base (Option String) (none))
-                                  (config (record-new SerializeConfig
-                                            (prefixes (make-prefix-map arena))
-                                            (base-iri no-base)
-                                            (indent-width 2))))
-                              (match (serialize-ttl-stream arena out-graph config emit-path)
-                                ((ok _)
-                                  (when (not quiet)
-                                    (print "Wrote materialized graph to ")
-                                    (println emit-path))
-                                  0)
-                                ((error _)
-                                  (print "Error: failed to write ")
-                                  (println emit-path)
-                                  1))))
+                            ;; Re-add filtered annotation triples to output
+                            (let ((mut out-ig (. s graph)))
+                              (for-each (t (. g triples))
+                                (let ((pred (. t predicate)))
+                                  (when (set-has annot-set pred)
+                                    (set! out-ig (indexed-graph-add arena out-ig t)))))
+                              (let ((out-graph (indexed-to-graph arena out-ig))
+                                    (no-base (Option String) (none))
+                                    (config (record-new SerializeConfig
+                                              (prefixes (make-prefix-map arena))
+                                              (base-iri no-base)
+                                              (indent-width 2))))
+                                (match (serialize-ttl-stream arena out-graph config emit-path)
+                                  ((ok _)
+                                    (when (not quiet)
+                                      (print "Wrote materialized graph to ")
+                                      (println emit-path))
+                                    0)
+                                  ((error _)
+                                    (print "Error: failed to write ")
+                                    (println emit-path)
+                                    1)))))
                           ((none) 0))))
 
                     ((reason-inconsistent report)
