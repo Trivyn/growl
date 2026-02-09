@@ -32,6 +32,7 @@ fn main() {
         .include(runtime)
         .include(csrc)
         .define("SLOP_ARENA_NO_CAP", None)
+        .define("SLOP_INTERN_THREADSAFE", None)
         .opt_level(2)
         .warnings(false);
 
