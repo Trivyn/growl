@@ -255,29 +255,17 @@ get_same_as(&arena, &graph, individual) -> Vec<Term>
 
 ## Thread Safety
 
-The C runtime uses a global intern pool (`slop_global_intern_pool`) that is **not thread-safe**. The `Arena` type is `!Send + !Sync` to prevent accidental cross-thread usage.
+The C runtime uses a global intern pool (`slop_global_intern_pool`) that is protected by a `pthread_mutex_t` (enabled via the `SLOP_INTERN_THREADSAFE` compile flag in `build.rs`). This means multiple arenas can safely be used concurrently from different threads.
 
-If you need to call into Growl from multiple threads (e.g., in tests), serialize access with a `Mutex`:
-
-```rust
-use std::sync::Mutex;
-
-static C_LOCK: Mutex<()> = Mutex::new(());
-
-fn do_reasoning() {
-    let _lock = C_LOCK.lock().unwrap();
-    let arena = Arena::new(1024 * 1024);
-    // ... use arena, graph, reason() ...
-}
-```
+The `Arena` type is still `!Send + !Sync` — individual arenas must not be shared across threads. Each thread should create its own arena.
 
 ## Running Tests
 
 ```bash
-cd rust && cargo test -- --test-threads=1
+cd rust && cargo test
 ```
 
-Single-threaded execution is required because the C intern pool is not thread-safe.
+Tests can run with the default thread count since the intern pool is internally synchronized.
 
 The build script (`build.rs`) compiles all C sources automatically via the `cc` crate.
 

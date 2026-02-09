@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 use growl::{Arena, IndexedGraph, ReasonerConfig, ReasonerResult, Term, Triple};
 use growl::{get_types, is_consistent, reason, reason_with_config};
 use growl::{OwnedReasonerResult, OwnedTerm, Reasoner};
@@ -8,10 +6,6 @@ const OWL: &str = "http://www.w3.org/2002/07/owl#";
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 const RDFS: &str = "http://www.w3.org/2000/01/rdf-schema#";
 const EX: &str = "http://example.org/";
-
-// The C runtime uses a global intern pool that is not thread-safe.
-// All tests must be serialized to avoid data races.
-static C_LOCK: Mutex<()> = Mutex::new(());
 
 fn rdf_type(arena: &Arena) -> growl::ffi::RdfTerm {
     arena.make_iri(&format!("{}type", RDF))
@@ -27,7 +21,6 @@ fn owl_class(arena: &Arena) -> growl::ffi::RdfTerm {
 
 #[test]
 fn empty_graph() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let arena = Arena::new(1024 * 1024);
     let graph = IndexedGraph::new(&arena);
     assert_eq!(graph.size(), 0);
@@ -36,7 +29,7 @@ fn empty_graph() {
 
 #[test]
 fn add_and_query() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let arena = Arena::new(1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);
 
@@ -53,7 +46,7 @@ fn add_and_query() {
 
 #[test]
 fn subclass_inference() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let arena = Arena::new(4 * 1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);
 
@@ -96,7 +89,7 @@ fn subclass_inference() {
 
 #[test]
 fn reason_with_custom_config() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let arena = Arena::new(4 * 1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);
 
@@ -120,7 +113,7 @@ fn reason_with_custom_config() {
 
 #[test]
 fn inconsistency_detection() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let arena = Arena::new(4 * 1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);
 
@@ -149,7 +142,7 @@ fn inconsistency_detection() {
 
 #[test]
 fn match_pattern() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let arena = Arena::new(1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);
 
@@ -168,7 +161,7 @@ fn match_pattern() {
 
 #[test]
 fn graph_objects_and_subjects() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let arena = Arena::new(1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);
 
@@ -193,7 +186,7 @@ fn graph_objects_and_subjects() {
 
 #[test]
 fn literal_terms() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let arena = Arena::new(1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);
 
@@ -218,7 +211,7 @@ fn literal_terms() {
 
 #[test]
 fn blank_node_terms() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let arena = Arena::new(1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);
 
@@ -239,7 +232,7 @@ fn blank_node_terms() {
 
 #[test]
 fn reasoner_subclass_inference() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
 
     let rdf_type_iri = format!("{}type", RDF);
@@ -286,7 +279,7 @@ fn reasoner_subclass_inference() {
 
 #[test]
 fn reasoner_inconsistency() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
 
     let rdf_type_iri = format!("{}type", RDF);
@@ -311,7 +304,7 @@ fn reasoner_inconsistency() {
 
 #[test]
 fn reasoner_is_consistent() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
 
     let rdf_type_iri = format!("{}type", RDF);
@@ -327,7 +320,7 @@ fn reasoner_is_consistent() {
 
 #[test]
 fn reasoner_add_triple_with_owned_terms() {
-    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     let mut reasoner = Reasoner::new();
 
     let s = OwnedTerm::Iri(format!("{}fido", EX));
