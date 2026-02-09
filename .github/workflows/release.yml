@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            cc: gcc
+          - os: macos-14
+            platform: macos-arm64
+            cc: gcc-14
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GCC 14 (macOS)
+        if: runner.os == 'macOS'
+        run: brew install gcc@14
+
+      - name: Run tests
+        run: make test CC=${{ matrix.cc }}
+
+      - name: Build release CLI
+        run: make release CC=${{ matrix.cc }}
+
+      - name: Rename CLI binary
+        run: mv build/growl growl-${{ matrix.platform }}
+
+      - name: Build release library
+        run: |
+          make clean
+          make lib CC=${{ matrix.cc }} CFLAGS="-O3 -Wall -Wno-unused-function -Wno-unused-variable -Wno-return-type -Wno-pointer-sign -DNDEBUG -DSLOP_ARENA_NO_CAP"
+
+      - name: Package library
+        run: make dist PLATFORM=${{ matrix.platform }}
+
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: growl-${{ matrix.platform }}
+          path: growl-${{ matrix.platform }}
+
+      - name: Upload library archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: libgrowl-${{ matrix.platform }}
+          path: libgrowl-${{ matrix.platform }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release files
+        run: |
+          mkdir release-files
+          cp artifacts/growl-linux-x86_64/growl-linux-x86_64 release-files/
+          cp artifacts/growl-macos-arm64/growl-macos-arm64 release-files/
+          cp artifacts/libgrowl-linux-x86_64/libgrowl-linux-x86_64.zip release-files/
+          cp artifacts/libgrowl-macos-arm64/libgrowl-macos-arm64.zip release-files/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-files/*
