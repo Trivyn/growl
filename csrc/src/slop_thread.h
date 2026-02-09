@@ -55,7 +55,7 @@ static void* slop_thread_int_entry(void* arg) {
 struct thread_ThreadInt {
     void* func;
     void* env;
-    uint64_t id;
+    pthread_t id;
     int64_t result;
     uint8_t done;
 };
@@ -70,7 +70,7 @@ struct thread_ThreadWithChan {
     void* func;
     slop_chan_int* chan;
     void* env;
-    uint64_t id;
+    pthread_t id;
     int64_t result;
     uint8_t done;
 };
