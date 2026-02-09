@@ -2,9 +2,11 @@
 # Build from transpiled C sources — no SLOP toolchain required.
 
 CC      ?= cc
+GROWL_VERSION ?= 0.1.0
 CFLAGS  ?= -O2 -Wall -Wno-unused-function -Wno-unused-variable \
            -Wno-return-type -Wno-pointer-sign \
-           -DSLOP_ARENA_NO_CAP
+           -DSLOP_ARENA_NO_CAP \
+           -DGROWL_VERSION=\"$(GROWL_VERSION)\"
 LDFLAGS ?= -lpthread
 AR      ?= ar
 
@@ -58,7 +60,8 @@ clean:
 
 release: CFLAGS = -O3 -Wall -Wno-unused-function -Wno-unused-variable \
                   -Wno-return-type -Wno-pointer-sign -DNDEBUG \
-                  -DSLOP_ARENA_NO_CAP
+                  -DSLOP_ARENA_NO_CAP \
+                  -DGROWL_VERSION=\"$(GROWL_VERSION)\"
 release: clean cli
 	@echo "Release binary built: $(BIN)/growl"
 

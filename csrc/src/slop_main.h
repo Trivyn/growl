@@ -22,6 +22,7 @@ struct main_CliArgs {
     uint8_t fast;
     uint8_t complete;
     uint8_t show_help;
+    uint8_t show_version;
 };
 typedef struct main_CliArgs main_CliArgs;
 

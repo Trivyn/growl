@@ -55,7 +55,8 @@
     (quiet Bool)
     (fast Bool)
     (complete Bool)
-    (show-help Bool)))
+    (show-help Bool)
+    (show-version Bool)))
 
   (fn argv-to-string ((argv (Ptr (Ptr U8))) (index Int))
     (@intent "Convert argv[index] to a SLOP String")
@@ -73,12 +74,16 @@
           (mut fast false)
           (mut complete false)
           (mut help false)
+          (mut version false)
           (mut i 1))
       (while (< i argc)
         (let ((arg (argv-to-string argv i)))
           (cond
             ((or (string-eq arg "--help") (string-eq arg "-h"))
               (set! help true)
+              (set! i (+ i 1)))
+            ((or (string-eq arg "--version") (string-eq arg "-V"))
+              (set! version true)
               (set! i (+ i 1)))
             ((or (string-eq arg "--quiet") (string-eq arg "-q"))
               (set! quiet true)
@@ -107,7 +112,8 @@
         (quiet quiet)
         (fast fast)
         (complete complete)
-        (show-help help))))
+        (show-help help)
+        (show-version version))))
 
   (fn print-usage ()
     (@intent "Print CLI usage information")
@@ -121,7 +127,8 @@
     (println "  -q, --quiet      Only print failures and inconsistencies")
     (println "  -o, --emit FILE  Write materialized graph to TTL file")
     (println "  -f, --fast       Skip schema rules and consistency checks")
-    (println "  -c, --complete   Enable cls-thing and prp-ap for spec completeness"))
+    (println "  -c, --complete   Enable cls-thing and prp-ap for spec completeness")
+    (println "  -V, --version    Show version information"))
 
   ;; ============================================================
   ;; Main
@@ -133,6 +140,12 @@
     :c-name "main"
     (with-arena 268435456  ;; 256MB for reasoning
       (let ((args (parse-args arena argc argv)))
+
+        ;; Handle version flag
+        (if (. args show-version)
+          (do
+            (c-inline "printf(\"growl %s\\n\", GROWL_VERSION)")
+            0)
 
         ;; Handle help or missing input
         (match (. args input-file)
@@ -269,4 +282,4 @@
                         (println "[FAIL] Ontology is inconsistent")
                         (print "  Reason: ")
                         (println (. report reason))
-                        1)))))))))))))))
+                        1))))))))))))))))

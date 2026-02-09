@@ -31,7 +31,9 @@ jobs:
         run: make test CC=${{ matrix.cc }}
 
       - name: Build release CLI
-        run: make release CC=${{ matrix.cc }}
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          make release CC=${{ matrix.cc }} GROWL_VERSION=$VERSION
 
       - name: Rename CLI binary
         run: mv build/growl growl-${{ matrix.platform }}
