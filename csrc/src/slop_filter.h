@@ -110,11 +110,13 @@ static inline bool slop_eq_rdf_Term(const void* a, const void* b) {
 slop_map* growl_collect_annotation_properties(slop_arena* arena, rdf_Graph g);
 index_IndexedGraph growl_graph_to_indexed(slop_arena* arena, rdf_Graph g, slop_map* annot_set);
 rdf_Graph growl_indexed_to_graph(slop_arena* arena, index_IndexedGraph ig);
+index_IndexedGraph growl_filter_annotations(slop_arena* arena, index_IndexedGraph ig);
 
 /* Function name aliases for C interop */
 #define filter_collect_annotation_properties growl_collect_annotation_properties
 #define filter_graph_to_indexed growl_graph_to_indexed
 #define filter_indexed_to_graph growl_indexed_to_graph
+#define filter_filter_annotations growl_filter_annotations
 
 #ifndef SLOP_OPTION_RDF_TERM_DEFINED
 #define SLOP_OPTION_RDF_TERM_DEFINED

@@ -27,7 +27,8 @@
   (export
     collect-annotation-properties
     graph-to-indexed
-    indexed-to-graph)
+    indexed-to-graph
+    filter-annotations)
 
   ;; ============================================================
   ;; Annotation Property Collection
@@ -108,4 +109,17 @@
     :c-name "growl_indexed_to_graph"
     (record-new Graph
       (triples (. ig triples))
-      (size (cast GraphSize (indexed-graph-size ig))))))
+      (size (cast GraphSize (indexed-graph-size ig)))))
+
+  (fn filter-annotations ((arena Arena) (ig IndexedGraph))
+    (@intent "Create new IndexedGraph with annotation triples removed")
+    (@spec ((Arena IndexedGraph) -> IndexedGraph))
+    (@alloc arena)
+    :c-name "growl_filter_annotations"
+    (let ((g (indexed-to-graph arena ig))
+          (annot-set (collect-annotation-properties arena g))
+          (mut result (indexed-graph-create arena)))
+      (for-each (t (. ig triples))
+        (when (not (set-has annot-set (. t predicate)))
+          (set! result (indexed-graph-add arena result t))))
+      result)))

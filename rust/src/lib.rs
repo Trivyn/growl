@@ -544,6 +544,52 @@ pub fn get_inferred_count(result: &ffi::ReasonerResultFfi) -> i64 {
     unsafe { ffi::growl_get_inferred_count(*result) }
 }
 
+/// The 27 standard/well-known annotation property IRIs that are always filtered.
+///
+/// In addition to these, `filter_annotations` also removes triples whose predicate
+/// is declared as `owl:AnnotationProperty` in the input graph.
+pub const STANDARD_ANNOTATION_PROPERTIES: [&str; 27] = [
+    // OWL/RDFS (9)
+    "http://www.w3.org/2000/01/rdf-schema#label",
+    "http://www.w3.org/2000/01/rdf-schema#comment",
+    "http://www.w3.org/2000/01/rdf-schema#seeAlso",
+    "http://www.w3.org/2000/01/rdf-schema#isDefinedBy",
+    "http://www.w3.org/2002/07/owl#deprecated",
+    "http://www.w3.org/2002/07/owl#versionInfo",
+    "http://www.w3.org/2002/07/owl#priorVersion",
+    "http://www.w3.org/2002/07/owl#backwardCompatibleWith",
+    "http://www.w3.org/2002/07/owl#incompatibleWith",
+    // SKOS (10)
+    "http://www.w3.org/2004/02/skos/core#prefLabel",
+    "http://www.w3.org/2004/02/skos/core#altLabel",
+    "http://www.w3.org/2004/02/skos/core#hiddenLabel",
+    "http://www.w3.org/2004/02/skos/core#definition",
+    "http://www.w3.org/2004/02/skos/core#note",
+    "http://www.w3.org/2004/02/skos/core#scopeNote",
+    "http://www.w3.org/2004/02/skos/core#example",
+    "http://www.w3.org/2004/02/skos/core#historyNote",
+    "http://www.w3.org/2004/02/skos/core#editorialNote",
+    "http://www.w3.org/2004/02/skos/core#changeNote",
+    // Dublin Core (8)
+    "http://purl.org/dc/elements/1.1/title",
+    "http://purl.org/dc/elements/1.1/creator",
+    "http://purl.org/dc/elements/1.1/subject",
+    "http://purl.org/dc/elements/1.1/description",
+    "http://purl.org/dc/terms/title",
+    "http://purl.org/dc/terms/creator",
+    "http://purl.org/dc/terms/description",
+    "http://purl.org/dc/terms/abstract",
+];
+
+/// Filter annotation triples from an indexed graph.
+///
+/// Returns a new `IndexedGraph` with all triples removed whose predicate is a
+/// standard annotation property or declared as `owl:AnnotationProperty` in the graph.
+pub fn filter_annotations<'a>(arena: &'a Arena, graph: &IndexedGraph) -> IndexedGraph<'a> {
+    let raw = unsafe { ffi::growl_filter_annotations(arena.as_ptr(), graph.raw()) };
+    IndexedGraph { raw, arena }
+}
+
 // ---------------------------------------------------------------------------
 // Owned types (no lifetimes, safe to send across threads)
 // ---------------------------------------------------------------------------
@@ -679,6 +725,7 @@ pub struct Reasoner {
     arena: Arena,
     graph_raw: ffi::IndexedGraphFfi,
     triple_count: usize,
+    filter_annotations: bool,
 }
 
 impl Reasoner {
@@ -695,7 +742,18 @@ impl Reasoner {
             arena,
             graph_raw,
             triple_count: 0,
+            filter_annotations: false,
         }
+    }
+
+    /// Enable or disable annotation filtering before reasoning.
+    ///
+    /// When enabled, annotation triples (e.g. `rdfs:label`, `rdfs:comment`, SKOS labels,
+    /// Dublin Core metadata) are removed before reasoning and restored afterward.
+    /// This can significantly improve performance on annotation-heavy ontologies.
+    pub fn filter_annotations(mut self, enable: bool) -> Self {
+        self.filter_annotations = enable;
+        self
     }
 
     /// Add a triple from owned terms.
@@ -735,10 +793,49 @@ impl Reasoner {
 
     /// Run OWL 2 RL reasoning with custom configuration.
     pub fn reason_with_config(&self, config: &ReasonerConfig) -> OwnedReasonerResult {
-        let raw_result = unsafe {
-            ffi::growl_reason_with_config(self.arena.as_ptr(), self.graph_raw, config.raw)
-        };
-        unsafe { self.convert_result(raw_result) }
+        if self.filter_annotations {
+            self.reason_with_filtering(config)
+        } else {
+            let raw_result = unsafe {
+                ffi::growl_reason_with_config(self.arena.as_ptr(), self.graph_raw, config.raw)
+            };
+            unsafe { self.convert_result(raw_result) }
+        }
+    }
+
+    fn reason_with_filtering(&self, config: &ReasonerConfig) -> OwnedReasonerResult {
+        unsafe {
+            // Filter annotation triples
+            let filtered = ffi::growl_filter_annotations(self.arena.as_ptr(), self.graph_raw);
+            // Reason on filtered graph
+            let raw_result =
+                ffi::growl_reason_with_config(self.arena.as_ptr(), filtered, config.raw);
+            match raw_result.tag {
+                ffi::ReasonerResultTag::Success => {
+                    let s = raw_result.data.reason_success;
+                    // Re-add all original triples to the result graph
+                    let mut result_graph = s.graph;
+                    let orig = self.graph_raw;
+                    for i in 0..orig.triples.len {
+                        let triple = *orig.triples.data.add(i);
+                        result_graph =
+                            ffi::rdf_indexed_graph_add(self.arena.as_ptr(), result_graph, triple);
+                    }
+                    let restored_result = ffi::ReasonerResultFfi {
+                        tag: ffi::ReasonerResultTag::Success,
+                        data: ffi::ReasonerResultData {
+                            reason_success: ffi::ReasonerSuccessFfi {
+                                graph: result_graph,
+                                inferred_count: s.inferred_count,
+                                iterations: s.iterations,
+                            },
+                        },
+                    };
+                    self.convert_result(restored_result)
+                }
+                ffi::ReasonerResultTag::Inconsistent => self.convert_result(raw_result),
+            }
+        }
     }
 
     /// Quick consistency check (no inferred triples returned).

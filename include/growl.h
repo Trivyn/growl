@@ -170,6 +170,7 @@ typedef struct xsd_XsdValue xsd_XsdValue;
 /* Public API */
 slop_map* growl_collect_annotation_properties(slop_arena* arena, rdf_Graph g);
 types_ReasonerConfig growl_default_config(void);
+index_IndexedGraph growl_filter_annotations(slop_arena* arena, index_IndexedGraph ig);
 int64_t growl_get_inferred_count(types_ReasonerResult result);
 slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rdf_Term individual);
 slop_list_rdf_Term growl_get_types(slop_arena* arena, index_IndexedGraph g, rdf_Term individual);
@@ -222,6 +223,7 @@ uint8_t xsd_validate_lexical(slop_string lexical, slop_string datatype_iri);
 uint8_t xsd_values_equal(xsd_XsdValue a, xsd_XsdValue b);
 
 #define filter_collect_annotation_properties growl_collect_annotation_properties
+#define filter_filter_annotations growl_filter_annotations
 #define filter_graph_to_indexed growl_graph_to_indexed
 #define filter_indexed_to_graph growl_indexed_to_graph
 #define index_indexed_graph_add rdf_indexed_graph_add

@@ -269,4 +269,10 @@ extern "C" {
         individual: RdfTerm,
     ) -> SlopListRdfTerm;
     pub fn growl_get_inferred_count(result: ReasonerResultFfi) -> i64;
+
+    // Annotation filtering
+    pub fn growl_filter_annotations(
+        arena: *mut SlopArena,
+        ig: IndexedGraphFfi,
+    ) -> IndexedGraphFfi;
 }

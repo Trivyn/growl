@@ -15,7 +15,8 @@
   (import types (Delta EngineState ReasonerConfig ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
   (import engine (engine-run))
-  (import filter (collect-annotation-properties graph-to-indexed indexed-to-graph))
+  (import filter (collect-annotation-properties graph-to-indexed indexed-to-graph
+                  filter-annotations))
 
   (export
     ;; Types (re-exported from types module)
@@ -37,6 +38,7 @@
     collect-annotation-properties
     graph-to-indexed
     indexed-to-graph
+    filter-annotations
     ;; Delta operations (re-exported from types)
     make-delta
     delta-add
