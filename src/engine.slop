@@ -17,8 +17,8 @@
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
   (import cax (apply-cax-rules cax-sco cax-eqc1 cax-eqc2 cax-dw cax-adc))
-  (import scm (scm-cls scm-eqc1 scm-eqc2 scm-int scm-uni
-               scm-op scm-dp scm-eqp1 scm-eqp2
+  (import scm (scm-cls scm-eqc1 scm-eqc2 scm-eqc-mutual scm-int scm-uni
+               scm-op scm-dp scm-eqp1 scm-eqp2 scm-eqp-mutual
                scm-dom1 scm-dom2 scm-rng1 scm-rng2
                scm-svf1 scm-svf2 scm-avf1 scm-avf2 scm-hv))
   (import prp (apply-prp-rules prp-dom prp-rng prp-fp prp-ifp prp-symp prp-trp
@@ -30,7 +30,7 @@
   (import cls (apply-cls-rules cls-thing cls-nothing1 cls-nothing2 cls-int1 cls-int2 cls-uni cls-com
                cls-svf1 cls-svf2 cls-avf cls-hv1 cls-hv2 cls-maxc1 cls-maxc2
                cls-maxqc1 cls-maxqc2 cls-maxqc3 cls-maxqc4 cls-oo))
-  (import dt (dt-type1 dt-not-type))
+  (import dt (dt-type1 dt-type2 dt-not-type))
 
   (export
     engine-run
@@ -103,6 +103,9 @@
                   (set! cg (indexed-graph-add arena cg t)))
                 (for-each (t (cls-nothing1 arena cg))
                   (set! cg (indexed-graph-add arena cg t)))
+                ;; dt-type2: assert literal rdf:type datatype for typed literals
+                (for-each (t (dt-type2 arena cg))
+                  (set! cg (indexed-graph-add arena cg t)))
                 ;; Generate scm-cls triples for Thing and Nothing
                 ;; (scm-cls already ran, but these axioms were added after)
                 (let ((thing (make-iri arena OWL_THING))
@@ -112,7 +115,10 @@
                   (set! cg (indexed-graph-add arena cg (make-triple arena thing subclass-pred thing)))
                   (set! cg (indexed-graph-add arena cg (make-triple arena thing equiv-pred thing)))
                   (set! cg (indexed-graph-add arena cg (make-triple arena nothing subclass-pred nothing)))
-                  (set! cg (indexed-graph-add arena cg (make-triple arena nothing equiv-pred nothing))))
+                  (set! cg (indexed-graph-add arena cg (make-triple arena nothing equiv-pred nothing)))
+                  ;; Nothing subClassOf Thing (scm-cls would produce this if Nothing were
+                  ;; declared as owl:Class before schema materialization)
+                  (set! cg (indexed-graph-add arena cg (make-triple arena nothing subclass-pred thing))))
                 ;; eq-ref axiomatic: sameAs sameAs sameAs
                 ;; (eq-ref adds results to graph not delta, so this self-referential
                 ;; triple can't emerge from the fixpoint loop)
@@ -332,6 +338,25 @@
             (print-ms arena (- (now-ms) t0))
             (println ")"))))
 
+      ;; Phase 3b: Mutual equivalence — derive equivalentClass/Property from mutual sub
+      ;; Must run after TC so we have the complete hierarchy
+      (let ((t0 (now-ms))
+            (full-d (make-initial-delta arena graph))
+            (mut count 0))
+        (for-each (t (scm-eqc-mutual arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (for-each (t (scm-eqp-mutual arena graph full-d))
+          (do (set! graph (indexed-graph-add arena graph t))
+              (set! count (+ count 1))))
+        (when verbose
+          (do
+            (print "[schema] phase 3b (mutual-eq): +")
+            (print (int-to-string arena count))
+            (print " triples (")
+            (print-ms arena (- (now-ms) t0))
+            (println ")"))))
+
       ;; Phase 4: Propagation — scm-dom1/2, scm-rng1/2
       ;; These read complete hierarchies + domain/range declarations
       (let ((t0 (now-ms))
@@ -444,6 +469,27 @@
                 ;; Next structural iteration uses only new triples as delta
                 (set! struct-delta new-delta))))
           (set! phase-iter (+ phase-iter 1))))
+
+      ;; Phase 7: Re-run mutual equivalence after structural fixpoint (complete mode only)
+      ;; Structural rules produce bnode subClassOf pairs that form mutual relationships;
+      ;; scm-eqc-mutual in phase 3b ran before those existed.
+      (when (. config complete)
+        (let ((t0 (now-ms))
+              (full-d (make-initial-delta arena graph))
+              (mut count 0))
+          (for-each (t (scm-eqc-mutual arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-eqp-mutual arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (when verbose
+            (do
+              (print "[schema] phase 7 (mutual-eq complete): +")
+              (print (int-to-string arena count))
+              (print " triples (")
+              (print-ms arena (- (now-ms) t0))
+              (println ")")))))
 
       (when verbose
         (do
@@ -586,10 +632,10 @@
           ;; Allocate coordinator-owned per-worker arenas so data survives until collect
           ;; SCM arenas removed: schema rules handled by schema-materialize
           (arena-cax-infer  (arena-new 1048576))
-          (arena-cax-check  (arena-new (if fast 64 1048576)))
+          (arena-cax-check  (arena-new 1048576))
           (arena-prp-char   (arena-new 1048576))
           (arena-prp-chain  (arena-new 1048576))
-          (arena-prp-check  (arena-new (if fast 64 1048576)))
+          (arena-prp-check  (arena-new 1048576))
           (arena-eq-infer   (arena-new 1048576))
           (arena-eq-check   (arena-new (if fast 64 1048576)))
           (arena-cls-set    (arena-new 1048576))
@@ -606,16 +652,22 @@
         ;; Collect results from all workers
         (let ((result (collect-worker-results arena result-chan workers next-iter)))
 
-          ;; Free worker arenas now that results have been merged into coordinator arena
-          (arena-free arena-cax-infer)
-          (arena-free arena-cax-check)
-          (arena-free arena-prp-char)
-          (arena-free arena-prp-chain)
-          (arena-free arena-prp-check)
-          (arena-free arena-eq-infer)
-          (arena-free arena-eq-check)
-          (arena-free arena-cls-set)
-          (arena-free arena-cls-ind)
+          ;; Only free worker arenas when no inconsistency was found.
+          ;; InconsistencyReport witnesses live in worker arenas — freeing
+          ;; them before the report is consumed would cause use-after-free.
+          (match result
+            ((ok _)
+              (do
+                (arena-free arena-cax-infer)
+                (arena-free arena-cax-check)
+                (arena-free arena-prp-char)
+                (arena-free arena-prp-chain)
+                (arena-free arena-prp-check)
+                (arena-free arena-eq-infer)
+                (arena-free arena-eq-check)
+                (arena-free arena-cls-set)
+                (arena-free arena-cls-ind)))
+            ((error _) (do)))
 
           result))))
 
@@ -674,20 +726,19 @@
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; cax-check: cax-dw, cax-adc (skipped in fast mode)
-      (when (not fast)
-        (list-push workers
-          (spawn arena (fn ()
-            (let ((t0 (now-ms)))
-              (match (cax-dw arena-cax-check g delta)
-                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                ((none)
-                  (match (cax-adc arena-cax-check g delta)
-                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                    ((none) (do)))))
-              (when verbose
-                (do (print "  cax-check: ") (print-ms arena-cax-check (- (now-ms) t0)) (println "")))
-              (send result-chan (union-new WorkerMessage msg-done unit)))))))
+      ;; cax-check: cax-dw, cax-adc (always runs)
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms)))
+            (match (cax-dw arena-cax-check g delta)
+              ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+              ((none)
+                (match (cax-adc arena-cax-check g delta)
+                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                  ((none) (do)))))
+            (when verbose
+              (do (print "  cax-check: ") (print-ms arena-cax-check (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
 
       ;; ---- PRP sub-workers ----
 
@@ -737,32 +788,31 @@
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; prp-check: prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2 (skipped in fast mode)
-      (when (not fast)
-        (list-push workers
-          (spawn arena (fn ()
-            (let ((t0 (now-ms)))
-              (match (prp-asyp arena-prp-check g delta)
-                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                ((none)
-                  (match (prp-irp arena-prp-check g delta)
-                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                    ((none)
-                      (match (prp-pdw arena-prp-check g delta)
-                        ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                        ((none)
-                          (match (prp-adp arena-prp-check g delta)
-                            ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                            ((none)
-                              (match (prp-npa1 arena-prp-check g delta)
-                                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                                ((none)
-                                  (match (prp-npa2 arena-prp-check g delta)
-                                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                                    ((none) (do)))))))))))))
-              (when verbose
-                (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
-              (send result-chan (union-new WorkerMessage msg-done unit)))))))
+      ;; prp-check: prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2 (always runs)
+      (list-push workers
+        (spawn arena (fn ()
+          (let ((t0 (now-ms)))
+            (match (prp-asyp arena-prp-check g delta)
+              ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+              ((none)
+                (match (prp-irp arena-prp-check g delta)
+                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                  ((none)
+                    (match (prp-pdw arena-prp-check g delta)
+                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                      ((none)
+                        (match (prp-adp arena-prp-check g delta)
+                          ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                          ((none)
+                            (match (prp-npa1 arena-prp-check g delta)
+                              ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                              ((none)
+                                (match (prp-npa2 arena-prp-check g delta)
+                                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                                  ((none) (do)))))))))))))
+            (when verbose
+              (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
+            (send result-chan (union-new WorkerMessage msg-done unit))))))
 
       ;; ---- EQ sub-workers ----
 
@@ -859,15 +909,13 @@
                   (set! result (delta-add arena-cls-ind result t)))))
             (for-each (t (cls-oo arena-cls-ind g delta))
               (set! result (delta-add arena-cls-ind result t)))
-            ;; cls-nothing2 and cls-com are check rules (skipped in fast mode)
-            (when (not fast)
-              (do
-                (match (cls-nothing2 arena-cls-ind g delta)
+            ;; cls-nothing2 and cls-com are check rules (always run)
+            (match (cls-nothing2 arena-cls-ind g delta)
+              ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+              ((none)
+                (match (cls-com arena-cls-ind g delta)
                   ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                  ((none)
-                    (match (cls-com arena-cls-ind g delta)
-                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                      ((none) (do)))))))
+                  ((none) (do)))))
             (when verbose
               (do (print "  cls-ind: ") (print-ms arena-cls-ind (- (now-ms) t0)) (println "")))
             (send result-chan (union-new WorkerMessage msg-delta result))

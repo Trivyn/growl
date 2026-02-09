@@ -28,6 +28,7 @@
 
   (export
     dt-type1
+    dt-type2
     dt-not-type)
 
   ;; ============================================================
@@ -100,6 +101,80 @@
                 (inferred (make-triple arena dt-term type-pred datatype-class)))
             (when (not (indexed-graph-contains g inferred))
               (list-push result inferred)))))
+      result))
+
+  ;; ============================================================
+  ;; is-supported-datatype: Check if an IRI is a supported XSD/RDF datatype
+  ;; ============================================================
+
+  (fn is-supported-datatype ((dt-iri String))
+    (@intent "Check if IRI is one of the supported XSD/RDF datatypes")
+    (@spec ((String) -> Bool))
+    (or (string-eq dt-iri XSD_STRING)
+        (string-eq dt-iri XSD_BOOLEAN)
+        (string-eq dt-iri XSD_DECIMAL)
+        (string-eq dt-iri XSD_FLOAT)
+        (string-eq dt-iri XSD_DOUBLE)
+        (string-eq dt-iri XSD_INTEGER)
+        (string-eq dt-iri XSD_LONG)
+        (string-eq dt-iri XSD_INT)
+        (string-eq dt-iri XSD_SHORT)
+        (string-eq dt-iri XSD_BYTE)
+        (string-eq dt-iri XSD_NON_NEGATIVE_INTEGER)
+        (string-eq dt-iri XSD_NON_POSITIVE_INTEGER)
+        (string-eq dt-iri XSD_POSITIVE_INTEGER)
+        (string-eq dt-iri XSD_NEGATIVE_INTEGER)
+        (string-eq dt-iri XSD_UNSIGNED_LONG)
+        (string-eq dt-iri XSD_UNSIGNED_INT)
+        (string-eq dt-iri XSD_UNSIGNED_SHORT)
+        (string-eq dt-iri XSD_UNSIGNED_BYTE)
+        (string-eq dt-iri XSD_NORMALIZED_STRING)
+        (string-eq dt-iri XSD_TOKEN)
+        (string-eq dt-iri XSD_NMTOKEN)
+        (string-eq dt-iri XSD_NAME)
+        (string-eq dt-iri XSD_NCNAME)
+        (string-eq dt-iri XSD_LANGUAGE)
+        (string-eq dt-iri XSD_DATE_TIME)
+        (string-eq dt-iri XSD_DATE_TIME_STAMP)
+        (string-eq dt-iri XSD_DATE)
+        (string-eq dt-iri XSD_TIME)
+        (string-eq dt-iri XSD_HEX_BINARY)
+        (string-eq dt-iri XSD_BASE64_BINARY)
+        (string-eq dt-iri XSD_ANY_URI)
+        (string-eq dt-iri RDF_XML_LITERAL)
+        (string-eq dt-iri RDF_HTML)
+        (string-eq dt-iri RDF_LANG_STRING)
+        (string-eq dt-iri RDF_PLAIN_LITERAL)
+        (string-eq dt-iri RDFS_LITERAL)))
+
+  ;; ============================================================
+  ;; dt-type2: Literal Typing
+  ;;
+  ;; For each typed literal "lex"^^dt in the graph:
+  ;;   if dt is a supported datatype, assert
+  ;;   ("lex"^^dt rdf:type dt)
+  ;; ============================================================
+
+  (fn dt-type2 ((arena Arena) (g IndexedGraph))
+    (@intent "Assert rdf:type for typed literals with supported datatypes (OWL 2 RL dt-type2)")
+    (@spec ((Arena IndexedGraph) -> (List Triple)))
+    (@alloc arena)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (@post (all-triples-have-predicate $result RDF_TYPE))
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (mut result (list-new arena Triple)))
+      (for-each (t (. g triples))
+        (match (triple-object t)
+          ((term-literal lit)
+            (match (. lit datatype)
+              ((some dt-iri)
+                (when (is-supported-datatype dt-iri)
+                  (let ((inferred (make-triple arena (triple-object t) type-pred (make-iri arena dt-iri))))
+                    (when (not (indexed-graph-contains g inferred))
+                      (list-push result inferred)))))
+              ((none) (do))))
+          (_ (do))))
       result))
 
   ;; ============================================================

@@ -225,18 +225,16 @@
       (for-each (t (cax-eqc2 arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Consistency checks (skipped in fast mode)
-      (when (not fast)
-        (do
-          ;; cax-dw: disjoint class violation detection
-          (match (cax-dw arena g delta)
-            ((some report) (return (error report)))
-            ((none) (do)))
+      ;; Consistency checks (always run)
+      ;; cax-dw: disjoint class violation detection
+      (match (cax-dw arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
 
-          ;; cax-adc: AllDisjointClasses violation detection
-          (match (cax-adc arena g delta)
-            ((some report) (return (error report)))
-            ((none) (do)))))
+      ;; cax-adc: AllDisjointClasses violation detection
+      (match (cax-adc arena g delta)
+        ((some report) (return (error report)))
+        ((none) (do)))
 
       (ok result)))
 

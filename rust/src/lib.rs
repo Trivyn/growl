@@ -149,7 +149,7 @@ impl Arena {
     }
 
     /// Get the raw arena pointer (for FFI calls).
-    pub(crate) fn as_ptr(&self) -> *mut ffi::SlopArena {
+    pub fn as_ptr(&self) -> *mut ffi::SlopArena {
         self.ptr
     }
 
@@ -383,7 +383,7 @@ impl<'a> IndexedGraph<'a> {
     }
 
     /// Get the raw FFI graph (for passing to reasoner functions).
-    pub(crate) fn raw(&self) -> ffi::IndexedGraphFfi {
+    pub fn raw(&self) -> ffi::IndexedGraphFfi {
         self.raw
     }
 }
@@ -542,4 +542,263 @@ pub fn get_same_as<'a>(
 /// Get the number of inferred triples from a reasoner result.
 pub fn get_inferred_count(result: &ffi::ReasonerResultFfi) -> i64 {
     unsafe { ffi::growl_get_inferred_count(*result) }
+}
+
+// ---------------------------------------------------------------------------
+// Owned types (no lifetimes, safe to send across threads)
+// ---------------------------------------------------------------------------
+
+/// Owned RDF term — uses String, no lifetime dependency on arena.
+#[derive(Debug, Clone, PartialEq)]
+pub enum OwnedTerm {
+    Iri(String),
+    Blank(i64),
+    Literal {
+        value: String,
+        datatype: Option<String>,
+        lang: Option<String>,
+    },
+}
+
+impl<'a> From<Term<'a>> for OwnedTerm {
+    fn from(t: Term<'a>) -> Self {
+        match t {
+            Term::Iri(v) => OwnedTerm::Iri(v.to_string()),
+            Term::Blank(id) => OwnedTerm::Blank(id),
+            Term::Literal {
+                value,
+                datatype,
+                lang,
+            } => OwnedTerm::Literal {
+                value: value.to_string(),
+                datatype: datatype.map(|s| s.to_string()),
+                lang: lang.map(|s| s.to_string()),
+            },
+        }
+    }
+}
+
+impl std::fmt::Display for OwnedTerm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OwnedTerm::Iri(v) => write!(f, "<{}>", v),
+            OwnedTerm::Blank(id) => write!(f, "_:b{}", id),
+            OwnedTerm::Literal {
+                value,
+                datatype,
+                lang,
+            } => {
+                write!(f, "\"{}\"", value)?;
+                if let Some(dt) = datatype {
+                    write!(f, "^^<{}>", dt)?;
+                }
+                if let Some(l) = lang {
+                    write!(f, "@{}", l)?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+/// Owned RDF triple.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OwnedTriple {
+    pub subject: OwnedTerm,
+    pub predicate: OwnedTerm,
+    pub object: OwnedTerm,
+}
+
+impl<'a> From<Triple<'a>> for OwnedTriple {
+    fn from(t: Triple<'a>) -> Self {
+        OwnedTriple {
+            subject: OwnedTerm::from(t.subject),
+            predicate: OwnedTerm::from(t.predicate),
+            object: OwnedTerm::from(t.object),
+        }
+    }
+}
+
+impl std::fmt::Display for OwnedTriple {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {} .", self.subject, self.predicate, self.object)
+    }
+}
+
+/// Owned reasoning result — no lifetime dependency.
+pub enum OwnedReasonerResult {
+    /// Reasoning completed successfully.
+    Success {
+        triples: Vec<OwnedTriple>,
+        inferred_count: i64,
+        iterations: i64,
+    },
+    /// The ontology is inconsistent.
+    Inconsistent {
+        reason: String,
+        witnesses: Vec<OwnedTriple>,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Reasoner (high-level, owns its Arena)
+// ---------------------------------------------------------------------------
+
+/// High-level OWL 2 RL reasoner that owns its arena and graph.
+///
+/// This struct hides the arena/FFI details and provides a simple API
+/// for loading triples and running reasoning. The `OwnedReasonerResult`
+/// contains owned data that can be freely sent across threads.
+///
+/// # Example
+/// ```no_run
+/// use growl::{Reasoner, OwnedTerm, OwnedReasonerResult};
+///
+/// let mut reasoner = Reasoner::new();
+/// reasoner.add_iri_triple(
+///     "http://example.org/Dog",
+///     "http://www.w3.org/2000/01/rdf-schema#subClassOf",
+///     "http://example.org/Animal",
+/// );
+/// reasoner.add_iri_triple(
+///     "http://example.org/fido",
+///     "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+///     "http://example.org/Dog",
+/// );
+///
+/// match reasoner.reason() {
+///     OwnedReasonerResult::Success { triples, inferred_count, .. } => {
+///         println!("Inferred {} triples", inferred_count);
+///     }
+///     OwnedReasonerResult::Inconsistent { reason, .. } => {
+///         println!("Inconsistent: {}", reason);
+///     }
+/// }
+/// ```
+pub struct Reasoner {
+    arena: Arena,
+    graph_raw: ffi::IndexedGraphFfi,
+    triple_count: usize,
+}
+
+impl Reasoner {
+    /// Create a new reasoner with 32 MB arena.
+    pub fn new() -> Self {
+        Self::with_capacity(32 * 1024 * 1024)
+    }
+
+    /// Create a new reasoner with the given arena capacity in bytes.
+    pub fn with_capacity(bytes: usize) -> Self {
+        let arena = Arena::new(bytes);
+        let graph_raw = unsafe { ffi::rdf_indexed_graph_create(arena.as_ptr()) };
+        Reasoner {
+            arena,
+            graph_raw,
+            triple_count: 0,
+        }
+    }
+
+    /// Add a triple from owned terms.
+    pub fn add_triple(&mut self, s: &OwnedTerm, p: &OwnedTerm, o: &OwnedTerm) {
+        let sf = self.owned_term_to_ffi(s);
+        let pf = self.owned_term_to_ffi(p);
+        let of = self.owned_term_to_ffi(o);
+        let triple = self.arena.make_triple(sf, pf, of);
+        self.graph_raw =
+            unsafe { ffi::rdf_indexed_graph_add(self.arena.as_ptr(), self.graph_raw, triple) };
+        self.triple_count += 1;
+    }
+
+    /// Convenience: add a triple where all three terms are IRIs.
+    pub fn add_iri_triple(&mut self, s: &str, p: &str, o: &str) {
+        let sf = self.arena.make_iri(s);
+        let pf = self.arena.make_iri(p);
+        let of = self.arena.make_iri(o);
+        let triple = self.arena.make_triple(sf, pf, of);
+        self.graph_raw =
+            unsafe { ffi::rdf_indexed_graph_add(self.arena.as_ptr(), self.graph_raw, triple) };
+        self.triple_count += 1;
+    }
+
+    /// Return the number of triples loaded into the reasoner.
+    pub fn triple_count(&self) -> usize {
+        self.triple_count
+    }
+
+    /// Run OWL 2 RL reasoning with default configuration.
+    ///
+    /// Returns an `OwnedReasonerResult` with all data copied out of the
+    /// arena's interned pool, so it can be freely used after this call.
+    pub fn reason(&self) -> OwnedReasonerResult {
+        self.reason_with_config(&ReasonerConfig::new())
+    }
+
+    /// Run OWL 2 RL reasoning with custom configuration.
+    pub fn reason_with_config(&self, config: &ReasonerConfig) -> OwnedReasonerResult {
+        let raw_result = unsafe {
+            ffi::growl_reason_with_config(self.arena.as_ptr(), self.graph_raw, config.raw)
+        };
+        unsafe { self.convert_result(raw_result) }
+    }
+
+    /// Quick consistency check (no inferred triples returned).
+    pub fn is_consistent(&self) -> bool {
+        unsafe { ffi::growl_is_consistent(self.arena.as_ptr(), self.graph_raw) != 0 }
+    }
+
+    // -- private helpers --
+
+    fn owned_term_to_ffi(&self, term: &OwnedTerm) -> ffi::RdfTerm {
+        match term {
+            OwnedTerm::Iri(v) => self.arena.make_iri(v),
+            OwnedTerm::Blank(id) => self.arena.make_blank(*id),
+            OwnedTerm::Literal {
+                value,
+                datatype,
+                lang,
+            } => self.arena.make_literal(
+                value,
+                datatype.as_deref(),
+                lang.as_deref(),
+            ),
+        }
+    }
+
+    unsafe fn convert_result(&self, raw: ffi::ReasonerResultFfi) -> OwnedReasonerResult {
+        match raw.tag {
+            ffi::ReasonerResultTag::Success => {
+                let s = raw.data.reason_success;
+                // Convert all inferred triples to owned
+                let triples_list = s.graph.triples;
+                let mut triples = Vec::with_capacity(triples_list.len);
+                for i in 0..triples_list.len {
+                    let raw_triple = *triples_list.data.add(i);
+                    let t = Triple::from_ffi(raw_triple);
+                    triples.push(OwnedTriple::from(t));
+                }
+                OwnedReasonerResult::Success {
+                    triples,
+                    inferred_count: s.inferred_count,
+                    iterations: s.iterations,
+                }
+            }
+            ffi::ReasonerResultTag::Inconsistent => {
+                let r = raw.data.reason_inconsistent;
+                let reason = slop_string_to_str(r.reason).to_string();
+                let mut witnesses = Vec::with_capacity(r.witnesses.len);
+                for i in 0..r.witnesses.len {
+                    let raw_triple = *r.witnesses.data.add(i);
+                    let t = Triple::from_ffi(raw_triple);
+                    witnesses.push(OwnedTriple::from(t));
+                }
+                OwnedReasonerResult::Inconsistent { reason, witnesses }
+            }
+        }
+    }
+}
+
+impl Default for Reasoner {
+    fn default() -> Self {
+        Self::new()
+    }
 }

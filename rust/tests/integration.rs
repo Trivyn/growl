@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 use growl::{Arena, IndexedGraph, ReasonerConfig, ReasonerResult, Term, Triple};
 use growl::{get_types, is_consistent, reason, reason_with_config};
+use growl::{OwnedReasonerResult, OwnedTerm, Reasoner};
 
 const OWL: &str = "http://www.w3.org/2002/07/owl#";
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
@@ -230,4 +231,114 @@ fn blank_node_terms() {
 
     let t = Term::from_ffi(b);
     assert_eq!(t, Term::Blank(42));
+}
+
+// ---------------------------------------------------------------------------
+// Reasoner high-level API tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn reasoner_subclass_inference() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+
+    let rdf_type_iri = format!("{}type", RDF);
+    let rdfs_sub_iri = format!("{}subClassOf", RDFS);
+    let owl_class_iri = format!("{}Class", OWL);
+    let dog_iri = format!("{}Dog", EX);
+    let animal_iri = format!("{}Animal", EX);
+    let fido_iri = format!("{}fido", EX);
+
+    // Dog subClassOf Animal
+    reasoner.add_iri_triple(&dog_iri, &rdfs_sub_iri, &animal_iri);
+    // fido a Dog
+    reasoner.add_iri_triple(&fido_iri, &rdf_type_iri, &dog_iri);
+    // Declare classes
+    reasoner.add_iri_triple(&dog_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&animal_iri, &rdf_type_iri, &owl_class_iri);
+
+    assert_eq!(reasoner.triple_count(), 4);
+
+    match reasoner.reason() {
+        OwnedReasonerResult::Success {
+            triples,
+            inferred_count,
+            ..
+        } => {
+            assert!(inferred_count > 0, "should infer at least one triple");
+
+            // fido should now be typed Animal in the result triples
+            let has_animal = triples.iter().any(|t| {
+                t.subject == OwnedTerm::Iri(fido_iri.clone())
+                    && t.predicate == OwnedTerm::Iri(rdf_type_iri.clone())
+                    && t.object == OwnedTerm::Iri(animal_iri.clone())
+            });
+            assert!(
+                has_animal,
+                "fido should be inferred as Animal in result triples"
+            );
+        }
+        OwnedReasonerResult::Inconsistent { reason, .. } => {
+            panic!("expected consistent result, got inconsistency: {}", reason);
+        }
+    }
+}
+
+#[test]
+fn reasoner_inconsistency() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+
+    let rdf_type_iri = format!("{}type", RDF);
+    let disjoint_iri = format!("{}disjointWith", OWL);
+    let cat_iri = format!("{}Cat", EX);
+    let dog_iri = format!("{}Dog", EX);
+    let fido_iri = format!("{}fido", EX);
+
+    reasoner.add_iri_triple(&cat_iri, &disjoint_iri, &dog_iri);
+    reasoner.add_iri_triple(&fido_iri, &rdf_type_iri, &cat_iri);
+    reasoner.add_iri_triple(&fido_iri, &rdf_type_iri, &dog_iri);
+
+    match reasoner.reason() {
+        OwnedReasonerResult::Inconsistent { reason, .. } => {
+            assert!(!reason.is_empty(), "inconsistency reason should not be empty");
+        }
+        OwnedReasonerResult::Success { .. } => {
+            panic!("expected inconsistency for disjoint class violation");
+        }
+    }
+}
+
+#[test]
+fn reasoner_is_consistent() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+
+    let rdf_type_iri = format!("{}type", RDF);
+    let owl_class_iri = format!("{}Class", OWL);
+    let dog_iri = format!("{}Dog", EX);
+    let fido_iri = format!("{}fido", EX);
+
+    reasoner.add_iri_triple(&fido_iri, &rdf_type_iri, &dog_iri);
+    reasoner.add_iri_triple(&dog_iri, &rdf_type_iri, &owl_class_iri);
+
+    assert!(reasoner.is_consistent(), "simple graph should be consistent");
+}
+
+#[test]
+fn reasoner_add_triple_with_owned_terms() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut reasoner = Reasoner::new();
+
+    let s = OwnedTerm::Iri(format!("{}fido", EX));
+    let p = OwnedTerm::Iri(format!("{}name", EX));
+    let o = OwnedTerm::Literal {
+        value: "Fido".to_string(),
+        datatype: None,
+        lang: Some("en".to_string()),
+    };
+
+    reasoner.add_triple(&s, &p, &o);
+    assert_eq!(reasoner.triple_count(), 1);
+    assert!(reasoner.is_consistent());
 }
