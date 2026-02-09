@@ -99,6 +99,10 @@ make test       # build and run tests
 make benchmark  # run benchmarks
 ```
 
+### Rust Bindings
+
+Safe Rust bindings are available in the [`rust/`](rust/) directory. See [`rust/README.md`](rust/README.md) for usage instructions.
+
 ## Verification
 
 ```bash
