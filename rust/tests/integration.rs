@@ -1,0 +1,233 @@
+use std::sync::Mutex;
+
+use growl::{Arena, IndexedGraph, ReasonerConfig, ReasonerResult, Term, Triple};
+use growl::{get_types, is_consistent, reason, reason_with_config};
+
+const OWL: &str = "http://www.w3.org/2002/07/owl#";
+const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+const RDFS: &str = "http://www.w3.org/2000/01/rdf-schema#";
+const EX: &str = "http://example.org/";
+
+// The C runtime uses a global intern pool that is not thread-safe.
+// All tests must be serialized to avoid data races.
+static C_LOCK: Mutex<()> = Mutex::new(());
+
+fn rdf_type(arena: &Arena) -> growl::ffi::RdfTerm {
+    arena.make_iri(&format!("{}type", RDF))
+}
+
+fn rdfs_subclass(arena: &Arena) -> growl::ffi::RdfTerm {
+    arena.make_iri(&format!("{}subClassOf", RDFS))
+}
+
+fn owl_class(arena: &Arena) -> growl::ffi::RdfTerm {
+    arena.make_iri(&format!("{}Class", OWL))
+}
+
+#[test]
+fn empty_graph() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(1024 * 1024);
+    let graph = IndexedGraph::new(&arena);
+    assert_eq!(graph.size(), 0);
+    assert!(is_consistent(&arena, &graph));
+}
+
+#[test]
+fn add_and_query() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let s = arena.make_iri(&format!("{}fido", EX));
+    let p = rdf_type(&arena);
+    let o = arena.make_iri(&format!("{}Dog", EX));
+
+    let triple = arena.make_triple(s, p, o);
+    graph.add_triple(triple);
+
+    assert_eq!(graph.size(), 1);
+    assert!(graph.contains_triple(triple));
+}
+
+#[test]
+fn subclass_inference() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let animal = arena.make_iri(&format!("{}Animal", EX));
+    let fido = arena.make_iri(&format!("{}fido", EX));
+    let a = rdf_type(&arena);
+    let sub = rdfs_subclass(&arena);
+    let cls = owl_class(&arena);
+
+    // Dog subClassOf Animal
+    graph.add_triple(arena.make_triple(dog, sub, animal));
+    // fido a Dog
+    graph.add_triple(arena.make_triple(fido, a, dog));
+    // Declare classes
+    graph.add_triple(arena.make_triple(dog, a, cls));
+    graph.add_triple(arena.make_triple(animal, a, cls));
+
+    let result = reason(&arena, &graph);
+    match result {
+        ReasonerResult::Success {
+            graph: result_graph,
+            inferred_count,
+            ..
+        } => {
+            assert!(inferred_count > 0, "should infer at least one triple");
+
+            // fido should now be typed Animal
+            let types = get_types(&arena, &result_graph, fido);
+            let has_animal = types.iter().any(|t| {
+                matches!(t, Term::Iri(v) if *v == format!("{}Animal", EX))
+            });
+            assert!(has_animal, "fido should be inferred as Animal, got: {:?}", types);
+        }
+        ReasonerResult::Inconsistent { reason, .. } => {
+            panic!("expected consistent result, got inconsistency: {}", reason);
+        }
+    }
+}
+
+#[test]
+fn reason_with_custom_config() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let fido = arena.make_iri(&format!("{}fido", EX));
+    let a = rdf_type(&arena);
+    let cls = owl_class(&arena);
+
+    graph.add_triple(arena.make_triple(fido, a, dog));
+    graph.add_triple(arena.make_triple(dog, a, cls));
+
+    let config = ReasonerConfig::new().verbose(false).fast(true);
+    let result = reason_with_config(&arena, &graph, &config);
+    match result {
+        ReasonerResult::Success { .. } => {}
+        ReasonerResult::Inconsistent { reason, .. } => {
+            panic!("expected consistent result: {}", reason);
+        }
+    }
+}
+
+#[test]
+fn inconsistency_detection() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    // Match the known-working disjoint-violation.ttl fixture:
+    // Cat disjointWith Dog, fido typed as both → inconsistent
+    let cat = arena.make_iri(&format!("{}Cat", EX));
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let fido = arena.make_iri(&format!("{}fido", EX));
+    let a = rdf_type(&arena);
+    let disjoint = arena.make_iri(&format!("{}disjointWith", OWL));
+
+    graph.add_triple(arena.make_triple(cat, disjoint, dog));
+    graph.add_triple(arena.make_triple(fido, a, cat));
+    graph.add_triple(arena.make_triple(fido, a, dog));
+
+    let result = reason(&arena, &graph);
+    match result {
+        ReasonerResult::Inconsistent { .. } => {
+            // Expected
+        }
+        ReasonerResult::Success { .. } => {
+            panic!("expected inconsistency for disjoint class violation");
+        }
+    }
+}
+
+#[test]
+fn match_pattern() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let fido = arena.make_iri(&format!("{}fido", EX));
+    let rex = arena.make_iri(&format!("{}rex", EX));
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let a = rdf_type(&arena);
+
+    graph.add_triple(arena.make_triple(fido, a, dog));
+    graph.add_triple(arena.make_triple(rex, a, dog));
+
+    // Match all triples with predicate rdf:type and object Dog
+    let matches = graph.match_pattern(None, Some(a), Some(dog));
+    assert_eq!(matches.len(), 2);
+}
+
+#[test]
+fn graph_objects_and_subjects() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let fido = arena.make_iri(&format!("{}fido", EX));
+    let rex = arena.make_iri(&format!("{}rex", EX));
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let cat = arena.make_iri(&format!("{}Cat", EX));
+    let a = rdf_type(&arena);
+
+    graph.add_triple(arena.make_triple(fido, a, dog));
+    graph.add_triple(arena.make_triple(fido, a, cat));
+    graph.add_triple(arena.make_triple(rex, a, dog));
+
+    // Objects of fido rdf:type ?
+    let objs = graph.objects(fido, a);
+    assert_eq!(objs.len(), 2);
+
+    // Subjects of ? rdf:type Dog
+    let subjs = graph.subjects(a, dog);
+    assert_eq!(subjs.len(), 2);
+}
+
+#[test]
+fn literal_terms() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let fido = arena.make_iri(&format!("{}fido", EX));
+    let name = arena.make_iri(&format!("{}name", EX));
+    let val = arena.make_literal("Fido", None, Some("en"));
+    let triple = arena.make_triple(fido, name, val);
+    graph.add_triple(triple);
+
+    assert_eq!(graph.size(), 1);
+
+    let t = Triple::from_ffi(triple);
+    assert_eq!(
+        t.object,
+        Term::Literal {
+            value: "Fido",
+            datatype: None,
+            lang: Some("en"),
+        }
+    );
+}
+
+#[test]
+fn blank_node_terms() {
+    let _lock = C_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let arena = Arena::new(1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let b = arena.make_blank(42);
+    let a = rdf_type(&arena);
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+
+    graph.add_triple(arena.make_triple(b, a, dog));
+    assert_eq!(graph.size(), 1);
+
+    let t = Term::from_ffi(b);
+    assert_eq!(t, Term::Blank(42));
+}

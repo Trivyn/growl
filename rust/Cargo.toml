@@ -1,0 +1,8 @@
+[package]
+name = "growl"
+version = "0.1.0"
+edition = "2021"
+description = "Rust bindings for the Growl OWL 2 RL reasoner"
+
+[build-dependencies]
+cc = "1"
