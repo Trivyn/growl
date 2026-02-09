@@ -236,6 +236,30 @@ enum ReasonerResult<'a> {
 }
 ```
 
+### Annotation Filtering
+
+Large ontologies often contain many annotation triples (`rdfs:label`, `rdfs:comment`, SKOS labels, Dublin Core metadata) that have no semantic effect under OWL 2 RL. Filtering them before reasoning can significantly reduce memory use and improve performance.
+
+**High-level (Reasoner):**
+
+```rust
+let mut reasoner = Reasoner::new().filter_annotations(true);
+reasoner.add_iri_triple("http://example.org/Dog", "http://www.w3.org/2000/01/rdf-schema#label", "Dog");
+reasoner.add_iri_triple("http://example.org/Dog", "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://www.w3.org/2002/07/owl#Class");
+
+// Annotation triples are filtered before reasoning and restored in the result
+let result = reasoner.reason();
+```
+
+**Low-level:**
+
+```rust
+let filtered = growl::filter_annotations(&arena, &graph);
+let result = growl::reason(&arena, &filtered);
+```
+
+The list of 27 standard annotation properties is available as `growl::STANDARD_ANNOTATION_PROPERTIES`. User-declared `owl:AnnotationProperty` instances in the graph are also filtered.
+
 ### Free Functions
 
 ```rust
@@ -247,6 +271,9 @@ reason_with_config(&arena, &graph, &config) -> ReasonerResult
 
 // Quick consistency check (no graph returned)
 is_consistent(&arena, &graph) -> bool
+
+// Filter annotation triples
+filter_annotations(&arena, &graph) -> IndexedGraph
 
 // Query helpers
 get_types(&arena, &graph, individual) -> Vec<Term>

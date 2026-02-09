@@ -34,8 +34,6 @@ void main_print_elapsed(slop_arena* arena, int64_t elapsed);
 slop_string main_argv_to_string(uint8_t** argv, int64_t index);
 main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
 void main_print_usage(void);
-index_IndexedGraph main_graph_to_indexed(slop_arena* arena, rdf_Graph g);
-rdf_Graph main_indexed_to_graph(slop_arena* arena, index_IndexedGraph ig);
 int main(int64_t argc, uint8_t** argv);
 
 #ifndef SLOP_OPTION_MAIN_CLIARGS_DEFINED

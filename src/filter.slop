@@ -1,0 +1,125 @@
+;; ============================================================
+;; Annotation Filtering
+;;
+;; Filters annotation triples before reasoning. Annotation
+;; properties carry human-readable metadata with no semantic
+;; effect under OWL 2 Direct Semantics.
+;; ============================================================
+
+(module filter
+  (@doc "Annotation property filtering for preprocessing RDF graphs")
+
+  (import rdf (Term Triple Graph GraphSize make-graph graph-size make-iri term-eq
+               triple-predicate triple-object))
+  (import index (IndexedGraph indexed-graph-create indexed-graph-add
+                 indexed-graph-size))
+  (import vocab (RDF_TYPE OWL_ANNOTATION_PROPERTY
+                 RDFS_LABEL RDFS_COMMENT RDFS_SEE_ALSO RDFS_IS_DEFINED_BY
+                 OWL_DEPRECATED OWL_VERSION_INFO OWL_PRIOR_VERSION
+                 OWL_BACKWARD_COMPATIBLE_WITH OWL_INCOMPATIBLE_WITH
+                 SKOS_PREF_LABEL SKOS_ALT_LABEL SKOS_HIDDEN_LABEL
+                 SKOS_DEFINITION SKOS_NOTE SKOS_SCOPE_NOTE SKOS_EXAMPLE
+                 SKOS_HISTORY_NOTE SKOS_EDITORIAL_NOTE SKOS_CHANGE_NOTE
+                 DC_TITLE DC_CREATOR DC_SUBJECT DC_DESCRIPTION
+                 DCTERMS_TITLE DCTERMS_CREATOR DCTERMS_DESCRIPTION
+                 DCTERMS_ABSTRACT))
+
+  (export
+    collect-annotation-properties
+    graph-to-indexed
+    indexed-to-graph
+    filter-annotations)
+
+  ;; ============================================================
+  ;; Annotation Property Collection
+  ;; ============================================================
+
+  (fn collect-annotation-properties ((arena Arena) (g Graph))
+    (@intent "Build set of annotation property IRIs: standard + well-known + user-declared")
+    (@spec ((Arena Graph) -> (Set Term)))
+    (@alloc arena)
+    :c-name "growl_collect_annotation_properties"
+    (let ((mut annot-set (set-new arena Term))
+          (props (list-new arena String)))
+      ;; 9 standard OWL/RDFS annotation properties
+      (list-push props RDFS_LABEL)
+      (list-push props RDFS_COMMENT)
+      (list-push props RDFS_SEE_ALSO)
+      (list-push props RDFS_IS_DEFINED_BY)
+      (list-push props OWL_DEPRECATED)
+      (list-push props OWL_VERSION_INFO)
+      (list-push props OWL_PRIOR_VERSION)
+      (list-push props OWL_BACKWARD_COMPATIBLE_WITH)
+      (list-push props OWL_INCOMPATIBLE_WITH)
+      ;; SKOS annotation properties (labels + notes)
+      (list-push props SKOS_PREF_LABEL)
+      (list-push props SKOS_ALT_LABEL)
+      (list-push props SKOS_HIDDEN_LABEL)
+      (list-push props SKOS_DEFINITION)
+      (list-push props SKOS_NOTE)
+      (list-push props SKOS_SCOPE_NOTE)
+      (list-push props SKOS_EXAMPLE)
+      (list-push props SKOS_HISTORY_NOTE)
+      (list-push props SKOS_EDITORIAL_NOTE)
+      (list-push props SKOS_CHANGE_NOTE)
+      ;; Dublin Core annotation properties
+      (list-push props DC_TITLE)
+      (list-push props DC_CREATOR)
+      (list-push props DC_SUBJECT)
+      (list-push props DC_DESCRIPTION)
+      (list-push props DCTERMS_TITLE)
+      (list-push props DCTERMS_CREATOR)
+      (list-push props DCTERMS_DESCRIPTION)
+      (list-push props DCTERMS_ABSTRACT)
+      (for-each (p props)
+        (let ((term (make-iri arena p)))
+          (set-put annot-set term)))
+      ;; Scan input graph for ?p rdf:type owl:AnnotationProperty
+      (let ((type-term (make-iri arena RDF_TYPE))
+            (annot-class (make-iri arena OWL_ANNOTATION_PROPERTY)))
+        (for-each (t (. g triples))
+          (let ((pred (. t predicate))
+                (obj (. t object))
+                (subj (. t subject)))
+            (when (and (term-eq pred type-term)
+                       (term-eq obj annot-class))
+              (set-put annot-set subj)))))
+      annot-set))
+
+  ;; ============================================================
+  ;; Graph Conversion
+  ;; ============================================================
+
+  (fn graph-to-indexed ((arena Arena) (g Graph) (annot-set (Set Term)))
+    (@intent "Convert a Graph to an IndexedGraph, filtering out annotation triples")
+    (@spec ((Arena Graph (Set Term)) -> IndexedGraph))
+    (@alloc arena)
+    :c-name "growl_graph_to_indexed"
+    (let ((mut ig (indexed-graph-create arena)))
+      (for-each (t (. g triples))
+        (let ((pred (. t predicate)))
+          (when (not (set-has annot-set pred))
+            (set! ig (indexed-graph-add arena ig t)))))
+      ig))
+
+  (fn indexed-to-graph ((arena Arena) (ig IndexedGraph))
+    (@intent "Convert an IndexedGraph back to a Graph for serialization")
+    (@spec ((Arena IndexedGraph) -> Graph))
+    (@alloc arena)
+    :c-name "growl_indexed_to_graph"
+    (record-new Graph
+      (triples (. ig triples))
+      (size (cast GraphSize (indexed-graph-size ig)))))
+
+  (fn filter-annotations ((arena Arena) (ig IndexedGraph))
+    (@intent "Create new IndexedGraph with annotation triples removed")
+    (@spec ((Arena IndexedGraph) -> IndexedGraph))
+    (@alloc arena)
+    :c-name "growl_filter_annotations"
+    (let ((g (indexed-to-graph arena ig))
+          (annot-set (collect-annotation-properties arena g))
+          (mut result (indexed-graph-create arena)))
+      (for-each (t (. ig triples))
+        (when (not (set-has annot-set (. t predicate)))
+          (set! result (indexed-graph-add arena result t))))
+      result)))

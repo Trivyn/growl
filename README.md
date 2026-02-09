@@ -41,6 +41,11 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 ;; Query results
 (get-types arena graph individual) -> (List Term)
 (get-same-as arena graph individual) -> (List Term)
+
+;; Annotation filtering (preprocessing)
+(collect-annotation-properties arena graph) -> (Set Term)
+(graph-to-indexed arena graph annot-set) -> IndexedGraph
+(indexed-to-graph arena indexed-graph) -> Graph
 ```
 
 ## Configuration
@@ -82,6 +87,40 @@ These rules are spec-correct but produce triples with zero practical inference v
 ### Fast Mode
 
 The `--fast` flag skips schema vocabulary rules (scm-\*), datatype rules (dt-type1, dt-not-type), equality-difference checks (eq-diff1/2/3), eq-ref, and cardinality rules (cls-maxc1/2, cls-maxqc1-4). Consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1/2, cls-nothing2, cls-com) still run in fast mode, matching the coverage of reasoners like [reasonable](https://github.com/gtfierro/reasonable). Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
+
+## Annotation Filtering
+
+Growl provides annotation filtering as a preprocessing step. Annotation properties have no semantic effect under OWL 2 Direct Semantics — they carry human-readable metadata (labels, comments, descriptions) that cannot trigger any inference rule. Removing them reduces the input graph size without affecting reasoning results.
+
+The following properties are filtered by default:
+
+- **OWL/RDFS** (9): `rdfs:label`, `rdfs:comment`, `rdfs:seeAlso`, `rdfs:isDefinedBy`, `owl:deprecated`, `owl:versionInfo`, `owl:priorVersion`, `owl:backwardCompatibleWith`, `owl:incompatibleWith`
+- **SKOS** (10): `skos:prefLabel`, `skos:altLabel`, `skos:hiddenLabel`, `skos:definition`, `skos:note`, `skos:scopeNote`, `skos:example`, `skos:historyNote`, `skos:editorialNote`, `skos:changeNote`
+- **Dublin Core** (8): `dc:title`, `dc:creator`, `dc:subject`, `dc:description`, `dcterms:title`, `dcterms:creator`, `dcterms:description`, `dcterms:abstract`
+
+Additionally, any property declared as `owl:AnnotationProperty` in the input graph is filtered. This is significant for large ontologies — for example, CCO drops from ~13.6K to ~6K input triples.
+
+### Library Usage
+
+```slop
+;; Build annotation property set from parsed graph
+(let ((annot-set (collect-annotation-properties arena g))
+      (ig (graph-to-indexed arena g annot-set)))
+  ;; Run reasoning on filtered graph
+  (match (reason arena ig)
+    ((reason-success s)
+      ;; Convert back for serialization, re-adding annotations
+      (let ((mut out-ig (. s graph)))
+        (for-each (t (. g triples))
+          (when (set-has annot-set (. t predicate))
+            (set! out-ig (indexed-graph-add arena out-ig t))))
+        (indexed-to-graph arena out-ig)))
+    ((reason-inconsistent _) ...)))
+```
+
+### CLI
+
+The CLI applies annotation filtering automatically. When `--emit` is used, filtered annotation triples are re-added to the output so no data is lost in the materialized graph.
 
 ## Building
 

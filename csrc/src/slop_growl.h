@@ -9,6 +9,7 @@
 #include "slop_vocab.h"
 #include "slop_types.h"
 #include "slop_engine.h"
+#include "slop_filter.h"
 
 #ifndef SLOP_LIST_RDF_TERM_DEFINED
 #define SLOP_LIST_RDF_TERM_DEFINED

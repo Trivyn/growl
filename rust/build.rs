@@ -12,6 +12,7 @@ fn main() {
         "slop_engine.c",
         "slop_eq.c",
         "slop_file.c",
+        "slop_filter.c",
         "slop_growl.c",
         "slop_index.c",
         "slop_list.c",
