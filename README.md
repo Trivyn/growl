@@ -94,6 +94,7 @@ Pre-transpiled C sources are included in `csrc/`, so you can build with just a C
 
 ```bash
 make            # build cli → build/growl
+make lib        # build static library → build/libgrowl.a
 make release    # optimized build (-O3, NDEBUG)
 make test       # build and run tests
 make benchmark  # run benchmarks
