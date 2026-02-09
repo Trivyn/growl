@@ -58,7 +58,86 @@ match result {
 }
 ```
 
-## API Reference
+## High-Level API
+
+The `Reasoner` struct owns its arena and graph, hiding FFI details. It returns `OwnedReasonerResult` with owned data that can be freely sent across threads.
+
+```rust
+use growl::{Reasoner, OwnedTerm, OwnedReasonerResult, ReasonerConfig};
+
+let mut reasoner = Reasoner::new();  // 32 MB arena
+// or: Reasoner::with_capacity(64 * 1024 * 1024)
+
+// Add triples — all-IRI convenience method
+reasoner.add_iri_triple(
+    "http://example.org/Dog",
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf",
+    "http://example.org/Animal",
+);
+reasoner.add_iri_triple(
+    "http://example.org/fido",
+    "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+    "http://example.org/Dog",
+);
+
+// Or add triples with OwnedTerm for literals and blank nodes
+let s = OwnedTerm::Iri("http://example.org/fido".into());
+let p = OwnedTerm::Iri("http://example.org/name".into());
+let o = OwnedTerm::Literal {
+    value: "Fido".into(),
+    datatype: None,
+    lang: Some("en".into()),
+};
+reasoner.add_triple(&s, &p, &o);
+
+// Run reasoning
+match reasoner.reason() {
+    OwnedReasonerResult::Success { triples, inferred_count, iterations } => {
+        println!("Inferred {} triples in {} iterations", inferred_count, iterations);
+        for t in &triples {
+            println!("  {}", t);
+        }
+    }
+    OwnedReasonerResult::Inconsistent { reason, witnesses } => {
+        println!("Inconsistent: {}", reason);
+        for w in &witnesses {
+            println!("  witness: {}", w);
+        }
+    }
+}
+
+// Or use custom config
+let config = ReasonerConfig::new().verbose(false).fast(true);
+let result = reasoner.reason_with_config(&config);
+
+// Quick consistency check (no triples returned)
+assert!(reasoner.is_consistent());
+```
+
+### Owned Types
+
+`OwnedTerm`, `OwnedTriple`, and `OwnedReasonerResult` use `String` instead of borrowed `&str`, so they have no lifetime dependency on the arena and are `Send + Sync`.
+
+```rust
+enum OwnedTerm {
+    Iri(String),
+    Blank(i64),
+    Literal { value: String, datatype: Option<String>, lang: Option<String> },
+}
+
+struct OwnedTriple {
+    pub subject: OwnedTerm,
+    pub predicate: OwnedTerm,
+    pub object: OwnedTerm,
+}
+
+enum OwnedReasonerResult {
+    Success { triples: Vec<OwnedTriple>, inferred_count: i64, iterations: i64 },
+    Inconsistent { reason: String, witnesses: Vec<OwnedTriple> },
+}
+```
+
+## Low-Level API
 
 ### `Arena`
 
@@ -195,8 +274,10 @@ fn do_reasoning() {
 ## Running Tests
 
 ```bash
-cd rust && cargo test
+cd rust && cargo test -- --test-threads=1
 ```
+
+Single-threaded execution is required because the C intern pool is not thread-safe.
 
 The build script (`build.rs`) compiles all C sources automatically via the `cc` crate.
 
