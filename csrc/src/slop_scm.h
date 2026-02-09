@@ -45,11 +45,13 @@ slop_list_rdf_Triple scm_scm_cls(slop_arena* arena, index_IndexedGraph g, types_
 slop_list_rdf_Triple scm_scm_sco(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_eqc1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_eqc2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_eqc_mutual(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_op(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_dp(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_spo(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_eqp1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_eqp2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
+slop_list_rdf_Triple scm_scm_eqp_mutual(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_dom1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_dom2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple scm_scm_rng1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);

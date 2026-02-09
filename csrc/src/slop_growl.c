@@ -41,16 +41,16 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
 
 uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
-    __auto_type _mv_294 = growl_reason(arena, input);
-    switch (_mv_294.tag) {
+    __auto_type _mv_299 = growl_reason(arena, input);
+    switch (_mv_299.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type _ = _mv_294.data.reason_success;
+            __auto_type _ = _mv_299.data.reason_success;
             return 1;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_294.data.reason_inconsistent;
+            __auto_type _ = _mv_299.data.reason_inconsistent;
             return 0;
         }
     }
@@ -109,16 +109,16 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 
 int64_t growl_get_inferred_count(types_ReasonerResult result) {
     int64_t _retval;
-    __auto_type _mv_295 = result;
-    switch (_mv_295.tag) {
+    __auto_type _mv_300 = result;
+    switch (_mv_300.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type s = _mv_295.data.reason_success;
+            __auto_type s = _mv_300.data.reason_success;
             return s.inferred_count;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_295.data.reason_inconsistent;
+            __auto_type _ = _mv_300.data.reason_inconsistent;
             return 0;
         }
     }

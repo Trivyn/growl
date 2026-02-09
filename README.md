@@ -15,7 +15,7 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 
 ## Rule Coverage
 
-75 of 78 OWL 2 RL rules implemented (96% coverage). See [detailed coverage table](#owl-2-rl-rule-coverage) below.
+76 of 78 OWL 2 RL rules implemented (97% coverage). See [detailed coverage table](#owl-2-rl-rule-coverage) below.
 
 | Table | Rules | Implemented | Description |
 |-------|-------|-------------|-------------|
@@ -23,7 +23,7 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 | Table 5 | prp-* | 20/20 | Property axioms (domain, range, inverse, transitivity, chains, keys) |
 | Table 6 | cls-* | 19/19 | Class expressions (intersectionOf, unionOf, oneOf, qualified cardinality) |
 | Table 7 | cax-* | 5/5 | Class axioms (subClassOf, equivalentClass, disjointWith) |
-| Table 8 | dt-* | 2/5 | Datatype validation |
+| Table 8 | dt-* | 3/5 | Datatype validation |
 | Table 9 | scm-* | 20/20 | Schema vocabulary (class/property hierarchies) |
 
 ## API
@@ -75,12 +75,13 @@ The `--complete` flag enables axiom rules that are skipped by default for perfor
 - **cls-thing**: Asserts `owl:Thing rdf:type owl:Class`
 - **cls-nothing1**: Asserts `owl:Nothing rdf:type owl:Class`
 - **prp-ap**: Asserts standard annotation properties (rdfs:label, rdfs:comment, etc.) as `owl:AnnotationProperty`
+- **dt-type2**: Asserts `literal rdf:type datatype` for every typed literal with a supported datatype
 
 These rules are spec-correct but produce triples with zero practical inference value. Use `--complete` for conformance testing against other reasoners like owlrl.
 
 ### Fast Mode
 
-The `--fast` flag skips schema vocabulary rules (scm-\*), datatype rules (dt-type1, dt-not-type), consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2, eq-diff1/2/3, cls-nothing2, cls-com, cls-maxqc1/2), and cardinality rules (cls-maxc1/2, cls-maxqc3/4). This matches the inference depth of reasoners like `reasonable` that skip schema closure. Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
+The `--fast` flag skips schema vocabulary rules (scm-\*), datatype rules (dt-type1, dt-not-type), equality-difference checks (eq-diff1/2/3), eq-ref, and cardinality rules (cls-maxc1/2, cls-maxqc1-4). Consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1/2, cls-nothing2, cls-com) still run in fast mode, matching the coverage of reasoners like [reasonable](https://github.com/gtfierro/reasonable). Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
 
 ## Building
 
@@ -205,12 +206,12 @@ Detailed per-rule coverage against the [W3C OWL 2 RL specification](https://www.
 | cax-dw | ✅ | DisjointWith inconsistency |
 | cax-adc | ✅ | AllDisjointClasses inconsistency |
 
-### Table 8 — Datatypes (2/5)
+### Table 8 — Datatypes (3/5)
 
 | Rule | Status | Notes |
 |------|--------|-------|
 | dt-type1 | ✅ | Assert all OWL 2 datatypes as rdfs:Datatype (36 types) |
-| dt-type2 | ❌ | Literal typing — non-standard literal-as-subject triples |
+| dt-type2 | ✅ | Literal typing — asserts `literal rdf:type datatype` (behind `--complete` flag) |
 | dt-eq | ❌ | Datatype equality — even owlrl skips |
 | dt-diff | ❌ | Datatype inequality — even owlrl skips |
 | dt-not-type | ✅ | Detect invalid lexical forms (e.g. "abc"^^xsd:integer) |

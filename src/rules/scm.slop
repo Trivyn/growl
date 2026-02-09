@@ -14,7 +14,7 @@
                triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-match indexed-graph-for-each indexed-graph-contains indexed-graph-size
                  indexed-graph-create indexed-graph-add))
-  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF RDFS_DOMAIN RDFS_RANGE
+  (import vocab (RDF_TYPE RDF_PROPERTY RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF RDFS_DOMAIN RDFS_RANGE
                  OWL_CLASS OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_EQUIVALENT_PROPERTY
                  OWL_OBJECT_PROPERTY OWL_DATATYPE_PROPERTY
                  OWL_HAS_VALUE OWL_SOME_VALUES_FROM OWL_ALL_VALUES_FROM
@@ -28,6 +28,7 @@
     scm-sco
     scm-eqc1
     scm-eqc2
+    scm-eqc-mutual
     scm-int
     scm-uni
     scm-op
@@ -35,6 +36,7 @@
     scm-spo
     scm-eqp1
     scm-eqp2
+    scm-eqp-mutual
     scm-dom1
     scm-dom2
     scm-rng1
@@ -198,6 +200,8 @@
         (set! result (delta-add arena result t)))
       (for-each (t (scm-eqc2 arena g delta))
         (set! result (delta-add arena result t)))
+      (for-each (t (scm-eqc-mutual arena g delta))
+        (set! result (delta-add arena result t)))
       (for-each (t (scm-int arena g delta))
         (set! result (delta-add arena result t)))
       (for-each (t (scm-uni arena g delta))
@@ -213,6 +217,8 @@
       (for-each (t (scm-eqp1 arena g delta))
         (set! result (delta-add arena result t)))
       (for-each (t (scm-eqp2 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-eqp-mutual arena g delta))
         (set! result (delta-add arena result t)))
 
       ;; Domain/range rules
@@ -466,6 +472,45 @@
       result))
 
   ;; ============================================================
+  ;; scm-eqc-mutual: Mutual subClassOf implies equivalentClass
+  ;;
+  ;; If (?c1 rdfs:subClassOf ?c2) and (?c2 rdfs:subClassOf ?c1)
+  ;; then (?c1 owl:equivalentClass ?c2)
+  ;;
+  ;; (W3C OWL 2 RL Table 9 "scm-eqc2")
+  ;; ============================================================
+
+  (fn scm-eqc-mutual ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive equivalentClass from mutual subClassOf")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (let ((subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (equiv-pred (make-iri arena OWL_EQUIVALENT_CLASS))
+          (mut result (list-new arena Triple)))
+
+      ;; For each new subClassOf: c1 subClassOf c2
+      (match (map-get (. delta by-predicate) subclass-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((c1 (triple-subject dt))
+                  (c2 (triple-object dt)))
+              ;; Skip reflexive (c subClassOf c) — would give trivial c eqc c
+              ;; which scm-cls already handles
+              (when (not (term-eq c1 c2))
+                ;; Check if c2 subClassOf c1 exists in graph
+                (let ((reverse (make-triple arena c2 subclass-pred c1)))
+                  (when (indexed-graph-contains g reverse)
+                    (let ((inferred (make-triple arena c1 equiv-pred c2)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred)))))))))
+        ((none) (do)))
+
+      result))
+
+  ;; ============================================================
   ;; scm-op: Object property is subproperty of itself
   ;;
   ;; If (?p rdf:type owl:ObjectProperty)
@@ -473,7 +518,7 @@
   ;; ============================================================
 
   (fn scm-op ((arena Arena) (g IndexedGraph) (delta Delta))
-    (@intent "Infer reflexive subPropertyOf for object properties")
+    (@intent "Infer reflexive subPropertyOf for object properties and rdf:Property")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
     (@pure)
@@ -481,6 +526,7 @@
     (@post {(list-len $result) >= 0})
     (@post {(list-len $result) >= 0})
     (let ((op-type (make-iri arena OWL_OBJECT_PROPERTY))
+          (rdf-prop-type (make-iri arena RDF_PROPERTY))
           (type-pred (make-iri arena RDF_TYPE))
           (subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
           (equiv-pred (make-iri arena OWL_EQUIVALENT_PROPERTY))
@@ -489,7 +535,8 @@
       (match (map-get (. delta by-predicate) type-pred)
         ((some pred-triples)
           (for-each (dt pred-triples)
-            (when (term-eq (triple-object dt) op-type)
+            (when (or (term-eq (triple-object dt) op-type)
+                      (term-eq (triple-object dt) rdf-prop-type))
               (let ((prop (triple-subject dt)))
                 ;; Reflexive: p subPropertyOf p
                 (let ((reflexive (make-triple arena prop subprop-pred prop)))
@@ -692,6 +739,44 @@
                   (inferred (make-triple arena p2 subprop-pred p1)))
               (when (not (indexed-graph-contains g inferred))
                 (list-push result inferred)))))
+        ((none) (do)))
+
+      result))
+
+  ;; ============================================================
+  ;; scm-eqp-mutual: Mutual subPropertyOf implies equivalentProperty
+  ;;
+  ;; If (?p1 rdfs:subPropertyOf ?p2) and (?p2 rdfs:subPropertyOf ?p1)
+  ;; then (?p1 owl:equivalentProperty ?p2)
+  ;;
+  ;; (W3C OWL 2 RL Table 9 "scm-eqp2")
+  ;; ============================================================
+
+  (fn scm-eqp-mutual ((arena Arena) (g IndexedGraph) (delta Delta))
+    (@intent "Derive equivalentProperty from mutual subPropertyOf")
+    (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
+    (@alloc arena)
+    (@pure)
+    (@pre {(indexed-graph-size g) >= 0})
+    (@post {(list-len $result) >= 0})
+    (let ((subprop-pred (make-iri arena RDFS_SUBPROPERTY_OF))
+          (equiv-pred (make-iri arena OWL_EQUIVALENT_PROPERTY))
+          (mut result (list-new arena Triple)))
+
+      ;; For each new subPropertyOf: p1 subPropertyOf p2
+      (match (map-get (. delta by-predicate) subprop-pred)
+        ((some pred-triples)
+          (for-each (dt pred-triples)
+            (let ((p1 (triple-subject dt))
+                  (p2 (triple-object dt)))
+              ;; Skip reflexive (p subPropertyOf p)
+              (when (not (term-eq p1 p2))
+                ;; Check if p2 subPropertyOf p1 exists in graph
+                (let ((reverse (make-triple arena p2 subprop-pred p1)))
+                  (when (indexed-graph-contains g reverse)
+                    (let ((inferred (make-triple arena p1 equiv-pred p2)))
+                      (when (not (indexed-graph-contains g inferred))
+                        (list-push result inferred)))))))))
         ((none) (do)))
 
       result))

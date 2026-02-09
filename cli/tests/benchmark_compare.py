@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Reasoner comparison: OWL-RL (ground truth) vs Growl.
+"""Reasoner comparison: OWL-RL (ground truth) vs Reasonable vs Growl.
 
 OWL-RL is the W3C reference implementation for OWL 2 RL/RDF rules.
 It serves as ground truth for expected inference counts.
+Reasonable is a fast Rust-based OWL 2 RL reasoner for performance comparison.
 
 Usage: cd cli/tests && python benchmark_compare.py
        cd cli/tests && python benchmark_compare.py --diff
-  Requires: pip install owlrl rdflib
+  Requires: pip install owlrl rdflib reasonable
   Requires: growl CLI built at ../build/growl
 """
 
@@ -61,6 +62,27 @@ def run_owlrl(path, return_graph=False):
     if return_graph:
         return input_count, inferred, elapsed, g
     return input_count, inferred, elapsed
+
+
+def run_reasonable(path):
+    """Run reasonable on a TTL file. Returns (input, output, median_time_s)."""
+    import reasonable
+    g = rdflib.Graph()
+    g.parse(path, format="turtle")
+    input_count = len(g)
+
+    times = []
+    output_count = None
+    for _ in range(RUNS):
+        r = reasonable.PyReasoner()
+        r.from_graph(g)
+        t0 = time.perf_counter()
+        triples = r.reason()
+        elapsed = time.perf_counter() - t0
+        output_count = input_count + len(triples)
+        times.append(elapsed)
+
+    return input_count, output_count, median(times)
 
 
 def parse_growl_output(line):
@@ -265,7 +287,7 @@ def compare_mode(files):
         sys.exit(1)
 
     print("=" * 72)
-    print("  Reasoner Comparison: OWL-RL (ground truth) vs Growl")
+    print("  Reasoner Comparison: OWL-RL (ground truth) vs Reasonable vs Growl")
     print("=" * 72)
     print()
 
@@ -280,6 +302,12 @@ def compare_mode(files):
             print(f" SKIPPED (>{OWLRL_SKIP_THRESHOLD} input triples)")
         else:
             print(f" done ({owlrl_time:.1f}s)")
+
+        # Reasonable
+        print("  Running Reasonable...", end="", flush=True)
+        _, reasonable_output, reasonable_time = run_reasonable(path)
+        reasonable_inferred = (reasonable_output - owlrl_input) if reasonable_output is not None else None
+        print(f" done ({fmt_time(reasonable_time)})")
 
         # Growl (fast)
         print("  Running Growl --fast...", end="", flush=True)
@@ -306,6 +334,7 @@ def compare_mode(files):
 
         owlrl_total = (owlrl_input + owlrl_inferred) if owlrl_inferred is not None else None
         print(f"  {'OWL-RL (ref)':20s} {fmt_count(owlrl_input):>8s}  {fmt_count(owlrl_inferred):>8s}  {fmt_count(owlrl_total):>8s}  {fmt_time(owlrl_time):>8s}")
+        print(f"  {'Reasonable':20s} {fmt_count(owlrl_input):>8s}  {fmt_count(reasonable_inferred):>8s}  {fmt_count(reasonable_output):>8s}  {fmt_time(reasonable_time):>8s}")
 
         print(f"  {'Growl (complete)':20s} {fmt_count(growl_input):>8s}  {fmt_count(growl_complete_inferred):>8s}  {fmt_count(growl_complete_output):>8s}  {fmt_time(growl_complete_time):>8s}")
         print(f"  {'Growl (full)':20s} {fmt_count(growl_input):>8s}  {fmt_count(growl_full_inferred):>8s}  {fmt_count(growl_full_output):>8s}  {fmt_time(growl_full_time):>8s}")
@@ -326,6 +355,11 @@ def compare_mode(files):
                 diff = growl_fast_inferred - owlrl_inferred
                 sign = "+" if diff > 0 else ""
                 print(f"  Growl fast vs OWL-RL: {sign}{diff} inferred ({sign}{diff/owlrl_inferred*100:.1f}%)")
+
+        if reasonable_inferred is not None and growl_fast_inferred is not None:
+            diff = growl_fast_inferred - reasonable_inferred
+            sign = "+" if diff > 0 else ""
+            print(f"  Growl fast vs Reasonable: {sign}{diff} inferred")
 
         print()
 
