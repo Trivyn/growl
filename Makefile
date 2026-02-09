@@ -17,7 +17,9 @@ ALL_SRCS    := $(wildcard $(CSRC)/*.c)
 SHARED_SRCS := $(filter-out $(CSRC)/slop_main.c $(CSRC)/slop_test_cli.c, $(ALL_SRCS))
 SHARED_OBJS := $(patsubst $(CSRC)/%.c,$(OBJ)/%.o,$(SHARED_SRCS))
 
-.PHONY: all cli lib test benchmark clean release
+.PHONY: all cli lib test benchmark clean release dist csrc slop-build
+
+PLATFORM ?= unknown
 
 all: cli
 
@@ -52,10 +54,28 @@ benchmark: cli
 	cd cli/tests && GROWL=../../$(BIN)/growl ./benchmark.sh
 
 clean:
-	rm -rf $(BIN)
+	rm -rf $(BIN) dist
 
 release: CFLAGS = -O3 -Wall -Wno-unused-function -Wno-unused-variable \
                   -Wno-return-type -Wno-pointer-sign -DNDEBUG \
                   -DSLOP_ARENA_NO_CAP
 release: clean cli
 	@echo "Release binary built: $(BIN)/growl"
+
+slop-build:
+	slop build
+	@mkdir -p include
+	cp build/growl.h include/growl.h
+	@echo "  -> include/growl.h updated"
+
+csrc:
+	./csrc/update_bootstrap.sh
+
+dist:
+	rm -rf dist
+	mkdir -p dist/include dist/lib
+	cp include/growl.h dist/include/
+	cp csrc/runtime/slop_runtime.h dist/include/
+	cp $(BIN)/libgrowl.a dist/lib/
+	cd dist && zip -r ../libgrowl-$(PLATFORM).zip include/ lib/
+	@echo "  -> libgrowl-$(PLATFORM).zip"
