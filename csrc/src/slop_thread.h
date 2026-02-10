@@ -53,10 +53,10 @@ static void* slop_thread_int_entry(void* arg) {
 #endif
 
 struct thread_ThreadInt {
-    void* func;
-    void* env;
     pthread_t id;
     int64_t result;
+    void* func;
+    void* env;
     uint8_t done;
 };
 typedef struct thread_ThreadInt thread_ThreadInt;

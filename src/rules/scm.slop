@@ -264,7 +264,9 @@
         (exists (dt (. delta triples))
           (and
             (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
-            (term-eq (triple-object dt) (make-iri arena OWL_CLASS))))))
+            (term-eq (triple-object dt) (make-iri arena OWL_CLASS))
+            (or (term-eq (triple-subject t) (triple-subject dt))
+                (term-eq (triple-object t) (triple-subject dt)))))))
     (@example
       ;; Graph: (Person type owl:Class)
       ;; Result: (Person subClassOf Person), (Person subClassOf owl:Thing),
