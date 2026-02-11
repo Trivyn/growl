@@ -6,6 +6,8 @@ An OWL 2 RL reasoner with Z3-verified inference rules.
 
 Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL_2_RL) inference rules with Z3-verified contracts on every inference function. Written in SLOP, it compiles to efficient C code while using SMT solving to prove properties about the inference logic.
 
+Growl is being developed as the reasoning engine for [Trivyn](https://trivyn.io), a knowledge graph platform.
+
 ## Features
 
 - **Z3-Verified Contracts**: Every inference function has machine-checked pre/postconditions; soundness properties prove each output triple is justified by a delta/graph premise (see [Verification](#verification) for scope)
