@@ -139,12 +139,14 @@ int main(int64_t argc, uint8_t** argv) {
                                         printf("%s", ", column ");
                                         printf("%.*s\n", (int)(int_to_string(arena, pe.position.column)).len, (int_to_string(arena, pe.position.column)).data);
                                         printf("%s", "  ");
-                                        return printf("%.*s\n", (int)(pe.message).len, (pe.message).data);
+                                        printf("%.*s\n", (int)(pe.message).len, (pe.message).data);
+                                        break;
                                     }
                                     case ttl_TtlFileError_file_error:
                                     {
                                         __auto_type _ = _mv_328.data.file_error;
-                                        return printf("%s\n", "  (file error)");
+                                        printf("%s\n", "  (file error)");
+                                        break;
                                     }
                                 }
                                 return 1;

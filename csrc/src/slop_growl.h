@@ -21,11 +21,6 @@ SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
 SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
-#ifndef SLOP_LIST_RDF_TERM_DEFINED
-#define SLOP_LIST_RDF_TERM_DEFINED
-SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
-#endif
-
 types_ReasonerConfig growl_default_config(void);
 types_ReasonerResult growl_reason(slop_arena* arena, index_IndexedGraph input);
 types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGraph input, types_ReasonerConfig config);

@@ -18,11 +18,6 @@ SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
 SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
-#ifndef SLOP_LIST_RDF_TERM_DEFINED
-#define SLOP_LIST_RDF_TERM_DEFINED
-SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
-#endif
-
 
 /* Hash/eq functions and list types for struct map/set keys */
 #ifndef RDF_TERM_HASH_EQ_DEFINED

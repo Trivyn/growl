@@ -18,11 +18,6 @@ SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
 SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
-#ifndef SLOP_LIST_RDF_TERM_DEFINED
-#define SLOP_LIST_RDF_TERM_DEFINED
-SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
-#endif
-
 slop_list_rdf_Term rdf_list_elements(slop_arena* arena, rdf_Graph g, rdf_Term head);
 slop_list_rdf_Term rdf_list_elements_indexed(slop_arena* arena, index_IndexedGraph g, rdf_Term head);
 uint8_t rdf_list_contains(slop_arena* arena, rdf_Graph g, rdf_Term head, rdf_Term element);

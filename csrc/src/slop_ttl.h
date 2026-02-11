@@ -38,11 +38,6 @@ SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
 SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
 #endif
 
-#ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
-#define SLOP_LIST_RDF_TRIPLE_DEFINED
-SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
-#endif
-
 struct ttl_PrefixBinding {
     slop_string prefix;
     slop_string iri;

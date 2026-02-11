@@ -27,11 +27,6 @@ SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
 SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
-#ifndef SLOP_LIST_RDF_TERM_DEFINED
-#define SLOP_LIST_RDF_TERM_DEFINED
-SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
-#endif
-
 struct serialize_ttl_SerializeConfig {
     ttl_PrefixMap prefixes;
     slop_option_string base_iri;

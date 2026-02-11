@@ -144,6 +144,32 @@ make benchmark  # run benchmarks
 
 Safe Rust bindings are available in the [`rust/`](rust/) directory. See [`rust/README.md`](rust/README.md) for usage instructions.
 
+## Benchmarks
+
+Compared against [OWL-RL](https://github.com/RDFLib/OWL-RL) (Python reference implementation, used as ground truth) and [Reasonable](https://github.com/gtfierro/reasonable) (Rust) on 5 real-world ontologies. Growl filters annotation triples before reasoning (see [Annotation Filtering](#annotation-filtering)), so its effective input is smaller — the "Input" column shows the raw triple count that OWL-RL and Reasonable see.
+
+### Performance
+
+| Ontology | Input | OWL-RL | Reasonable | Growl --complete | Growl | Growl --fast |
+|---|---|---|---|---|---|---|
+| BFO | 1,014 | 583ms | 35ms | 33ms | 21ms | 3ms |
+| Pizza | 1,944 | 2.2s | 114ms | 229ms | 164ms | 52ms |
+| CCO | 13,649 | 18.4s | 737ms | 3.1s | 2.8s | 434ms |
+| Schema.org | 17,823 | 8.3s | 132ms | 691ms | 566ms | 333ms |
+| Brick | 53,960 | 33.9s | 286ms | 4.6s | 4.0s | 2.3s |
+
+### Accuracy (inferred triples vs OWL-RL reference)
+
+| Ontology | OWL-RL (ref) | Growl --complete | Growl | Growl --fast |
+|---|---|---|---|---|
+| BFO | 2,186 | -0.7% | -17.1% | -83.7% |
+| Pizza | 8,005 | -1.9% | -30.6% | -95.2% |
+| CCO | 52,363 | +2.7% | -1.8% | -76.0% |
+| Schema.org | 26,682 | +0.6% | -0.6% | -40.5% |
+| Brick | 39,493 | -0.1% | -23.9% | -69.5% |
+
+**Modes**: `--complete` enables all spec rules (cls-thing, prp-ap, dt-type2) for closest OWL-RL parity. Default Growl skips those practically inert rules. `--fast` targets the same rule coverage as Reasonable (skips schema rules, datatypes, eq-ref, cardinality), making Growl --fast vs Reasonable an apples-to-apples comparison.
+
 ## Verification
 
 ```bash

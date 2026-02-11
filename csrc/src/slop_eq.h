@@ -24,11 +24,6 @@ SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
 SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
 #endif
 
-#ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
-#define SLOP_LIST_RDF_TRIPLE_DEFINED
-SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
-#endif
-
 #ifndef SLOP_RESULT_TYPES_DELTA_TYPES_INCONSISTENCYREPORT_DEFINED
 #define SLOP_RESULT_TYPES_DELTA_TYPES_INCONSISTENCYREPORT_DEFINED
 typedef struct { bool is_ok; union { types_Delta ok; types_InconsistencyReport err; } data; } slop_result_types_Delta_types_InconsistencyReport;

@@ -25,11 +25,6 @@ SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
 SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
 #endif
 
-#ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
-#define SLOP_LIST_RDF_TRIPLE_DEFINED
-SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
-#endif
-
 slop_list_rdf_Triple dt_dt_type1(slop_arena* arena, index_IndexedGraph g);
 uint8_t dt_is_supported_datatype(slop_string dt_iri);
 slop_list_rdf_Triple dt_dt_type2(slop_arena* arena, index_IndexedGraph g);

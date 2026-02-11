@@ -25,7 +25,7 @@ from owlrl import DeductiveClosure, OWLRL_Semantics
 
 FIXTURES = "fixtures"
 BENCHMARKS = "fixtures/benchmarks"
-GROWL = "../build/growl"
+GROWL = "../../build/growl"
 
 FILES = [
     f"{FIXTURES}/bfo-core.ttl",
