@@ -380,6 +380,8 @@ extern const slop_string vocab_SHACL_MIN_LENGTH;
 extern const slop_string vocab_SHACL_MAX_LENGTH;
 extern const slop_string vocab_SHACL_PATTERN;
 extern const slop_string vocab_SHACL_FLAGS;
+extern const slop_string vocab_SHACL_LANGUAGE_IN;
+extern const slop_string vocab_SHACL_UNIQUE_LANG;
 extern const slop_string vocab_SHACL_EQUALS;
 extern const slop_string vocab_SHACL_DISJOINT;
 extern const slop_string vocab_SHACL_LESS_THAN;

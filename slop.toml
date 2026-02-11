@@ -25,7 +25,7 @@ include = ["../slop-rdf", "src", "src/rules", "${SLOP_HOME}/lib/std"]
 sources = ["src"]
 include = ["src", "src/rules", "../slop-rdf"]
 pattern = "*.slop"
-timeout = 25000
+timeout = 120000
 
 [providers.openrouter]
 type = "openai-compatible"

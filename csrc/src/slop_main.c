@@ -107,16 +107,16 @@ int main(int64_t argc, uint8_t** argv) {
                 printf("growl %s\n", GROWL_VERSION);
                 return 0;
             } else {
-                __auto_type _mv_315 = args.input_file;
-                if (!_mv_315.has_value) {
+                __auto_type _mv_326 = args.input_file;
+                if (!_mv_326.has_value) {
                     main_print_usage();
                     if (args.show_help) {
                         return 0;
                     } else {
                         return 1;
                     }
-                } else if (_mv_315.has_value) {
-                    __auto_type input_path = _mv_315.value;
+                } else if (_mv_326.has_value) {
+                    __auto_type input_path = _mv_326.value;
                     if (args.show_help) {
                         main_print_usage();
                         return 0;
@@ -124,16 +124,16 @@ int main(int64_t argc, uint8_t** argv) {
                         {
                             __auto_type quiet = args.quiet;
                             __auto_type parse_start = slop_now_ms();
-                            __auto_type _mv_316 = ttl_parse_ttl_file(arena, input_path);
-                            if (!_mv_316.is_ok) {
-                                __auto_type e = _mv_316.data.err;
+                            __auto_type _mv_327 = ttl_parse_ttl_file(arena, input_path);
+                            if (!_mv_327.is_ok) {
+                                __auto_type e = _mv_327.data.err;
                                 printf("%s", "Error: failed to parse ");
                                 printf("%.*s\n", (int)(input_path).len, (input_path).data);
-                                __auto_type _mv_317 = e;
-                                switch (_mv_317.tag) {
+                                __auto_type _mv_328 = e;
+                                switch (_mv_328.tag) {
                                     case ttl_TtlFileError_parse_error:
                                     {
-                                        __auto_type pe = _mv_317.data.parse_error;
+                                        __auto_type pe = _mv_328.data.parse_error;
                                         printf("%s", "  at line ");
                                         printf("%.*s", (int)(int_to_string(arena, pe.position.line)).len, (int_to_string(arena, pe.position.line)).data);
                                         printf("%s", ", column ");
@@ -143,13 +143,13 @@ int main(int64_t argc, uint8_t** argv) {
                                     }
                                     case ttl_TtlFileError_file_error:
                                     {
-                                        __auto_type _ = _mv_317.data.file_error;
+                                        __auto_type _ = _mv_328.data.file_error;
                                         return printf("%s\n", "  (file error)");
                                     }
                                 }
                                 return 1;
-                            } else if (_mv_316.is_ok) {
-                                __auto_type g = _mv_316.data.ok;
+                            } else if (_mv_327.is_ok) {
+                                __auto_type g = _mv_327.data.ok;
                                 {
                                     __auto_type annot_set = growl_collect_annotation_properties(arena, g);
                                     __auto_type original_size = rdf_graph_size(g);
@@ -174,11 +174,11 @@ int main(int64_t argc, uint8_t** argv) {
                                     {
                                         __auto_type reason_start = slop_now_ms();
                                         __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet), .fast = args.fast, .complete = args.complete});
-                                        __auto_type _mv_318 = growl_reason_with_config(arena, ig, config);
-                                        switch (_mv_318.tag) {
+                                        __auto_type _mv_329 = growl_reason_with_config(arena, ig, config);
+                                        switch (_mv_329.tag) {
                                             case types_ReasonerResult_reason_success:
                                             {
-                                                __auto_type s = _mv_318.data.reason_success;
+                                                __auto_type s = _mv_329.data.reason_success;
                                                 {
                                                     __auto_type inferred = s.inferred_count;
                                                     __auto_type iters = s.iterations;
@@ -207,9 +207,9 @@ int main(int64_t argc, uint8_t** argv) {
                                                         printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(s.graph))).len, (int_to_string(arena, rdf_indexed_graph_size(s.graph))).data);
                                                         printf("%s\n", " triples");
                                                     }
-                                                    __auto_type _mv_319 = args.emit_file;
-                                                    if (_mv_319.has_value) {
-                                                        __auto_type emit_path = _mv_319.value;
+                                                    __auto_type _mv_330 = args.emit_file;
+                                                    if (_mv_330.has_value) {
+                                                        __auto_type emit_path = _mv_330.value;
                                                         {
                                                             __auto_type out_ig = s.graph;
                                                             {
@@ -228,30 +228,30 @@ int main(int64_t argc, uint8_t** argv) {
                                                                 __auto_type out_graph = growl_indexed_to_graph(arena, out_ig);
                                                                 slop_option_string no_base = (slop_option_string){.has_value = false};
                                                                 __auto_type config = ((serialize_ttl_SerializeConfig){.prefixes = ttl_make_prefix_map(arena), .base_iri = no_base, .indent_width = 2});
-                                                                __auto_type _mv_320 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
-                                                                if (_mv_320.is_ok) {
-                                                                    __auto_type _ = _mv_320.data.ok;
+                                                                __auto_type _mv_331 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
+                                                                if (_mv_331.is_ok) {
+                                                                    __auto_type _ = _mv_331.data.ok;
                                                                     if (!(quiet)) {
                                                                         printf("%s", "Wrote materialized graph to ");
                                                                         printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
                                                                     }
                                                                     return 0;
-                                                                } else if (!_mv_320.is_ok) {
-                                                                    __auto_type _ = _mv_320.data.err;
+                                                                } else if (!_mv_331.is_ok) {
+                                                                    __auto_type _ = _mv_331.data.err;
                                                                     printf("%s", "Error: failed to write ");
                                                                     printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
                                                                     return 1;
                                                                 }
                                                             }
                                                         }
-                                                    } else if (!_mv_319.has_value) {
+                                                    } else if (!_mv_330.has_value) {
                                                         return 0;
                                                     }
                                                 }
                                             }
                                             case types_ReasonerResult_reason_inconsistent:
                                             {
-                                                __auto_type report = _mv_318.data.reason_inconsistent;
+                                                __auto_type report = _mv_329.data.reason_inconsistent;
                                                 {
                                                     __auto_type reason_elapsed = (slop_now_ms() - reason_start);
                                                     if (quiet) {

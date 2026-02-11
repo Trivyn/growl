@@ -7,6 +7,9 @@ uint8_t xsd_validate_lexical(slop_string lexical, slop_string datatype_iri);
 uint8_t xsd_values_equal(xsd_XsdValue a, xsd_XsdValue b);
 uint8_t xsd_types_compatible(xsd_XsdType t1, xsd_XsdType t2);
 slop_result_u8_xsd_XsdError xsd_literal_values_equal(slop_arena* arena, rdf_Literal a, rdf_Literal b);
+xsd_XsdCompareResult xsd_float_cmp(double a, double b);
+xsd_XsdCompareResult xsd_values_compare(xsd_XsdValue a, xsd_XsdValue b);
+xsd_XsdCompareResult xsd_compare(slop_arena* arena, rdf_Term a, rdf_Term b);
 
 xsd_XsdType xsd_parse_type(slop_string datatype_iri) {
     if (string_eq(datatype_iri, vocab_XSD_STRING)) {
@@ -473,6 +476,247 @@ slop_result_u8_xsd_XsdError xsd_literal_values_equal(slop_arena* arena, rdf_Lite
             } else if (!_mv_82.has_value) {
                 return ((slop_result_u8_xsd_XsdError){ .is_ok = true, .data.ok = string_eq(a.value, b.value) });
             }
+        }
+    }
+}
+
+xsd_XsdCompareResult xsd_float_cmp(double a, double b) {
+    if ((a < b)) {
+        return xsd_XsdCompareResult_xsd_compare_less;
+    } else {
+        if ((a > b)) {
+            return xsd_XsdCompareResult_xsd_compare_greater;
+        } else {
+            return xsd_XsdCompareResult_xsd_compare_equal;
+        }
+    }
+}
+
+xsd_XsdCompareResult xsd_values_compare(xsd_XsdValue a, xsd_XsdValue b) {
+    __auto_type _mv_83 = a;
+    switch (_mv_83.tag) {
+        case xsd_XsdValue_xsd_integer_val:
+        {
+            __auto_type i1 = _mv_83.data.xsd_integer_val;
+            {
+                __auto_type d1 = ((double)(i1));
+                __auto_type _mv_84 = b;
+                switch (_mv_84.tag) {
+                    case xsd_XsdValue_xsd_integer_val:
+                    {
+                        __auto_type i2 = _mv_84.data.xsd_integer_val;
+                        return xsd_float_cmp(d1, ((double)(i2)));
+                    }
+                    case xsd_XsdValue_xsd_decimal_val:
+                    {
+                        __auto_type d2 = _mv_84.data.xsd_decimal_val;
+                        return xsd_float_cmp(d1, d2);
+                    }
+                    case xsd_XsdValue_xsd_float_val:
+                    {
+                        __auto_type f2 = _mv_84.data.xsd_float_val;
+                        return xsd_float_cmp(d1, ((double)(f2)));
+                    }
+                    case xsd_XsdValue_xsd_double_val:
+                    {
+                        __auto_type d2 = _mv_84.data.xsd_double_val;
+                        return xsd_float_cmp(d1, d2);
+                    }
+                    default: {
+                        return xsd_XsdCompareResult_xsd_compare_incomparable;
+                    }
+                }
+            }
+        }
+        case xsd_XsdValue_xsd_decimal_val:
+        {
+            __auto_type d1 = _mv_83.data.xsd_decimal_val;
+            __auto_type _mv_85 = b;
+            switch (_mv_85.tag) {
+                case xsd_XsdValue_xsd_integer_val:
+                {
+                    __auto_type i2 = _mv_85.data.xsd_integer_val;
+                    return xsd_float_cmp(d1, ((double)(i2)));
+                }
+                case xsd_XsdValue_xsd_decimal_val:
+                {
+                    __auto_type d2 = _mv_85.data.xsd_decimal_val;
+                    return xsd_float_cmp(d1, d2);
+                }
+                case xsd_XsdValue_xsd_float_val:
+                {
+                    __auto_type f2 = _mv_85.data.xsd_float_val;
+                    return xsd_float_cmp(d1, ((double)(f2)));
+                }
+                case xsd_XsdValue_xsd_double_val:
+                {
+                    __auto_type d2 = _mv_85.data.xsd_double_val;
+                    return xsd_float_cmp(d1, d2);
+                }
+                default: {
+                    return xsd_XsdCompareResult_xsd_compare_incomparable;
+                }
+            }
+        }
+        case xsd_XsdValue_xsd_float_val:
+        {
+            __auto_type f1 = _mv_83.data.xsd_float_val;
+            {
+                __auto_type d1 = ((double)(f1));
+                __auto_type _mv_86 = b;
+                switch (_mv_86.tag) {
+                    case xsd_XsdValue_xsd_integer_val:
+                    {
+                        __auto_type i2 = _mv_86.data.xsd_integer_val;
+                        return xsd_float_cmp(d1, ((double)(i2)));
+                    }
+                    case xsd_XsdValue_xsd_decimal_val:
+                    {
+                        __auto_type d2 = _mv_86.data.xsd_decimal_val;
+                        return xsd_float_cmp(d1, d2);
+                    }
+                    case xsd_XsdValue_xsd_float_val:
+                    {
+                        __auto_type f2 = _mv_86.data.xsd_float_val;
+                        return xsd_float_cmp(d1, ((double)(f2)));
+                    }
+                    case xsd_XsdValue_xsd_double_val:
+                    {
+                        __auto_type d2 = _mv_86.data.xsd_double_val;
+                        return xsd_float_cmp(d1, d2);
+                    }
+                    default: {
+                        return xsd_XsdCompareResult_xsd_compare_incomparable;
+                    }
+                }
+            }
+        }
+        case xsd_XsdValue_xsd_double_val:
+        {
+            __auto_type d1 = _mv_83.data.xsd_double_val;
+            __auto_type _mv_87 = b;
+            switch (_mv_87.tag) {
+                case xsd_XsdValue_xsd_integer_val:
+                {
+                    __auto_type i2 = _mv_87.data.xsd_integer_val;
+                    return xsd_float_cmp(d1, ((double)(i2)));
+                }
+                case xsd_XsdValue_xsd_decimal_val:
+                {
+                    __auto_type d2 = _mv_87.data.xsd_decimal_val;
+                    return xsd_float_cmp(d1, d2);
+                }
+                case xsd_XsdValue_xsd_float_val:
+                {
+                    __auto_type f2 = _mv_87.data.xsd_float_val;
+                    return xsd_float_cmp(d1, ((double)(f2)));
+                }
+                case xsd_XsdValue_xsd_double_val:
+                {
+                    __auto_type d2 = _mv_87.data.xsd_double_val;
+                    return xsd_float_cmp(d1, d2);
+                }
+                default: {
+                    return xsd_XsdCompareResult_xsd_compare_incomparable;
+                }
+            }
+        }
+        case xsd_XsdValue_xsd_string_val:
+        {
+            __auto_type s1 = _mv_83.data.xsd_string_val;
+            __auto_type _mv_88 = b;
+            switch (_mv_88.tag) {
+                case xsd_XsdValue_xsd_string_val:
+                {
+                    __auto_type s2 = _mv_88.data.xsd_string_val;
+                    if (string_eq(s1, s2)) {
+                        return xsd_XsdCompareResult_xsd_compare_equal;
+                    } else {
+                        return xsd_XsdCompareResult_xsd_compare_incomparable;
+                    }
+                }
+                default: {
+                    return xsd_XsdCompareResult_xsd_compare_incomparable;
+                }
+            }
+        }
+        case xsd_XsdValue_xsd_boolean_val:
+        {
+            __auto_type b1 = _mv_83.data.xsd_boolean_val;
+            __auto_type _mv_89 = b;
+            switch (_mv_89.tag) {
+                case xsd_XsdValue_xsd_boolean_val:
+                {
+                    __auto_type b2 = _mv_89.data.xsd_boolean_val;
+                    if ((b1 == b2)) {
+                        return xsd_XsdCompareResult_xsd_compare_equal;
+                    } else {
+                        if (b2) {
+                            return xsd_XsdCompareResult_xsd_compare_less;
+                        } else {
+                            return xsd_XsdCompareResult_xsd_compare_greater;
+                        }
+                    }
+                }
+                default: {
+                    return xsd_XsdCompareResult_xsd_compare_incomparable;
+                }
+            }
+        }
+        case xsd_XsdValue_xsd_unknown_val:
+        {
+            __auto_type _ = _mv_83.data.xsd_unknown_val;
+            return xsd_XsdCompareResult_xsd_compare_incomparable;
+        }
+    }
+}
+
+xsd_XsdCompareResult xsd_compare(slop_arena* arena, rdf_Term a, rdf_Term b) {
+    __auto_type _mv_90 = a;
+    switch (_mv_90.tag) {
+        case rdf_Term_term_literal:
+        {
+            __auto_type lit_a = _mv_90.data.term_literal;
+            __auto_type _mv_91 = b;
+            switch (_mv_91.tag) {
+                case rdf_Term_term_literal:
+                {
+                    __auto_type lit_b = _mv_91.data.term_literal;
+                    {
+                        __auto_type dt_a = ({ __auto_type _mv = lit_a.datatype; _mv.has_value ? ({ __auto_type d = _mv.value; d; }) : (vocab_XSD_STRING); });
+                        __auto_type dt_b = ({ __auto_type _mv = lit_b.datatype; _mv.has_value ? ({ __auto_type d = _mv.value; d; }) : (vocab_XSD_STRING); });
+                        {
+                            __auto_type type_a = xsd_parse_type(dt_a);
+                            __auto_type type_b = xsd_parse_type(dt_b);
+                            if (!(xsd_types_compatible(type_a, type_b))) {
+                                return xsd_XsdCompareResult_xsd_compare_incomparable;
+                            } else {
+                                __auto_type _mv_92 = xsd_parse_value(arena, lit_a.value, type_a);
+                                if (_mv_92.is_ok) {
+                                    __auto_type val_a = _mv_92.data.ok;
+                                    __auto_type _mv_93 = xsd_parse_value(arena, lit_b.value, type_b);
+                                    if (_mv_93.is_ok) {
+                                        __auto_type val_b = _mv_93.data.ok;
+                                        return xsd_values_compare(val_a, val_b);
+                                    } else if (!_mv_93.is_ok) {
+                                        __auto_type _ = _mv_93.data.err;
+                                        return xsd_XsdCompareResult_xsd_compare_incomparable;
+                                    }
+                                } else if (!_mv_92.is_ok) {
+                                    __auto_type _ = _mv_92.data.err;
+                                    return xsd_XsdCompareResult_xsd_compare_incomparable;
+                                }
+                            }
+                        }
+                    }
+                }
+                default: {
+                    return xsd_XsdCompareResult_xsd_compare_incomparable;
+                }
+            }
+        }
+        default: {
+            return xsd_XsdCompareResult_xsd_compare_incomparable;
         }
     }
 }

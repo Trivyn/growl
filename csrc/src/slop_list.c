@@ -20,22 +20,22 @@ slop_list_rdf_Term rdf_list_elements(slop_arena* arena, rdf_Graph g, rdf_Term he
             {
                 __auto_type first_matches = rdf_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = current}, (slop_option_rdf_Term){.has_value = 1, .value = first_pred}, no_obj);
                 if ((((int64_t)((first_matches.triples).len)) > 0)) {
-                    __auto_type _mv_83 = ({ __auto_type _lst = first_matches.triples; size_t _idx = (size_t)0; slop_option_rdf_Triple _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                    if (_mv_83.has_value) {
-                        __auto_type first_triple = _mv_83.value;
+                    __auto_type _mv_94 = ({ __auto_type _lst = first_matches.triples; size_t _idx = (size_t)0; slop_option_rdf_Triple _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    if (_mv_94.has_value) {
+                        __auto_type first_triple = _mv_94.value;
                         ({ __auto_type _lst_p = &(result); __auto_type _item = (rdf_triple_object(first_triple)); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                    } else if (!_mv_83.has_value) {
+                    } else if (!_mv_94.has_value) {
                     }
                 }
             }
             {
                 __auto_type rest_matches = rdf_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = current}, (slop_option_rdf_Term){.has_value = 1, .value = rest_pred}, no_obj);
                 if ((((int64_t)((rest_matches.triples).len)) > 0)) {
-                    __auto_type _mv_84 = ({ __auto_type _lst = rest_matches.triples; size_t _idx = (size_t)0; slop_option_rdf_Triple _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                    if (_mv_84.has_value) {
-                        __auto_type rest_triple = _mv_84.value;
+                    __auto_type _mv_95 = ({ __auto_type _lst = rest_matches.triples; size_t _idx = (size_t)0; slop_option_rdf_Triple _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    if (_mv_95.has_value) {
+                        __auto_type rest_triple = _mv_95.value;
                         current = rdf_triple_object(rest_triple);
-                    } else if (!_mv_84.has_value) {
+                    } else if (!_mv_95.has_value) {
                         current = nil_term;
                     }
                 } else {
@@ -63,22 +63,22 @@ slop_list_rdf_Term rdf_list_elements_indexed(slop_arena* arena, index_IndexedGra
             {
                 __auto_type first_matches = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = current}, (slop_option_rdf_Term){.has_value = 1, .value = first_pred}, no_obj);
                 if ((((int64_t)((first_matches).len)) > 0)) {
-                    __auto_type _mv_85 = ({ __auto_type _lst = first_matches; size_t _idx = (size_t)0; slop_option_rdf_Triple _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                    if (_mv_85.has_value) {
-                        __auto_type first_triple = _mv_85.value;
+                    __auto_type _mv_96 = ({ __auto_type _lst = first_matches; size_t _idx = (size_t)0; slop_option_rdf_Triple _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    if (_mv_96.has_value) {
+                        __auto_type first_triple = _mv_96.value;
                         ({ __auto_type _lst_p = &(result); __auto_type _item = (rdf_triple_object(first_triple)); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                    } else if (!_mv_85.has_value) {
+                    } else if (!_mv_96.has_value) {
                     }
                 }
             }
             {
                 __auto_type rest_matches = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = current}, (slop_option_rdf_Term){.has_value = 1, .value = rest_pred}, no_obj);
                 if ((((int64_t)((rest_matches).len)) > 0)) {
-                    __auto_type _mv_86 = ({ __auto_type _lst = rest_matches; size_t _idx = (size_t)0; slop_option_rdf_Triple _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                    if (_mv_86.has_value) {
-                        __auto_type rest_triple = _mv_86.value;
+                    __auto_type _mv_97 = ({ __auto_type _lst = rest_matches; size_t _idx = (size_t)0; slop_option_rdf_Triple _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    if (_mv_97.has_value) {
+                        __auto_type rest_triple = _mv_97.value;
                         current = rdf_triple_object(rest_triple);
-                    } else if (!_mv_86.has_value) {
+                    } else if (!_mv_97.has_value) {
                         current = nil_term;
                     }
                 } else {
