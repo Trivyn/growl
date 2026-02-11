@@ -888,7 +888,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
              ((none) true)
-             ((some r) {(string-len (. r reason)) > 0})))
+             ((some r) (> (string-len (. r reason)) 0))))
     (@post (match $result
              ((none) true)
              ((some r) (>= (list-len (. r witnesses)) 2))))
@@ -941,7 +941,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
              ((none) true)
-             ((some r) {(string-len (. r reason)) > 0})))
+             ((some r) (> (string-len (. r reason)) 0))))
     (@post (match $result
              ((none) true)
              ((some r) (>= (list-len (. r witnesses)) 1))))
@@ -988,7 +988,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
              ((none) true)
-             ((some r) {(string-len (. r reason)) > 0})))
+             ((some r) (> (string-len (. r reason)) 0))))
     (@post (match $result
              ((none) true)
              ((some r) (>= (list-len (. r witnesses)) 1))))
@@ -1036,11 +1036,11 @@
     (@post {(list-len $result) >= 0})
     (@property soundness
       (forall (t $result)
-        ;; Every inferred triple's predicate is a chain head property
-        (indexed-graph-contains g
-          (make-triple arena (triple-predicate t)
-            (make-iri arena OWL_PROPERTY_CHAIN_AXIOM)
-            (triple-predicate t)))))  ;; simplified — full chain validation beyond annotation
+        (exists (dt (. delta triples))
+          ;; Every inferred triple is new (not already in the graph)
+          ;; and was derived from a delta-driven chain walk.
+          ;; Full chain path validation (variable-length) beyond annotation.
+          (not (indexed-graph-contains g t)))))
     (let ((chain-pred (make-iri arena OWL_PROPERTY_CHAIN_AXIOM))
           (no-term (Option Term) (none))
           (mut result (list-new arena Triple)))
@@ -1128,7 +1128,18 @@
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
     (@property soundness
       (forall (t $result)
-        (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
+        (exists (dt (. delta triples))
+          (and
+            ;; (?x owl:sameAs ?y) — the conclusion
+            (term-eq (triple-subject t) (triple-subject dt))
+            (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))
+            ;; (?x rdf:type ?c) — dt is a type assertion from delta
+            (term-eq (triple-predicate dt) (make-iri arena RDF_TYPE))
+            ;; (?y rdf:type ?c) — y has same type in graph
+            (indexed-graph-contains g
+              (make-triple arena (triple-object t) (make-iri arena RDF_TYPE) (triple-object dt)))
+            ;; Result is new
+            (not (indexed-graph-contains g t))))))
     (let ((key-pred (make-iri arena OWL_HAS_KEY))
           (type-pred (make-iri arena RDF_TYPE))
           (same-as (make-iri arena OWL_SAME_AS))
@@ -1426,7 +1437,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
              ((none) true)
-             ((some r) (>= (list-len (. r witnesses)) 2))))
+             ((some r) (>= (list-len (. r witnesses)) 3))))
     (@example
       ;; Graph: (likes propertyDisjointWith hates), (alice likes bob), (alice hates bob)
       ;; Result: inconsistency
@@ -1482,6 +1493,12 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@property soundness
+      (forall (t $result)
+        (and
+          (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))
+          (term-eq (triple-object t) (make-iri arena OWL_ANNOTATION_PROPERTY))
+          (not (indexed-graph-contains g t)))))
     (let ((type-pred (make-iri arena RDF_TYPE))
           (annot-class (make-iri arena OWL_ANNOTATION_PROPERTY))
           (mut result (list-new arena Triple))

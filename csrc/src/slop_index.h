@@ -444,6 +444,16 @@ SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
 SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
+#ifndef SLOP_OPTION_INDEX_TRIPLESET_DEFINED
+#define SLOP_OPTION_INDEX_TRIPLESET_DEFINED
+SLOP_OPTION_DEFINE(index_TripleSet, slop_option_index_TripleSet)
+#endif
+
+#ifndef SLOP_OPTION_INDEX_TRIPLEMAP_DEFINED
+#define SLOP_OPTION_INDEX_TRIPLEMAP_DEFINED
+SLOP_OPTION_DEFINE(index_TripleMap, slop_option_index_TripleMap)
+#endif
+
 #ifndef SLOP_OPTION_INDEX_TRIPLEINDEX_DEFINED
 #define SLOP_OPTION_INDEX_TRIPLEINDEX_DEFINED
 SLOP_OPTION_DEFINE(index_TripleIndex, slop_option_index_TripleIndex)

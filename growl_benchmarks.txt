@@ -1,0 +1,104 @@
+========================================================================
+  Reasoner Comparison: OWL-RL (ground truth) vs Reasonable vs Growl
+========================================================================
+
+--- bfo-core.ttl ---
+  Running OWL-RL... done (0.6s)
+  Running Reasonable... done (35ms)
+  Running Growl --fast... done (3ms)
+  Running Growl (full)... done (21ms)
+  Running Growl (complete)... done (33ms)
+
+                          Input  Inferred     Total      Time
+                          -----  --------     -----      ----
+  OWL-RL (ref)             1014      2186      3200     583ms
+  Reasonable               1014      4196      5210      35ms
+  Growl (complete)          657      2170      2827      33ms
+  Growl (full)              657      1812      2469      21ms
+  Growl (fast)              657       357      1014       3ms
+
+  Growl complete vs OWL-RL: -16 inferred (-0.7%)
+  Growl full vs OWL-RL: -374 inferred (-17.1%)
+  Growl fast vs OWL-RL: -1829 inferred (-83.7%)
+  Growl fast vs Reasonable: -3839 inferred
+
+--- pizza.ttl ---
+  Running OWL-RL... done (2.2s)
+  Running Reasonable... done (114ms)
+  Running Growl --fast... done (52ms)
+  Running Growl (full)... done (164ms)
+  Running Growl (complete)... done (229ms)
+
+                          Input  Inferred     Total      Time
+                          -----  --------     -----      ----
+  OWL-RL (ref)             1944      8005      9949    2191ms
+  Reasonable               1944     10337     12281     114ms
+  Growl (complete)         1574      7854      9428     229ms
+  Growl (full)             1574      5558      7132     164ms
+  Growl (fast)             1574       385      1959      52ms
+
+  Growl complete vs OWL-RL: -151 inferred (-1.9%)
+  Growl full vs OWL-RL: -2447 inferred (-30.6%)
+  Growl fast vs OWL-RL: -7620 inferred (-95.2%)
+  Growl fast vs Reasonable: -9952 inferred
+
+--- CommonCoreOntologiesMerged.ttl ---
+  Running OWL-RL... done (18.4s)
+  Running Reasonable... done (737ms)
+  Running Growl --fast... done (434ms)
+  Running Growl (full)... done (2830ms)
+  Running Growl (complete)... done (3143ms)
+
+                          Input  Inferred     Total      Time
+                          -----  --------     -----      ----
+  OWL-RL (ref)            13649     52363     66012   18449ms
+  Reasonable              13649     46403     60052     737ms
+  Growl (complete)         5962     53770     59732    3143ms
+  Growl (full)             5962     51418     57380    2830ms
+  Growl (fast)             5962     12545     18507     434ms
+
+  Growl complete vs OWL-RL: +1407 inferred (+2.7%)
+  Growl full vs OWL-RL: -945 inferred (-1.8%)
+  Growl fast vs OWL-RL: -39818 inferred (-76.0%)
+  Growl fast vs Reasonable: -33858 inferred
+
+--- schemaorg.ttl ---
+  Running OWL-RL... done (8.3s)
+  Running Reasonable... done (132ms)
+  Running Growl --fast... done (333ms)
+  Running Growl (full)... done (566ms)
+  Running Growl (complete)... done (691ms)
+
+                          Input  Inferred     Total      Time
+                          -----  --------     -----      ----
+  OWL-RL (ref)            17823     26682     44505    8332ms
+  Reasonable              17823     30939     48762     132ms
+  Growl (complete)        11881     26854     38735     691ms
+  Growl (full)            11881     26534     38415     566ms
+  Growl (fast)            11881     15867     27748     333ms
+
+  Growl complete vs OWL-RL: +172 inferred (+0.6%)
+  Growl full vs OWL-RL: -148 inferred (-0.6%)
+  Growl fast vs OWL-RL: -10815 inferred (-40.5%)
+  Growl fast vs Reasonable: -15072 inferred
+
+--- Brick.ttl ---
+  Running OWL-RL... done (33.9s)
+  Running Reasonable... done (286ms)
+  Running Growl --fast... done (2262ms)
+  Running Growl (full)... done (3986ms)
+  Running Growl (complete)... done (4636ms)
+
+                          Input  Inferred     Total      Time
+                          -----  --------     -----      ----
+  OWL-RL (ref)            53960     39493     93453   33865ms
+  Reasonable              53960     71833    125793     286ms
+  Growl (complete)        49718     39442     89160    4636ms
+  Growl (full)            49718     30065     79783    3986ms
+  Growl (fast)            49718     12026     61744    2262ms
+
+  Growl complete vs OWL-RL: -51 inferred (-0.1%)
+  Growl full vs OWL-RL: -9428 inferred (-23.9%)
+  Growl fast vs OWL-RL: -27467 inferred (-69.5%)
+  Growl fast vs Reasonable: -59807 inferred
+

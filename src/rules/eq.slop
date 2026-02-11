@@ -391,7 +391,18 @@
     (@property soundness
       (forall (t $result)
         (exists (dt (. delta triples))
-          (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))))
+          (or
+            ;; Path 1: sameAs in delta, original triple in graph
+            (and (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS))
+                 (term-eq (triple-subject t) (triple-object dt))
+                 (indexed-graph-contains g
+                   (make-triple arena (triple-subject dt) (triple-predicate t) (triple-object t))))
+            ;; Path 2: non-sameAs triple in delta, sameAs in graph
+            (and (not (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))
+                 (term-eq (triple-predicate t) (triple-predicate dt))
+                 (term-eq (triple-object t) (triple-object dt))
+                 (indexed-graph-contains g
+                   (make-triple arena (triple-subject dt) (make-iri arena OWL_SAME_AS) (triple-subject t))))))))
     (@example
       ;; Graph: (alice sameAs alicia), (alice knows bob)
       ;; Result: (alicia knows bob)
@@ -458,7 +469,11 @@
     (@property soundness
       (forall (t $result)
         (exists (dt (. delta triples))
-          (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))))
+          (and
+            (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS))
+            (term-eq (triple-predicate t) (triple-object dt))
+            (indexed-graph-contains g
+              (make-triple arena (triple-subject t) (triple-subject dt) (triple-object t)))))))
     (@example
       ;; Graph: (knows sameAs acquaintedWith), (alice knows bob)
       ;; Result: (alice acquaintedWith bob)
@@ -485,7 +500,6 @@
                       (when (not (indexed-graph-contains g inferred))
                         (list-push result inferred)))))))))
         ((none) (do)))
-
       result))
 
   ;; ============================================================
@@ -505,7 +519,18 @@
     (@property soundness
       (forall (t $result)
         (exists (dt (. delta triples))
-          (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))))
+          (or
+            ;; Path 1: sameAs in delta, original triple in graph
+            (and (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS))
+                 (term-eq (triple-object t) (triple-object dt))
+                 (indexed-graph-contains g
+                   (make-triple arena (triple-subject t) (triple-predicate t) (triple-subject dt))))
+            ;; Path 2: non-sameAs triple in delta, sameAs in graph
+            (and (not (term-eq (triple-predicate dt) (make-iri arena OWL_SAME_AS)))
+                 (term-eq (triple-subject t) (triple-subject dt))
+                 (term-eq (triple-predicate t) (triple-predicate dt))
+                 (indexed-graph-contains g
+                   (make-triple arena (triple-object dt) (make-iri arena OWL_SAME_AS) (triple-object t))))))))
     (@example
       ;; Graph: (bob sameAs robert), (alice knows bob)
       ;; Result: (alice knows robert)
@@ -708,7 +733,13 @@
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
     (@property soundness
       (forall (t $result)
-        (term-eq (triple-subject t) (triple-object t))))
+        (exists (dt (. delta triples))
+          (and
+            (term-eq (triple-subject t) (triple-object t))
+            (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))
+            (or (term-eq (triple-subject t) (triple-subject dt))
+                (term-eq (triple-subject t) (triple-predicate dt))
+                (term-eq (triple-subject t) (triple-object dt)))))))
     (let ((same-as (make-iri arena OWL_SAME_AS))
           (mut result (list-new arena Triple)))
 

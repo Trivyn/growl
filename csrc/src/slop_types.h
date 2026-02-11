@@ -14,6 +14,11 @@ typedef struct types_ReasonerSuccess types_ReasonerSuccess;
 typedef struct types_InconsistencyReport types_InconsistencyReport;
 typedef struct types_ReasonerResult types_ReasonerResult;
 
+#ifndef SLOP_OPTION_MAP_PTR_DEFINED
+#define SLOP_OPTION_MAP_PTR_DEFINED
+SLOP_OPTION_DEFINE(slop_map*, slop_option_map_ptr)
+#endif
+
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
 #define SLOP_LIST_RDF_TRIPLE_DEFINED
 SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
@@ -489,6 +494,11 @@ SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
 #ifndef SLOP_OPTION_RDF_TERM_DEFINED
 #define SLOP_OPTION_RDF_TERM_DEFINED
 SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
+#endif
+
+#ifndef SLOP_OPTION_MAP_PTR_DEFINED
+#define SLOP_OPTION_MAP_PTR_DEFINED
+SLOP_OPTION_DEFINE(slop_map*, slop_option_map_ptr)
 #endif
 
 #ifndef SLOP_OPTION_TYPES_DELTA_DEFINED

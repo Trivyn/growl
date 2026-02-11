@@ -134,6 +134,13 @@ struct types_ReasonerResult {
 typedef struct types_ReasonerResult types_ReasonerResult;
 
 typedef enum {
+    xsd_XsdCompareResult_xsd_compare_less,
+    xsd_XsdCompareResult_xsd_compare_equal,
+    xsd_XsdCompareResult_xsd_compare_greater,
+    xsd_XsdCompareResult_xsd_compare_incomparable
+} xsd_XsdCompareResult;
+
+typedef enum {
     xsd_XsdType_xsd_string,
     xsd_XsdType_xsd_integer,
     xsd_XsdType_xsd_decimal,
@@ -215,11 +222,14 @@ void rdf_triple_free(rdf_Triple* t);
 rdf_Term rdf_triple_object(rdf_Triple t);
 rdf_Term rdf_triple_predicate(rdf_Triple t);
 rdf_Term rdf_triple_subject(rdf_Triple t);
+xsd_XsdCompareResult xsd_compare(slop_arena* arena, rdf_Term a, rdf_Term b);
+xsd_XsdCompareResult xsd_float_cmp(double a, double b);
 slop_result_u8_xsd_XsdError xsd_literal_values_equal(slop_arena* arena, rdf_Literal a, rdf_Literal b);
 xsd_XsdType xsd_parse_type(slop_string datatype_iri);
 slop_result_xsd_XsdValue_xsd_XsdError xsd_parse_value(slop_arena* arena, slop_string lexical, xsd_XsdType dtype);
 uint8_t xsd_types_compatible(xsd_XsdType t1, xsd_XsdType t2);
 uint8_t xsd_validate_lexical(slop_string lexical, slop_string datatype_iri);
+xsd_XsdCompareResult xsd_values_compare(xsd_XsdValue a, xsd_XsdValue b);
 uint8_t xsd_values_equal(xsd_XsdValue a, xsd_XsdValue b);
 
 #define filter_collect_annotation_properties growl_collect_annotation_properties
@@ -238,10 +248,12 @@ uint8_t xsd_values_equal(xsd_XsdValue a, xsd_XsdValue b);
 #define list_rdf_list_elements rdf_list_elements
 #define list_rdf_list_elements_indexed rdf_list_elements_indexed
 #define list_rdf_list_length rdf_list_length
+#define xsd_xsd_compare xsd_compare
 #define xsd_xsd_parse_type xsd_parse_type
 #define xsd_xsd_parse_value xsd_parse_value
 #define xsd_xsd_types_compatible xsd_types_compatible
 #define xsd_xsd_validate_lexical xsd_validate_lexical
+#define xsd_xsd_values_compare xsd_values_compare
 #define xsd_xsd_values_equal xsd_values_equal
 
 #ifdef __cplusplus

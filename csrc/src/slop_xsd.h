@@ -27,6 +27,13 @@ typedef enum {
 } xsd_XsdError;
 
 typedef enum {
+    xsd_XsdCompareResult_xsd_compare_less,
+    xsd_XsdCompareResult_xsd_compare_equal,
+    xsd_XsdCompareResult_xsd_compare_greater,
+    xsd_XsdCompareResult_xsd_compare_incomparable
+} xsd_XsdCompareResult;
+
+typedef enum {
     xsd_XsdValue_xsd_string_val,
     xsd_XsdValue_xsd_integer_val,
     xsd_XsdValue_xsd_decimal_val,
@@ -71,6 +78,9 @@ uint8_t xsd_validate_lexical(slop_string lexical, slop_string datatype_iri);
 uint8_t xsd_values_equal(xsd_XsdValue a, xsd_XsdValue b);
 uint8_t xsd_types_compatible(xsd_XsdType t1, xsd_XsdType t2);
 slop_result_u8_xsd_XsdError xsd_literal_values_equal(slop_arena* arena, rdf_Literal a, rdf_Literal b);
+xsd_XsdCompareResult xsd_float_cmp(double a, double b);
+xsd_XsdCompareResult xsd_values_compare(xsd_XsdValue a, xsd_XsdValue b);
+xsd_XsdCompareResult xsd_compare(slop_arena* arena, rdf_Term a, rdf_Term b);
 
 /* Function name aliases for C interop */
 #define xsd_xsd_parse_type xsd_parse_type
@@ -78,6 +88,8 @@ slop_result_u8_xsd_XsdError xsd_literal_values_equal(slop_arena* arena, rdf_Lite
 #define xsd_xsd_validate_lexical xsd_validate_lexical
 #define xsd_xsd_values_equal xsd_values_equal
 #define xsd_xsd_types_compatible xsd_types_compatible
+#define xsd_xsd_values_compare xsd_values_compare
+#define xsd_xsd_compare xsd_compare
 
 #ifndef SLOP_OPTION_XSD_XSDVALUE_DEFINED
 #define SLOP_OPTION_XSD_XSDVALUE_DEFINED
