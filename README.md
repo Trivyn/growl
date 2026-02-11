@@ -160,13 +160,13 @@ Compared against [OWL-RL](https://github.com/RDFLib/OWL-RL) (Python reference im
 
 ### Accuracy (inferred triples vs OWL-RL reference)
 
-| Ontology | OWL-RL (ref) | Growl --complete | Growl | Growl --fast |
-|---|---|---|---|---|
-| BFO | 2,186 | -0.7% | -17.1% | -83.7% |
-| Pizza | 8,005 | -1.9% | -30.6% | -95.2% |
-| CCO | 52,363 | +2.7% | -1.8% | -76.0% |
-| Schema.org | 26,682 | +0.6% | -0.6% | -40.5% |
-| Brick | 39,493 | -0.1% | -23.9% | -69.5% |
+| Ontology | OWL-RL (ref) | Reasonable | Growl --complete | Growl | Growl --fast |
+|---|---|---|---|---|---|
+| BFO | 2,186 | +91.9% | -0.7% | -17.1% | -83.7% |
+| Pizza | 8,005 | +29.1% | -1.9% | -30.6% | -95.2% |
+| CCO | 52,363 | -11.4% | +2.7% | -1.8% | -76.0% |
+| Schema.org | 26,682 | +15.9% | +0.6% | -0.6% | -40.5% |
+| Brick | 39,493 | +81.9% | -0.1% | -23.9% | -69.5% |
 
 **Modes**: `--complete` enables all spec rules (cls-thing, prp-ap, dt-type2) for closest OWL-RL parity. Default Growl skips those practically inert rules. `--fast` targets the same rule coverage as Reasonable (skips schema rules, datatypes, eq-ref, cardinality), making Growl --fast vs Reasonable an apples-to-apples comparison.
 
