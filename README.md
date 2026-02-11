@@ -151,13 +151,13 @@ slop verify              # verify all files in [verify].sources
 slop verify -v           # verbose — shows per-function results
 ```
 
-Growl uses `slop verify`, which encodes contracts into Z3 SMT formulas and proves them with weakest-precondition calculus. 101 function-level contracts are verified across the codebase.
+Growl uses `slop verify`, which encodes contracts into Z3 SMT formulas and proves them with weakest-precondition calculus. 104 function-level contracts are verified across the codebase.
 
 **What is proven:**
 
-- **Soundness** (`@property soundness`): For every output triple, there exists a delta triple justifying it — proving the reasoner never fabricates conclusions from nothing. Covers 55 of 77 inference functions, including all high-value rules (cax-sco, prp-dom/rng, eq-ref/sym, cls-hv1/hv2, etc.).
-- **Completeness** (`@property completeness`): For certain rules (eq-sym, scm-eqc1/eqc2, prp-symp, scm-eqp1/eqp2), every applicable delta triple produces the expected output — proving the reasoner doesn't miss inferences. 8 functions.
-- **Novelty** (`@property novelty`): Every output triple is new — not already present in the graph. Proves the rule engine never wastes work emitting redundant inferences. Covers cls-maxc2, cls-maxqc3, cls-maxqc4 (3 functions).
+- **Soundness** (`@property soundness`): For every output triple, there exists a delta triple justifying it — proving the reasoner never fabricates conclusions from nothing. Covers 56 of 77 inference functions, including all high-value rules (cax-sco, prp-dom/rng, eq-ref/sym, cls-hv1/hv2, etc.).
+- **Completeness** (`@property completeness`): For certain rules (eq-sym/trans, prp-symp, scm-cls, scm-eqc1/eqc2, scm-eqc-mutual, scm-eqp1/eqp2, scm-eqp-mutual, scm-op, scm-dp), every applicable delta triple produces the expected output — proving the reasoner doesn't miss inferences. 12 functions.
+- **Novelty** (`@property novelty`): Every output triple is new — not already present in the graph. Proves the rule engine never wastes work emitting redundant inferences. Covers cls-maxc2, cls-maxqc3, cls-maxqc4, and transitive-closure (4 functions).
 - **Postconditions** (`@post`): Predicate constraints (e.g. all outputs have `rdf:type` as predicate), witness counts on inconsistency reports, iteration numbering, and result bounds.
 - **Preconditions** (`@pre`): Graph size non-negativity, valid input constraints.
 
