@@ -9,7 +9,7 @@ uint8_t types_all_triples_have_predicate(slop_list_rdf_Triple triples, slop_stri
 
 types_Delta types_make_delta(slop_arena* arena, int64_t iteration) {
     SLOP_PRE(((iteration >= 0)), "(>= iteration 0)");
-    types_Delta _retval;
+    types_Delta _retval = {0};
     _retval = ((types_Delta){.triples = ((slop_list_rdf_Triple){ .data = (rdf_Triple*)slop_arena_alloc(arena, 16 * sizeof(rdf_Triple)), .len = 0, .cap = 16 }), .seen = slop_map_new_ptr(arena, 16, sizeof(rdf_Triple), slop_hash_rdf_Triple, slop_eq_rdf_Triple), .by_predicate = slop_map_new_ptr(arena, 16, sizeof(rdf_Term), slop_hash_rdf_Term, slop_eq_rdf_Term), .iteration = iteration});
     SLOP_POST(((_retval.iteration == iteration)), "(== (. $result iteration) iteration)");
     SLOP_POST(((((int64_t)((_retval.triples).len)) == 0)), "(== (list-len (. $result triples)) 0)");
@@ -18,7 +18,7 @@ types_Delta types_make_delta(slop_arena* arena, int64_t iteration) {
 
 types_Delta types_delta_add(slop_arena* arena, types_Delta d, rdf_Triple t) {
     SLOP_PRE(((d.iteration >= 0)), "(>= (. d iteration) 0)");
-    types_Delta _retval;
+    types_Delta _retval = {0};
     if ((slop_map_get(d.seen, &(t)) != NULL)) {
         _retval = d;
     } else {
@@ -47,7 +47,7 @@ types_Delta types_delta_add(slop_arena* arena, types_Delta d, rdf_Triple t) {
 
 types_Delta types_delta_merge(slop_arena* arena, types_Delta d1, types_Delta d2) {
     SLOP_PRE(((d1.iteration == d2.iteration)), "(== (. d1 iteration) (. d2 iteration))");
-    types_Delta _retval;
+    types_Delta _retval = {0};
     {
         __auto_type result = d1;
         {
@@ -64,14 +64,14 @@ types_Delta types_delta_merge(slop_arena* arena, types_Delta d1, types_Delta d2)
 }
 
 uint8_t types_delta_is_empty(types_Delta d) {
-    uint8_t _retval;
+    uint8_t _retval = {0};
     _retval = (((int64_t)((d.triples).len)) == 0);
     SLOP_POST(((_retval == (((int64_t)((d.triples).len)) == 0))), "(== $result (== (list-len (. d triples)) 0))");
     return _retval;
 }
 
 uint8_t types_all_triples_have_predicate(slop_list_rdf_Triple triples, slop_string pred_iri) {
-    uint8_t _retval;
+    uint8_t _retval = {0};
     {
         uint8_t result = 1;
         {

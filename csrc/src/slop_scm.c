@@ -256,7 +256,7 @@ types_Delta scm_fixture_delta_subprop(slop_arena* arena) {
 
 slop_result_types_Delta_types_InconsistencyReport scm_apply_scm_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_result_types_Delta_types_InconsistencyReport _retval;
+    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
         __auto_type next_iter = (delta.iteration + 1);
         __auto_type result = types_make_delta(arena, next_iter);
@@ -422,7 +422,7 @@ slop_result_types_Delta_types_InconsistencyReport scm_apply_scm_rules(slop_arena
 
 slop_list_rdf_Triple scm_scm_cls(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type class_type = rdf_make_iri(arena, vocab_OWL_CLASS);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -481,7 +481,7 @@ slop_list_rdf_Triple scm_scm_cls(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple scm_scm_sco(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -514,7 +514,7 @@ slop_list_rdf_Triple scm_scm_sco(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple scm_scm_eqc1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_CLASS);
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
@@ -549,7 +549,7 @@ slop_list_rdf_Triple scm_scm_eqc1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_eqc1b(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_CLASS);
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
@@ -584,7 +584,7 @@ slop_list_rdf_Triple scm_scm_eqc1b(slop_arena* arena, index_IndexedGraph g, type
 
 slop_list_rdf_Triple scm_scm_eqc2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_CLASS);
@@ -627,7 +627,7 @@ slop_list_rdf_Triple scm_scm_eqc2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_op(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type op_type = rdf_make_iri(arena, vocab_OWL_OBJECT_PROPERTY);
         __auto_type rdf_prop_type = rdf_make_iri(arena, vocab_RDF_PROPERTY);
@@ -673,7 +673,7 @@ slop_list_rdf_Triple scm_scm_op(slop_arena* arena, index_IndexedGraph g, types_D
 
 slop_list_rdf_Triple scm_scm_dp(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type dp_type = rdf_make_iri(arena, vocab_OWL_DATATYPE_PROPERTY);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -718,7 +718,7 @@ slop_list_rdf_Triple scm_scm_dp(slop_arena* arena, index_IndexedGraph g, types_D
 
 slop_list_rdf_Triple scm_scm_spo(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type subprop_pred = rdf_make_iri(arena, vocab_RDFS_SUBPROPERTY_OF);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -751,7 +751,7 @@ slop_list_rdf_Triple scm_scm_spo(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple scm_scm_eqp1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_PROPERTY);
         __auto_type subprop_pred = rdf_make_iri(arena, vocab_RDFS_SUBPROPERTY_OF);
@@ -786,7 +786,7 @@ slop_list_rdf_Triple scm_scm_eqp1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_eqp1b(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_PROPERTY);
         __auto_type subprop_pred = rdf_make_iri(arena, vocab_RDFS_SUBPROPERTY_OF);
@@ -821,7 +821,7 @@ slop_list_rdf_Triple scm_scm_eqp1b(slop_arena* arena, index_IndexedGraph g, type
 
 slop_list_rdf_Triple scm_scm_eqp2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type subprop_pred = rdf_make_iri(arena, vocab_RDFS_SUBPROPERTY_OF);
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_PROPERTY);
@@ -864,7 +864,7 @@ slop_list_rdf_Triple scm_scm_eqp2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_dom2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type domain_pred = rdf_make_iri(arena, vocab_RDFS_DOMAIN);
         __auto_type subprop_pred = rdf_make_iri(arena, vocab_RDFS_SUBPROPERTY_OF);
@@ -897,7 +897,7 @@ slop_list_rdf_Triple scm_scm_dom2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_dom1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type domain_pred = rdf_make_iri(arena, vocab_RDFS_DOMAIN);
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
@@ -930,7 +930,7 @@ slop_list_rdf_Triple scm_scm_dom1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_rng2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type range_pred = rdf_make_iri(arena, vocab_RDFS_RANGE);
         __auto_type subprop_pred = rdf_make_iri(arena, vocab_RDFS_SUBPROPERTY_OF);
@@ -963,7 +963,7 @@ slop_list_rdf_Triple scm_scm_rng2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_rng1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type range_pred = rdf_make_iri(arena, vocab_RDFS_RANGE);
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
@@ -996,7 +996,7 @@ slop_list_rdf_Triple scm_scm_rng1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_int(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type intersection_pred = rdf_make_iri(arena, vocab_OWL_INTERSECTION_OF);
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
@@ -1042,7 +1042,7 @@ slop_list_rdf_Triple scm_scm_int(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple scm_scm_uni(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type union_pred = rdf_make_iri(arena, vocab_OWL_UNION_OF);
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
@@ -1088,7 +1088,7 @@ slop_list_rdf_Triple scm_scm_uni(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple scm_scm_svf1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type svf_pred = rdf_make_iri(arena, vocab_OWL_SOME_VALUES_FROM);
         __auto_type on_prop_pred = rdf_make_iri(arena, vocab_OWL_ON_PROPERTY);
@@ -1122,7 +1122,7 @@ slop_list_rdf_Triple scm_scm_svf1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_svf2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type svf_pred = rdf_make_iri(arena, vocab_OWL_SOME_VALUES_FROM);
         __auto_type on_prop_pred = rdf_make_iri(arena, vocab_OWL_ON_PROPERTY);
@@ -1157,7 +1157,7 @@ slop_list_rdf_Triple scm_scm_svf2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_avf1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type avf_pred = rdf_make_iri(arena, vocab_OWL_ALL_VALUES_FROM);
         __auto_type on_prop_pred = rdf_make_iri(arena, vocab_OWL_ON_PROPERTY);
@@ -1191,7 +1191,7 @@ slop_list_rdf_Triple scm_scm_avf1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_avf2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type avf_pred = rdf_make_iri(arena, vocab_OWL_ALL_VALUES_FROM);
         __auto_type on_prop_pred = rdf_make_iri(arena, vocab_OWL_ON_PROPERTY);
@@ -1226,7 +1226,7 @@ slop_list_rdf_Triple scm_scm_avf2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple scm_scm_hv(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type hv_pred = rdf_make_iri(arena, vocab_OWL_HAS_VALUE);
         __auto_type on_prop_pred = rdf_make_iri(arena, vocab_OWL_ON_PROPERTY);

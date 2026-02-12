@@ -196,7 +196,7 @@ index_IndexedGraph cax_fixture_g_all_disjoint(slop_arena* arena) {
 
 slop_result_types_Delta_types_InconsistencyReport cax_apply_cax_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_result_types_Delta_types_InconsistencyReport _retval;
+    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
         __auto_type next_iter = (delta.iteration + 1);
         __auto_type result = types_make_delta(arena, next_iter);
@@ -241,7 +241,7 @@ slop_result_types_Delta_types_InconsistencyReport cax_apply_cax_rules(slop_arena
 
 slop_list_rdf_Triple cax_cax_sco(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -292,7 +292,7 @@ slop_list_rdf_Triple cax_cax_sco(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple cax_cax_eqc1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_CLASS);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -325,7 +325,7 @@ slop_list_rdf_Triple cax_cax_eqc1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple cax_cax_eqc2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_CLASS);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -358,7 +358,7 @@ slop_list_rdf_Triple cax_cax_eqc2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_option_types_InconsistencyReport cax_cax_dw(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type disjoint_pred = rdf_make_iri(arena, vocab_OWL_DISJOINT_WITH);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -433,7 +433,7 @@ slop_option_types_InconsistencyReport cax_cax_dw(slop_arena* arena, index_Indexe
 
 slop_option_types_InconsistencyReport cax_cax_adc(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type adc_class = rdf_make_iri(arena, vocab_OWL_ALL_DISJOINT_CLASSES);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);

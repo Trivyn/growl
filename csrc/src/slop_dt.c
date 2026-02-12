@@ -8,7 +8,7 @@ slop_option_types_InconsistencyReport dt_dt_not_type(slop_arena* arena, index_In
 
 slop_list_rdf_Triple dt_dt_type1(slop_arena* arena, index_IndexedGraph g) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
         __auto_type datatype_class = rdf_make_iri(arena, vocab_RDFS_DATATYPE);
@@ -78,7 +78,7 @@ uint8_t dt_is_supported_datatype(slop_string dt_iri) {
 
 slop_list_rdf_Triple dt_dt_type2(slop_arena* arena, index_IndexedGraph g) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
         __auto_type result = ((slop_list_rdf_Triple){ .data = (rdf_Triple*)slop_arena_alloc(arena, 16 * sizeof(rdf_Triple)), .len = 0, .cap = 16 });
@@ -121,7 +121,7 @@ slop_list_rdf_Triple dt_dt_type2(slop_arena* arena, index_IndexedGraph g) {
 
 slop_option_types_InconsistencyReport dt_dt_not_type(slop_arena* arena, index_IndexedGraph g) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type _coll = g.triples;
         for (size_t _i = 0; _i < _coll.len; _i++) {

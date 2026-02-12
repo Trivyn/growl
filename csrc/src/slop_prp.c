@@ -409,7 +409,7 @@ types_Delta prp_fixture_delta_pdw(slop_arena* arena) {
 
 slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_result_types_Delta_types_InconsistencyReport _retval;
+    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
         __auto_type next_iter = (delta.iteration + 1);
         __auto_type result = types_make_delta(arena, next_iter);
@@ -548,7 +548,7 @@ slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena
 
 slop_list_rdf_Triple prp_prp_dom(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type domain_pred = rdf_make_iri(arena, vocab_RDFS_DOMAIN);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -558,7 +558,6 @@ slop_list_rdf_Triple prp_prp_dom(slop_arena* arena, index_IndexedGraph g, types_
             __auto_type _coll = delta.triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type dt = _coll.data[_i];
-                0;
                 {
                     __auto_type x = rdf_triple_subject(dt);
                     __auto_type p = rdf_triple_predicate(dt);
@@ -575,7 +574,7 @@ slop_list_rdf_Triple prp_prp_dom(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple prp_prp_rng(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type range_pred = rdf_make_iri(arena, vocab_RDFS_RANGE);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -585,7 +584,6 @@ slop_list_rdf_Triple prp_prp_rng(slop_arena* arena, index_IndexedGraph g, types_
             __auto_type _coll = delta.triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type dt = _coll.data[_i];
-                0;
                 {
                     __auto_type y = rdf_triple_object(dt);
                     __auto_type p = rdf_triple_predicate(dt);
@@ -602,7 +600,7 @@ slop_list_rdf_Triple prp_prp_rng(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple prp_prp_fp(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type fp_type = rdf_make_iri(arena, vocab_OWL_FUNCTIONAL_PROPERTY);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -619,7 +617,7 @@ slop_list_rdf_Triple prp_prp_fp(slop_arena* arena, index_IndexedGraph g, types_D
 
 slop_list_rdf_Triple prp_prp_ifp(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type ifp_type = rdf_make_iri(arena, vocab_OWL_INVERSE_FUNCTIONAL_PROPERTY);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -636,7 +634,7 @@ slop_list_rdf_Triple prp_prp_ifp(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple prp_prp_symp(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type sym_type = rdf_make_iri(arena, vocab_OWL_SYMMETRIC_PROPERTY);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -651,7 +649,7 @@ slop_list_rdf_Triple prp_prp_symp(slop_arena* arena, index_IndexedGraph g, types
 
 slop_option_types_InconsistencyReport prp_prp_asyp(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type asym_type = rdf_make_iri(arena, vocab_OWL_ASYMMETRIC_PROPERTY);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -697,7 +695,7 @@ slop_option_types_InconsistencyReport prp_prp_asyp(slop_arena* arena, index_Inde
 
 slop_list_rdf_Triple prp_prp_trp(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type trans_type = rdf_make_iri(arena, vocab_OWL_TRANSITIVE_PROPERTY);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -712,7 +710,7 @@ slop_list_rdf_Triple prp_prp_trp(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_option_types_InconsistencyReport prp_prp_irp(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type irp_type = rdf_make_iri(arena, vocab_OWL_IRREFLEXIVE_PROPERTY);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -757,7 +755,7 @@ slop_option_types_InconsistencyReport prp_prp_irp(slop_arena* arena, index_Index
 
 slop_option_types_InconsistencyReport prp_prp_adp(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type adp_class = rdf_make_iri(arena, vocab_OWL_ALL_DISJOINT_PROPERTIES);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -832,7 +830,7 @@ slop_option_types_InconsistencyReport prp_prp_adp(slop_arena* arena, index_Index
 
 slop_option_types_InconsistencyReport prp_prp_npa1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type source_pred = rdf_make_iri(arena, vocab_OWL_SOURCE_INDIVIDUAL);
         __auto_type assert_pred = rdf_make_iri(arena, vocab_OWL_ASSERTION_PROPERTY);
@@ -888,7 +886,7 @@ slop_option_types_InconsistencyReport prp_prp_npa1(slop_arena* arena, index_Inde
 
 slop_option_types_InconsistencyReport prp_prp_npa2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type source_pred = rdf_make_iri(arena, vocab_OWL_SOURCE_INDIVIDUAL);
         __auto_type assert_pred = rdf_make_iri(arena, vocab_OWL_ASSERTION_PROPERTY);
@@ -944,7 +942,7 @@ slop_option_types_InconsistencyReport prp_prp_npa2(slop_arena* arena, index_Inde
 
 slop_list_rdf_Triple prp_prp_spo2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type chain_pred = rdf_make_iri(arena, vocab_OWL_PROPERTY_CHAIN_AXIOM);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -970,7 +968,7 @@ slop_list_rdf_Triple prp_prp_spo2(slop_arena* arena, index_IndexedGraph g, types
                                         {
                                             int64_t ci = 0;
                                             while ((ci < chain_len)) {
-                                                __auto_type _mv_177 = ({ __auto_type _lst = chain_props; size_t _idx = (size_t)ci; slop_option_rdf_Term _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                                __auto_type _mv_177 = ({ __auto_type _lst = chain_props; size_t _idx = (size_t)ci; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                                                 if (_mv_177.has_value) {
                                                     __auto_type chain_p = _mv_177.value;
                                                     if (rdf_term_eq(dt_pred, chain_p)) {
@@ -980,7 +978,7 @@ slop_list_rdf_Triple prp_prp_spo2(slop_arena* arena, index_IndexedGraph g, types
                                                             {
                                                                 __auto_type bi = (ci - 1);
                                                                 while ((bi >= 0)) {
-                                                                    __auto_type _mv_178 = ({ __auto_type _lst = chain_props; size_t _idx = (size_t)bi; slop_option_rdf_Term _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                                                    __auto_type _mv_178 = ({ __auto_type _lst = chain_props; size_t _idx = (size_t)bi; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                                                                     if (_mv_178.has_value) {
                                                                         __auto_type prev_p = _mv_178.value;
                                                                         {
@@ -1014,7 +1012,7 @@ slop_list_rdf_Triple prp_prp_spo2(slop_arena* arena, index_IndexedGraph g, types
                                                                 {
                                                                     __auto_type fi = (ci + 1);
                                                                     while ((fi < chain_len)) {
-                                                                        __auto_type _mv_179 = ({ __auto_type _lst = chain_props; size_t _idx = (size_t)fi; slop_option_rdf_Term _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                                                        __auto_type _mv_179 = ({ __auto_type _lst = chain_props; size_t _idx = (size_t)fi; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                                                                         if (_mv_179.has_value) {
                                                                             __auto_type next_p = _mv_179.value;
                                                                             {
@@ -1084,7 +1082,7 @@ slop_list_rdf_Triple prp_prp_spo2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple prp_prp_key(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type key_pred = rdf_make_iri(arena, vocab_OWL_HAS_KEY);
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
@@ -1204,7 +1202,7 @@ slop_list_rdf_Triple prp_prp_key(slop_arena* arena, index_IndexedGraph g, types_
 
 slop_list_rdf_Triple prp_prp_spo1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type subprop_pred = rdf_make_iri(arena, vocab_RDFS_SUBPROPERTY_OF);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -1229,7 +1227,7 @@ slop_list_rdf_Triple prp_prp_spo1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple prp_prp_inv1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type inverse_pred = rdf_make_iri(arena, vocab_OWL_INVERSE_OF);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -1243,7 +1241,7 @@ slop_list_rdf_Triple prp_prp_inv1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple prp_prp_inv2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type inverse_pred = rdf_make_iri(arena, vocab_OWL_INVERSE_OF);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -1257,7 +1255,7 @@ slop_list_rdf_Triple prp_prp_inv2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple prp_prp_eqp1(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_PROPERTY);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -1271,7 +1269,7 @@ slop_list_rdf_Triple prp_prp_eqp1(slop_arena* arena, index_IndexedGraph g, types
 
 slop_list_rdf_Triple prp_prp_eqp2(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_PROPERTY);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -1285,7 +1283,7 @@ slop_list_rdf_Triple prp_prp_eqp2(slop_arena* arena, index_IndexedGraph g, types
 
 slop_option_types_InconsistencyReport prp_prp_pdw(slop_arena* arena, index_IndexedGraph g, types_Delta delta) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_option_types_InconsistencyReport _retval;
+    slop_option_types_InconsistencyReport _retval = {0};
     {
         __auto_type pdw_pred = rdf_make_iri(arena, vocab_OWL_PROPERTY_DISJOINT_WITH);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -1352,7 +1350,7 @@ slop_option_types_InconsistencyReport prp_prp_pdw(slop_arena* arena, index_Index
 
 slop_list_rdf_Triple prp_prp_ap(slop_arena* arena, index_IndexedGraph g) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
         __auto_type annot_class = rdf_make_iri(arena, vocab_OWL_ANNOTATION_PROPERTY);

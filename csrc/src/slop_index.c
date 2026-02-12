@@ -11,7 +11,7 @@ slop_list_rdf_Term rdf_indexed_graph_subjects(slop_arena* arena, index_IndexedGr
 slop_list_rdf_Term rdf_indexed_graph_objects(slop_arena* arena, index_IndexedGraph g, rdf_Term subj, rdf_Term pred);
 
 index_IndexedGraph rdf_indexed_graph_create(slop_arena* arena) {
-    index_IndexedGraph _retval;
+    index_IndexedGraph _retval = {0};
     _retval = ((index_IndexedGraph){.triples = ((slop_list_rdf_Triple){ .data = (rdf_Triple*)slop_arena_alloc(arena, 16 * sizeof(rdf_Triple)), .len = 0, .cap = 16 }), .index = ((index_TripleIndex){.spo = slop_map_new_ptr(arena, 16, sizeof(rdf_Term), slop_hash_rdf_Term, slop_eq_rdf_Term), .pso = slop_map_new_ptr(arena, 16, sizeof(rdf_Term), slop_hash_rdf_Term, slop_eq_rdf_Term), .osp = slop_map_new_ptr(arena, 16, sizeof(rdf_Term), slop_hash_rdf_Term, slop_eq_rdf_Term)}), .size = 0});
     SLOP_POST(((_retval.size == 0)), "(== (. $result size) 0)");
     return _retval;
@@ -19,7 +19,7 @@ index_IndexedGraph rdf_indexed_graph_create(slop_arena* arena) {
 
 index_IndexedGraph rdf_indexed_graph_add(slop_arena* arena, index_IndexedGraph g, rdf_Triple t) {
     SLOP_PRE(((g.size >= 0)), "(>= (. g size) 0)");
-    index_IndexedGraph _retval;
+    index_IndexedGraph _retval = {0};
     if (rdf_indexed_graph_contains(g, t)) {
         _retval = g;
     }
@@ -114,7 +114,7 @@ index_IndexedGraph rdf_indexed_graph_add(slop_arena* arena, index_IndexedGraph g
 
 uint8_t rdf_indexed_graph_contains(index_IndexedGraph g, rdf_Triple t) {
     SLOP_PRE(((g.size >= 0)), "(>= (. g size) 0)");
-    uint8_t _retval;
+    uint8_t _retval = {0};
     {
         __auto_type s = rdf_triple_subject(t);
         __auto_type p = rdf_triple_predicate(t);
@@ -138,7 +138,7 @@ uint8_t rdf_indexed_graph_contains(index_IndexedGraph g, rdf_Triple t) {
 
 slop_list_rdf_Triple rdf_indexed_graph_match(slop_arena* arena, index_IndexedGraph g, slop_option_rdf_Term subj, slop_option_rdf_Term pred, slop_option_rdf_Term obj) {
     SLOP_PRE(((g.size >= 0)), "(>= (. g size) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         __auto_type result = ((slop_list_rdf_Triple){ .data = (rdf_Triple*)slop_arena_alloc(arena, 16 * sizeof(rdf_Triple)), .len = 0, .cap = 16 });
         __auto_type _mv_17 = subj;
@@ -468,7 +468,7 @@ void rdf_indexed_graph_for_each(index_IndexedGraph g, slop_option_rdf_Term subj,
 }
 
 int64_t rdf_indexed_graph_size(index_IndexedGraph g) {
-    int64_t _retval;
+    int64_t _retval = {0};
     _retval = g.size;
     SLOP_POST(((_retval == g.size)), "(== $result (. g size))");
     return _retval;

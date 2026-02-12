@@ -367,6 +367,7 @@ extern const slop_string vocab_SHACL_INVERSE_PATH;
 extern const slop_string vocab_SHACL_ALTERNATIVE_PATH;
 extern const slop_string vocab_SHACL_ZERO_OR_MORE_PATH;
 extern const slop_string vocab_SHACL_ONE_OR_MORE_PATH;
+extern const slop_string vocab_SHACL_ZERO_OR_ONE_PATH;
 extern const slop_string vocab_SHACL_CLASS;
 extern const slop_string vocab_SHACL_DATATYPE;
 extern const slop_string vocab_SHACL_NODE_KIND;
