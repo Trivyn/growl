@@ -19,7 +19,7 @@ ALL_SRCS    := $(wildcard $(CSRC)/*.c)
 SHARED_SRCS := $(filter-out $(CSRC)/slop_main.c $(CSRC)/slop_test_cli.c, $(ALL_SRCS))
 SHARED_OBJS := $(patsubst $(CSRC)/%.c,$(OBJ)/%.o,$(SHARED_SRCS))
 
-.PHONY: all cli lib test benchmark conformance clean release dist csrc slop-build
+.PHONY: all cli lib test benchmark conformance reference clean release dist csrc slop-build
 
 PLATFORM ?= unknown
 
@@ -57,6 +57,9 @@ benchmark: cli
 
 conformance: release
 	cd cli/tests && uv run --with pytest --with rdflib pytest test_conformance.py test_interactions.py -v
+
+reference: release
+	cd cli/tests && uv run --with pytest --with rdflib --with owlrl pytest test_reference.py -v
 
 clean:
 	rm -rf $(BIN) dist
