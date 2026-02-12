@@ -10,7 +10,7 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 int64_t growl_get_inferred_count(types_ReasonerResult result);
 
 types_ReasonerConfig growl_default_config(void) {
-    types_ReasonerConfig _retval;
+    types_ReasonerConfig _retval = {0};
     _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0});
     SLOP_POST(((_retval.worker_count == 4)), "(== (. $result worker-count) 4)");
     SLOP_POST(((_retval.channel_buffer == 256)), "(== (. $result channel-buffer) 256)");
@@ -23,7 +23,7 @@ types_ReasonerConfig growl_default_config(void) {
 
 types_ReasonerResult growl_reason(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
-    types_ReasonerResult _retval;
+    types_ReasonerResult _retval = {0};
     _retval = growl_reason_with_config(arena, input, growl_default_config());
     SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.inferred_count >= 0); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; }  } _mr; })), "(match $result ((reason-success s) (>= (. s inferred-count) 0)) ((reason-inconsistent _) true))");
     return _retval;
@@ -33,7 +33,7 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
     SLOP_PRE(((config.worker_count >= 1)), "(>= (. config worker-count) 1)");
     SLOP_PRE(((config.max_iterations >= 1)), "(>= (. config max-iterations) 1)");
-    types_ReasonerResult _retval;
+    types_ReasonerResult _retval = {0};
     _retval = engine_engine_run(arena, config, input);
     SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; }  } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true))");
     return _retval;
@@ -58,7 +58,7 @@ uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
 
 slop_list_rdf_Term growl_get_types(slop_arena* arena, index_IndexedGraph g, rdf_Term individual) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Term _retval;
+    slop_list_rdf_Term _retval = {0};
     {
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -79,7 +79,7 @@ slop_list_rdf_Term growl_get_types(slop_arena* arena, index_IndexedGraph g, rdf_
 
 slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rdf_Term individual) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Term _retval;
+    slop_list_rdf_Term _retval = {0};
     {
         __auto_type same_pred = rdf_make_iri(arena, vocab_OWL_SAME_AS);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
@@ -108,7 +108,7 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 }
 
 int64_t growl_get_inferred_count(types_ReasonerResult result) {
-    int64_t _retval;
+    int64_t _retval = {0};
     __auto_type _mv_313 = result;
     switch (_mv_313.tag) {
         case types_ReasonerResult_reason_success:

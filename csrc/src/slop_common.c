@@ -18,7 +18,7 @@ common_ParseError common_make_parse_error(slop_arena* arena, common_ParseErrorKi
 }
 
 common_ParseState common_make_parse_state(slop_arena* arena, slop_string input) {
-    common_ParseState _retval;
+    common_ParseState _retval = {0};
     _retval = ((common_ParseState){.input = input, .offset = 0, .line = 1, .column = 1});
     SLOP_POST(((_retval.offset == 0)), "(== $result.offset 0)");
     SLOP_POST(((_retval.line == 1)), "(== $result.line 1)");
@@ -27,7 +27,7 @@ common_ParseState common_make_parse_state(slop_arena* arena, slop_string input) 
 }
 
 uint8_t common_state_at_end(common_ParseState state) {
-    uint8_t _retval;
+    uint8_t _retval = {0};
     _retval = (state.offset >= string_len(state.input));
     SLOP_POST(((_retval == (state.offset >= string_len(state.input)))), "(== $result (>= (. state offset) (string-len (. state input))))");
     return _retval;
@@ -51,7 +51,7 @@ uint8_t common_state_peek_n(common_ParseState state, int64_t n) {
 
 common_ParseState common_state_advance(slop_arena* arena, common_ParseState state) {
     SLOP_PRE((!(common_state_at_end(state))), "(not (state-at-end state))");
-    common_ParseState _retval;
+    common_ParseState _retval = {0};
     {
         __auto_type c = common_state_peek(state);
         if ((c == 10)) {
@@ -65,7 +65,7 @@ common_ParseState common_state_advance(slop_arena* arena, common_ParseState stat
 }
 
 common_ParseState common_skip_whitespace(slop_arena* arena, common_ParseState state) {
-    common_ParseState _retval;
+    common_ParseState _retval = {0};
     {
         __auto_type s = state;
         while ((!(common_state_at_end(s)) && (strlib_is_space(common_state_peek(s)) || (common_state_peek(s) == 35)))) {

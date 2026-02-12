@@ -363,6 +363,7 @@ const slop_string vocab_SHACL_INVERSE_PATH = SLOP_STR("http://www.w3.org/ns/shac
 const slop_string vocab_SHACL_ALTERNATIVE_PATH = SLOP_STR("http://www.w3.org/ns/shacl#alternativePath");
 const slop_string vocab_SHACL_ZERO_OR_MORE_PATH = SLOP_STR("http://www.w3.org/ns/shacl#zeroOrMorePath");
 const slop_string vocab_SHACL_ONE_OR_MORE_PATH = SLOP_STR("http://www.w3.org/ns/shacl#oneOrMorePath");
+const slop_string vocab_SHACL_ZERO_OR_ONE_PATH = SLOP_STR("http://www.w3.org/ns/shacl#zeroOrOnePath");
 const slop_string vocab_SHACL_CLASS = SLOP_STR("http://www.w3.org/ns/shacl#class");
 const slop_string vocab_SHACL_DATATYPE = SLOP_STR("http://www.w3.org/ns/shacl#datatype");
 const slop_string vocab_SHACL_NODE_KIND = SLOP_STR("http://www.w3.org/ns/shacl#nodeKind");

@@ -35,7 +35,7 @@ void main_print_elapsed(slop_arena* arena, int64_t elapsed);
 slop_string main_argv_to_string(uint8_t** argv, int64_t index);
 main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
 void main_print_usage(void);
-int main(int64_t argc, uint8_t** argv);
+int main(int argc, char** _c_argv);
 
 #ifndef SLOP_OPTION_MAIN_CLIARGS_DEFINED
 #define SLOP_OPTION_MAIN_CLIARGS_DEFINED

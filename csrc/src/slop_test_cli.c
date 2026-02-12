@@ -18,7 +18,7 @@ uint8_t test_cli_test_invalid_literal_file(slop_arena* arena);
 uint8_t test_cli_test_valid_literals_file(slop_arena* arena);
 uint8_t test_cli_test_emit_roundtrip(slop_arena* arena);
 uint8_t test_cli_test_missing_file(slop_arena* arena);
-int main(void);
+int main(int argc, char** _c_argv);
 
 index_IndexedGraph test_cli_graph_to_indexed(slop_arena* arena, rdf_Graph g) {
     {
@@ -414,7 +414,8 @@ uint8_t test_cli_test_missing_file(slop_arena* arena) {
     }
 }
 
-int main(void) {
+int main(int argc, char** _c_argv) {
+    uint8_t** argv = (uint8_t**)_c_argv;
     {
         #ifdef SLOP_DEBUG
         SLOP_PRE((536870912) > 0, "with-arena size must be positive");

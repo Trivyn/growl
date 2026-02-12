@@ -14,8 +14,7 @@ void* thread_thread_with_chan_entry(void* arg);
 int64_t thread_join(slop_thread_int* thread);
 
 slop_chan_int* thread_chan(slop_arena* arena) {
-    slop_chan_int* _retval;
-    0;
+    slop_chan_int* _retval = {0};
     {
         __auto_type ch = ({ __auto_type _alloc = (slop_chan_int*)slop_arena_alloc(arena, sizeof(slop_chan_int)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; });
         pthread_mutex_init(((void*)((&ch->mutex))), NULL);
@@ -35,8 +34,7 @@ slop_chan_int* thread_chan(slop_arena* arena) {
 
 slop_chan_int* thread_chan_buffered(slop_arena* arena, int64_t capacity) {
     SLOP_PRE(((capacity >= 1)), "(>= capacity 1)");
-    slop_chan_int* _retval;
-    0;
+    slop_chan_int* _retval = {0};
     {
         __auto_type ch = ({ __auto_type _alloc = (slop_chan_int*)slop_arena_alloc(arena, sizeof(slop_chan_int)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; });
         pthread_mutex_init(((void*)((&ch->mutex))), NULL);
@@ -56,18 +54,15 @@ slop_chan_int* thread_chan_buffered(slop_arena* arena, int64_t capacity) {
 
 void thread_chan_close(slop_chan_int* ch) {
     SLOP_PRE(((ch != NULL)), "(!= ch nil)");
-    0;
     pthread_mutex_lock(((void*)((&ch->mutex))));
     ch->closed = 1;
     pthread_cond_broadcast(((void*)((&ch->not_empty))));
     pthread_cond_broadcast(((void*)((&ch->not_full))));
     pthread_mutex_unlock(((void*)((&ch->mutex))));
-    0;
 }
 
 slop_result_void_thread_ChanError thread_send(slop_chan_int* ch, int64_t value) {
     SLOP_PRE(((ch != NULL)), "(!= ch nil)");
-    0;
     pthread_mutex_lock(((void*)((&ch->mutex))));
     if (ch->closed) {
         pthread_mutex_unlock(((void*)((&ch->mutex))));
@@ -111,7 +106,6 @@ slop_result_void_thread_ChanError thread_send(slop_chan_int* ch, int64_t value) 
 
 slop_result_int_thread_ChanError thread_recv(slop_chan_int* ch) {
     SLOP_PRE(((ch != NULL)), "(!= ch nil)");
-    0;
     pthread_mutex_lock(((void*)((&ch->mutex))));
     while (((ch->count == 0) && !(ch->closed))) {
         pthread_cond_wait(((void*)((&ch->not_empty))), ((void*)((&ch->mutex))));
@@ -143,7 +137,6 @@ slop_result_int_thread_ChanError thread_recv(slop_chan_int* ch) {
 
 slop_result_int_thread_ChanError thread_try_recv(slop_chan_int* ch) {
     SLOP_PRE(((ch != NULL)), "(!= ch nil)");
-    0;
     pthread_mutex_lock(((void*)((&ch->mutex))));
     if ((ch->count == 0)) {
         pthread_mutex_unlock(((void*)((&ch->mutex))));
@@ -175,8 +168,7 @@ slop_result_int_thread_ChanError thread_try_recv(slop_chan_int* ch) {
 }
 
 slop_thread_int* thread_spawn(slop_arena* arena, slop_closure_t func) {
-    slop_thread_int* _retval;
-    0;
+    slop_thread_int* _retval = {0};
     {
         __auto_type th = ((thread_ThreadInt*)(({ __auto_type _alloc = (thread_ThreadInt*)slop_arena_alloc(arena, sizeof(thread_ThreadInt)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; })));
         (*th).func = ((void*)(func.fn));
@@ -190,7 +182,7 @@ slop_thread_int* thread_spawn(slop_arena* arena, slop_closure_t func) {
 }
 
 slop_thread_int* thread_spawn_closure(slop_arena* arena, thread_Closure closure) {
-    slop_thread_int* _retval;
+    slop_thread_int* _retval = {0};
     {
         __auto_type th = ((thread_ThreadInt*)(({ __auto_type _alloc = (thread_ThreadInt*)slop_arena_alloc(arena, sizeof(thread_ThreadInt)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; })));
         (*th).func = closure.fn;
@@ -205,7 +197,7 @@ slop_thread_int* thread_spawn_closure(slop_arena* arena, thread_Closure closure)
 
 thread_ThreadWithChan* thread_spawn_with_chan(slop_arena* arena, slop_closure_t func, slop_chan_int* ch) {
     SLOP_PRE(((ch != NULL)), "(!= ch nil)");
-    thread_ThreadWithChan* _retval;
+    thread_ThreadWithChan* _retval = {0};
     {
         __auto_type th = ((thread_ThreadWithChan*)(({ __auto_type _alloc = (thread_ThreadWithChan*)slop_arena_alloc(arena, sizeof(thread_ThreadWithChan)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; })));
         (*th).func = ((void*)(func.fn));
@@ -241,7 +233,6 @@ void* thread_thread_with_chan_entry(void* arg) {
 
 int64_t thread_join(slop_thread_int* thread) {
     SLOP_PRE(((thread != NULL)), "(!= thread nil)");
-    0;
     pthread_join(thread->id, NULL);
     return thread->result;
 }

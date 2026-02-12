@@ -5,7 +5,7 @@ void main_print_elapsed(slop_arena* arena, int64_t elapsed);
 slop_string main_argv_to_string(uint8_t** argv, int64_t index);
 main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
 void main_print_usage(void);
-int main(int64_t argc, uint8_t** argv);
+int main(int argc, char** _c_argv);
 
 void main_print_elapsed(slop_arena* arena, int64_t elapsed) {
     printf("%.*s", (int)(int_to_string(arena, (elapsed / 1000))).len, (int_to_string(arena, (elapsed / 1000))).data);
@@ -91,7 +91,8 @@ void main_print_usage(void) {
     printf("%s\n", "  -V, --version    Show version information");
 }
 
-int main(int64_t argc, uint8_t** argv) {
+int main(int argc, char** _c_argv) {
+    uint8_t** argv = (uint8_t**)_c_argv;
     {
         #ifdef SLOP_DEBUG
         SLOP_PRE((268435456) > 0, "with-arena size must be positive");

@@ -37,14 +37,14 @@ static uint8_t _wrap_ttl_is_pn_chars_base(void* _env, uint8_t _p0) { return ttl_
 static uint8_t _wrap_strlib_is_digit(void* _env, strlib_AsciiChar _p0) { return strlib_is_digit(_p0); }
 
 ttl_PrefixMap ttl_make_prefix_map(slop_arena* arena) {
-    ttl_PrefixMap _retval;
+    ttl_PrefixMap _retval = {0};
     _retval = ((ttl_PrefixMap){.bindings = ((slop_list_ttl_PrefixBinding){ .data = (ttl_PrefixBinding*)slop_arena_alloc(arena, 16 * sizeof(ttl_PrefixBinding)), .len = 0, .cap = 16 }), .count = 0});
     SLOP_POST(((_retval.count == 0)), "(== $result.count 0)");
     return _retval;
 }
 
 ttl_PrefixMap ttl_prefix_map_add(slop_arena* arena, ttl_PrefixMap pm, slop_string prefix, slop_string iri) {
-    ttl_PrefixMap _retval;
+    ttl_PrefixMap _retval = {0};
     ({ __auto_type _lst_p = &(pm.bindings); __auto_type _item = (((ttl_PrefixBinding){.prefix = prefix, .iri = iri})); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
     _retval = ((ttl_PrefixMap){.bindings = pm.bindings, .count = (pm.count + 1)});
     SLOP_POST(((_retval.count >= pm.count)), "(>= $result.count pm.count)");
@@ -84,14 +84,14 @@ slop_option_int ttl_blank_label_lookup(slop_list_ttl_BlankLabelBinding labels, s
 }
 
 ttl_TtlParseContext ttl_make_ttl_context(slop_arena* arena, slop_string input) {
-    ttl_TtlParseContext _retval;
+    ttl_TtlParseContext _retval = {0};
     _retval = ((ttl_TtlParseContext){.prefixes = ttl_make_prefix_map(arena), .base_iri = (slop_option_string){.has_value = false}, .blank_labels = ((slop_list_ttl_BlankLabelBinding){ .data = (ttl_BlankLabelBinding*)slop_arena_alloc(arena, 16 * sizeof(ttl_BlankLabelBinding)), .len = 0, .cap = 16 }), .blank_counter = 0, .state = common_make_parse_state(arena, input)});
     SLOP_POST(((_retval.blank_counter == 0)), "(== $result.blank-counter 0)");
     return _retval;
 }
 
 ttl_GenBlankResult ttl_context_gen_blank_id(slop_arena* arena, ttl_TtlParseContext ctx) {
-    ttl_GenBlankResult _retval;
+    ttl_GenBlankResult _retval = {0};
     _retval = ((ttl_GenBlankResult){.id = ctx.blank_counter, .ctx = ((ttl_TtlParseContext){.prefixes = ctx.prefixes, .base_iri = ctx.base_iri, .blank_labels = ctx.blank_labels, .blank_counter = (ctx.blank_counter + 1), .state = ctx.state})});
     SLOP_POST(((_retval.id == ctx.blank_counter)), "(== $result.id ctx.blank-counter)");
     SLOP_POST(((_retval.ctx.blank_counter == (ctx.blank_counter + 1))), "(== $result.ctx.blank-counter (+ ctx.blank-counter 1))");

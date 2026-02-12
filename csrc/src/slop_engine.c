@@ -63,7 +63,7 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
     SLOP_PRE(((config.worker_count >= 1)), "(>= (. config worker-count) 1)");
     SLOP_PRE(((config.max_iterations >= 1)), "(>= (. config max-iterations) 1)");
     SLOP_PRE(((rdf_indexed_graph_size(initial) >= 0)), "(>= (indexed-graph-size initial) 0)");
-    types_ReasonerResult _retval;
+    types_ReasonerResult _retval = {0};
     {
         __auto_type initial_size = rdf_indexed_graph_size(initial);
         __auto_type initial_delta = engine_make_initial_delta(arena, initial);
@@ -82,7 +82,6 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
             }
         }
         while ((!(done) && (state.iteration < config.max_iterations))) {
-            0;
             if (config.verbose) {
                 printf("%s", "[iter ");
                 printf("%.*s", (int)(int_to_string(arena, state.iteration)).len, (int_to_string(arena, state.iteration)).data);
@@ -131,7 +130,7 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
 }
 
 types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g) {
-    types_Delta _retval;
+    types_Delta _retval = {0};
     {
         __auto_type d = types_make_delta(arena, 0);
         rdf_indexed_graph_for_each(g, ((slop_option_rdf_Term){.has_value = false}), ((slop_option_rdf_Term){.has_value = false}), ((slop_option_rdf_Term){.has_value = false}), ({ engine__lambda_249_env_t* engine__lambda_249_env = (engine__lambda_249_env_t*)slop_arena_alloc(arena, sizeof(engine__lambda_249_env_t)); *engine__lambda_249_env = (engine__lambda_249_env_t){ .d = &(d), .arena = arena }; (slop_closure_t){ (void*)engine__lambda_249, (void*)engine__lambda_249_env }; }));
@@ -143,7 +142,7 @@ types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g) {
 
 slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval;
+    slop_list_rdf_Triple _retval = {0};
     {
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
         __auto_type result = ((slop_list_rdf_Triple){ .data = (rdf_Triple*)slop_arena_alloc(arena, 16 * sizeof(rdf_Triple)), .len = 0, .cap = 16 });
@@ -189,7 +188,7 @@ slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, 
                     {
                         int64_t qi = 0;
                         while ((qi < ((int64_t)((bfs_queue).len)))) {
-                            __auto_type _mv_250 = ({ __auto_type _lst = bfs_queue; size_t _idx = (size_t)qi; slop_option_rdf_Term _r; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                            __auto_type _mv_250 = ({ __auto_type _lst = bfs_queue; size_t _idx = (size_t)qi; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                             if (_mv_250.has_value) {
                                 __auto_type current = _mv_250.value;
                                 {
@@ -616,7 +615,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
 
 slop_result_types_EngineState_types_InconsistencyReport engine_engine_run_iteration(slop_arena* arena, types_EngineState state) {
     SLOP_PRE(((state.iteration >= 0)), "(>= (. state iteration) 0)");
-    slop_result_types_EngineState_types_InconsistencyReport _retval;
+    slop_result_types_EngineState_types_InconsistencyReport _retval = {0};
     __auto_type _mv_251 = engine_apply_all_rules(arena, state.graph, state.delta, state.config);
     if (_mv_251.is_ok) {
         __auto_type new_delta = _mv_251.data.ok;
@@ -643,7 +642,7 @@ slop_result_types_EngineState_types_InconsistencyReport engine_engine_run_iterat
 
 slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_result_types_Delta_types_InconsistencyReport _retval;
+    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     if (((config.worker_count <= 1) || (delta.iteration == 0))) {
         _retval = engine_apply_all_rules_sequential(arena, g, delta, config);
     } else {
@@ -655,7 +654,7 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules(slop_ar
 
 slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_sequential(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_result_types_Delta_types_InconsistencyReport _retval;
+    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
         __auto_type next_iter = (delta.iteration + 1);
         __auto_type combined = types_make_delta(arena, next_iter);
@@ -734,7 +733,7 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_sequent
 slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_parallel(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
     SLOP_PRE(((config.worker_count > 1)), "(> (. config worker-count) 1)");
-    slop_result_types_Delta_types_InconsistencyReport _retval;
+    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
         __auto_type next_iter = (delta.iteration + 1);
         __auto_type fast = config.fast;
@@ -777,7 +776,7 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_paralle
 
 index_IndexedGraph engine_merge_into_graph(slop_arena* arena, index_IndexedGraph g, types_Delta d) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    index_IndexedGraph _retval;
+    index_IndexedGraph _retval = {0};
     {
         __auto_type result = g;
         {
@@ -816,7 +815,7 @@ slop_list_thread_int_ptr engine_spawn_rule_workers(slop_arena* arena, index_Inde
 slop_result_types_Delta_types_InconsistencyReport engine_collect_worker_results(slop_arena* arena, slop_chan_engine_WorkerMessage* result_chan, slop_list_thread_int_ptr workers, int64_t next_iter) {
     SLOP_PRE(((((int64_t)((workers).len)) >= 1)), "(>= (list-len workers) 1)");
     SLOP_PRE(((next_iter >= 1)), "(>= next-iter 1)");
-    slop_result_types_Delta_types_InconsistencyReport _retval;
+    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
         __auto_type combined = types_make_delta(arena, next_iter);
         slop_option_types_InconsistencyReport inconsistency = (slop_option_types_InconsistencyReport){.has_value = false};
