@@ -7,6 +7,7 @@
 #include "slop_rdf.h"
 #include "slop_index.h"
 #include "slop_vocab.h"
+#include "slop_list.h"
 #include "slop_types.h"
 
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED

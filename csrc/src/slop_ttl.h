@@ -11,6 +11,7 @@
 
 typedef struct ttl_PrefixBinding ttl_PrefixBinding;
 typedef struct ttl_PrefixMap ttl_PrefixMap;
+typedef struct ttl_BlankLabelBinding ttl_BlankLabelBinding;
 typedef struct ttl_GenBlankResult ttl_GenBlankResult;
 typedef struct ttl_TermResult ttl_TermResult;
 typedef struct ttl_StringResult ttl_StringResult;
@@ -65,6 +66,22 @@ typedef struct ttl_PrefixMap ttl_PrefixMap;
 SLOP_OPTION_DEFINE(ttl_PrefixMap, slop_option_ttl_PrefixMap)
 #endif
 
+struct ttl_BlankLabelBinding {
+    slop_string label;
+    int64_t id;
+};
+typedef struct ttl_BlankLabelBinding ttl_BlankLabelBinding;
+
+#ifndef SLOP_OPTION_TTL_BLANKLABELBINDING_DEFINED
+#define SLOP_OPTION_TTL_BLANKLABELBINDING_DEFINED
+SLOP_OPTION_DEFINE(ttl_BlankLabelBinding, slop_option_ttl_BlankLabelBinding)
+#endif
+
+#ifndef SLOP_LIST_TTL_BLANKLABELBINDING_DEFINED
+#define SLOP_LIST_TTL_BLANKLABELBINDING_DEFINED
+SLOP_LIST_DEFINE(ttl_BlankLabelBinding, slop_list_ttl_BlankLabelBinding)
+#endif
+
 typedef enum {
     ttl_TtlFileError_parse_error,
     ttl_TtlFileError_file_error
@@ -87,6 +104,7 @@ SLOP_OPTION_DEFINE(ttl_TtlFileError, slop_option_ttl_TtlFileError)
 struct ttl_TtlParseContext {
     ttl_PrefixMap prefixes;
     slop_option_string base_iri;
+    slop_list_ttl_BlankLabelBinding blank_labels;
     ttl_BlankNodeCounter blank_counter;
     common_ParseState state;
 };
@@ -223,6 +241,7 @@ typedef struct { bool is_ok; union { rdf_Graph ok; ttl_TtlFileError err; } data;
 ttl_PrefixMap ttl_make_prefix_map(slop_arena* arena);
 ttl_PrefixMap ttl_prefix_map_add(slop_arena* arena, ttl_PrefixMap pm, slop_string prefix, slop_string iri);
 slop_option_string ttl_prefix_map_lookup(ttl_PrefixMap pm, slop_string prefix);
+slop_option_int ttl_blank_label_lookup(slop_list_ttl_BlankLabelBinding labels, slop_string label);
 ttl_TtlParseContext ttl_make_ttl_context(slop_arena* arena, slop_string input);
 ttl_GenBlankResult ttl_context_gen_blank_id(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_iri_ref(slop_arena* arena, ttl_TtlParseContext ctx);
@@ -256,6 +275,11 @@ SLOP_OPTION_DEFINE(ttl_PrefixBinding, slop_option_ttl_PrefixBinding)
 #ifndef SLOP_OPTION_TTL_PREFIXMAP_DEFINED
 #define SLOP_OPTION_TTL_PREFIXMAP_DEFINED
 SLOP_OPTION_DEFINE(ttl_PrefixMap, slop_option_ttl_PrefixMap)
+#endif
+
+#ifndef SLOP_OPTION_TTL_BLANKLABELBINDING_DEFINED
+#define SLOP_OPTION_TTL_BLANKLABELBINDING_DEFINED
+SLOP_OPTION_DEFINE(ttl_BlankLabelBinding, slop_option_ttl_BlankLabelBinding)
 #endif
 
 #ifndef SLOP_OPTION_TTL_GENBLANKRESULT_DEFINED

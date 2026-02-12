@@ -29,7 +29,7 @@ common_ParseState common_make_parse_state(slop_arena* arena, slop_string input) 
 uint8_t common_state_at_end(common_ParseState state) {
     uint8_t _retval;
     _retval = (state.offset >= string_len(state.input));
-    SLOP_POST(((_retval == state.offset(>=, string_len(state.input)))), "(== $result ((. state offset) >= (string-len (. state input))))");
+    SLOP_POST(((_retval == (state.offset >= string_len(state.input)))), "(== $result (>= (. state offset) (string-len (. state input))))");
     return _retval;
 }
 

@@ -27,20 +27,20 @@
     scm-cls
     scm-sco
     scm-eqc1
+    scm-eqc1b
     scm-eqc2
-    scm-eqc-mutual
     scm-int
     scm-uni
     scm-op
     scm-dp
     scm-spo
     scm-eqp1
+    scm-eqp1b
     scm-eqp2
-    scm-eqp-mutual
-    scm-dom1
     scm-dom2
-    scm-rng1
+    scm-dom1
     scm-rng2
+    scm-rng1
     scm-svf1
     scm-svf2
     scm-avf1
@@ -198,9 +198,9 @@
         (set! result (delta-add arena result t)))
       (for-each (t (scm-eqc1 arena g delta))
         (set! result (delta-add arena result t)))
-      (for-each (t (scm-eqc2 arena g delta))
+      (for-each (t (scm-eqc1b arena g delta))
         (set! result (delta-add arena result t)))
-      (for-each (t (scm-eqc-mutual arena g delta))
+      (for-each (t (scm-eqc2 arena g delta))
         (set! result (delta-add arena result t)))
       (for-each (t (scm-int arena g delta))
         (set! result (delta-add arena result t)))
@@ -216,19 +216,19 @@
         (set! result (delta-add arena result t)))
       (for-each (t (scm-eqp1 arena g delta))
         (set! result (delta-add arena result t)))
-      (for-each (t (scm-eqp2 arena g delta))
+      (for-each (t (scm-eqp1b arena g delta))
         (set! result (delta-add arena result t)))
-      (for-each (t (scm-eqp-mutual arena g delta))
+      (for-each (t (scm-eqp2 arena g delta))
         (set! result (delta-add arena result t)))
 
       ;; Domain/range rules
-      (for-each (t (scm-dom1 arena g delta))
-        (set! result (delta-add arena result t)))
       (for-each (t (scm-dom2 arena g delta))
         (set! result (delta-add arena result t)))
-      (for-each (t (scm-rng1 arena g delta))
+      (for-each (t (scm-dom1 arena g delta))
         (set! result (delta-add arena result t)))
       (for-each (t (scm-rng2 arena g delta))
+        (set! result (delta-add arena result t)))
+      (for-each (t (scm-rng1 arena g delta))
         (set! result (delta-add arena result t)))
 
       ;; Restriction schema rules
@@ -470,13 +470,13 @@
       result))
 
   ;; ============================================================
-  ;; scm-eqc2: Equivalent class implies mutual subclass (2)
+  ;; scm-eqc1b: Equivalent class implies mutual subclass (2)
   ;;
   ;; If (?c1 owl:equivalentClass ?c2)
   ;; then (?c2 rdfs:subClassOf ?c1)
   ;; ============================================================
 
-  (fn scm-eqc2 ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn scm-eqc1b ((arena Arena) (g IndexedGraph) (delta Delta))
     (@intent "Derive subClassOf from equivalentClass (c2 -> c1)")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
@@ -521,15 +521,15 @@
       result))
 
   ;; ============================================================
-  ;; scm-eqc-mutual: Mutual subClassOf implies equivalentClass
+  ;; scm-eqc2: Mutual subClassOf implies equivalentClass
   ;;
   ;; If (?c1 rdfs:subClassOf ?c2) and (?c2 rdfs:subClassOf ?c1)
   ;; then (?c1 owl:equivalentClass ?c2)
   ;;
-  ;; (W3C OWL 2 RL Table 9 "scm-eqc2")
+  ;; (W3C OWL 2 RL Table 9 "scm-eqc1b")
   ;; ============================================================
 
-  (fn scm-eqc-mutual ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn scm-eqc2 ((arena Arena) (g IndexedGraph) (delta Delta))
     (@intent "Derive equivalentClass from mutual subClassOf")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
@@ -821,13 +821,13 @@
       result))
 
   ;; ============================================================
-  ;; scm-eqp2: Equivalent property implies mutual subproperty (2)
+  ;; scm-eqp1b: Equivalent property implies mutual subproperty (2)
   ;;
   ;; If (?p1 owl:equivalentProperty ?p2)
   ;; then (?p2 rdfs:subPropertyOf ?p1)
   ;; ============================================================
 
-  (fn scm-eqp2 ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn scm-eqp1b ((arena Arena) (g IndexedGraph) (delta Delta))
     (@intent "Derive subPropertyOf from equivalentProperty (p2 -> p1)")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
@@ -867,15 +867,15 @@
       result))
 
   ;; ============================================================
-  ;; scm-eqp-mutual: Mutual subPropertyOf implies equivalentProperty
+  ;; scm-eqp2: Mutual subPropertyOf implies equivalentProperty
   ;;
   ;; If (?p1 rdfs:subPropertyOf ?p2) and (?p2 rdfs:subPropertyOf ?p1)
   ;; then (?p1 owl:equivalentProperty ?p2)
   ;;
-  ;; (W3C OWL 2 RL Table 9 "scm-eqp2")
+  ;; (W3C OWL 2 RL Table 9 "scm-eqp1b")
   ;; ============================================================
 
-  (fn scm-eqp-mutual ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn scm-eqp2 ((arena Arena) (g IndexedGraph) (delta Delta))
     (@intent "Derive equivalentProperty from mutual subPropertyOf")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
@@ -926,13 +926,13 @@
       result))
 
   ;; ============================================================
-  ;; scm-dom1: Domain inheritance via subproperty
+  ;; scm-dom2: Domain inheritance via subproperty
   ;;
   ;; If (?p2 rdfs:domain ?c) and (?p1 rdfs:subPropertyOf ?p2)
   ;; then (?p1 rdfs:domain ?c)
   ;; ============================================================
 
-  (fn scm-dom1 ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn scm-dom2 ((arena Arena) (g IndexedGraph) (delta Delta))
     (@intent "Inherit domain from superproperty")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
@@ -977,13 +977,13 @@
       result))
 
   ;; ============================================================
-  ;; scm-dom2: Domain constraint via subclass
+  ;; scm-dom1: Domain constraint via subclass
   ;;
   ;; If (?p rdfs:domain ?c1) and (?c1 rdfs:subClassOf ?c2)
   ;; then (?p rdfs:domain ?c2)
   ;; ============================================================
 
-  (fn scm-dom2 ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn scm-dom1 ((arena Arena) (g IndexedGraph) (delta Delta))
     (@intent "Propagate domain through subclass hierarchy")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
@@ -1023,13 +1023,13 @@
       result))
 
   ;; ============================================================
-  ;; scm-rng1: Range inheritance via subproperty
+  ;; scm-rng2: Range inheritance via subproperty
   ;;
   ;; If (?p2 rdfs:range ?c) and (?p1 rdfs:subPropertyOf ?p2)
   ;; then (?p1 rdfs:range ?c)
   ;; ============================================================
 
-  (fn scm-rng1 ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn scm-rng2 ((arena Arena) (g IndexedGraph) (delta Delta))
     (@intent "Inherit range from superproperty")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
@@ -1067,13 +1067,13 @@
       result))
 
   ;; ============================================================
-  ;; scm-rng2: Range constraint via subclass
+  ;; scm-rng1: Range constraint via subclass
   ;;
   ;; If (?p rdfs:range ?c1) and (?c1 rdfs:subClassOf ?c2)
   ;; then (?p rdfs:range ?c2)
   ;; ============================================================
 
-  (fn scm-rng2 ((arena Arena) (g IndexedGraph) (delta Delta))
+  (fn scm-rng1 ((arena Arena) (g IndexedGraph) (delta Delta))
     (@intent "Propagate range through subclass hierarchy")
     (@spec ((Arena IndexedGraph Delta) -> (List Triple)))
     (@alloc arena)
