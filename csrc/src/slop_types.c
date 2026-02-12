@@ -66,7 +66,7 @@ types_Delta types_delta_merge(slop_arena* arena, types_Delta d1, types_Delta d2)
 uint8_t types_delta_is_empty(types_Delta d) {
     uint8_t _retval;
     _retval = (((int64_t)((d.triples).len)) == 0);
-    SLOP_POST(((_retval == ((int64_t)((d.triples).len))(==, 0))), "(== $result ((list-len (. d triples)) == 0))");
+    SLOP_POST(((_retval == (((int64_t)((d.triples).len)) == 0))), "(== $result (== (list-len (. d triples)) 0))");
     return _retval;
 }
 

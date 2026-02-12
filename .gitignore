@@ -1,2 +1,3 @@
 build/
 .slop-test/
+__pycache__

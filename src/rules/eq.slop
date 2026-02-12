@@ -14,7 +14,9 @@
                triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-match indexed-graph-for-each indexed-graph-contains indexed-graph-size
                  indexed-graph-create indexed-graph-add))
-  (import vocab (OWL_SAME_AS OWL_DIFFERENT_FROM))
+  (import vocab (OWL_SAME_AS OWL_DIFFERENT_FROM RDF_TYPE
+                 OWL_ALL_DIFFERENT OWL_DISTINCT_MEMBERS OWL_MEMBERS))
+  (import list (rdf-list-elements-indexed))
   (import types (Delta InconsistencyReport make-delta delta-add all-triples-have-predicate))
 
   (export
@@ -639,14 +641,16 @@
       (none)))
 
   ;; ============================================================
-  ;; eq-diff2: sameAs + differentFrom Inconsistency (Symmetric 1)
+  ;; eq-diff2: AllDifferent + owl:members Inconsistency
   ;;
-  ;; If (?x owl:sameAs ?y) and (?y owl:differentFrom ?x)
+  ;; If (?x rdf:type owl:AllDifferent),
+  ;;    (?x owl:members ?list),
+  ;;    (?zi owl:sameAs ?zj) for some zi, zj in ?list where i != j,
   ;; then INCONSISTENT
   ;; ============================================================
 
   (fn eq-diff2 ((arena Arena) (g IndexedGraph) (delta Delta))
-    (@intent "Detect symmetric sameAs/differentFrom contradiction (variant 1)")
+    (@intent "Detect AllDifferent violation via owl:members: members declared sameAs")
     (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
     (@alloc arena)
     (@pure)
@@ -657,37 +661,42 @@
     (@post (match $result
              ((none) true)
              ((some r) (>= (list-len (. r witnesses)) 2))))
-    (@example
-      ;; Graph: (alice sameAs bob), (bob differentFrom alice)
-      ;; Result: inconsistency
-      (arena (fixture-g-sym-contradiction arena) (fixture-delta-contradiction arena))
-      -> (some (InconsistencyReport "eq-diff2: x sameAs y and y differentFrom x" _)))
     (let ((same-as (make-iri arena OWL_SAME_AS))
-          (different-from (make-iri arena OWL_DIFFERENT_FROM)))
+          (ad-class (make-iri arena OWL_ALL_DIFFERENT))
+          (type-pred (make-iri arena RDF_TYPE))
+          (members-pred (make-iri arena OWL_MEMBERS))
+          (no-term (Option Term) (none)))
 
-      (match (map-get (. delta by-predicate) same-as)
-        ((some pred-triples)
-          (for-each (dt pred-triples)
-            (let ((x (triple-subject dt))
-                  (y (triple-object dt))
-                  (diff-triple (make-triple arena y different-from x)))
-              (when (indexed-graph-contains g diff-triple)
-                (return (some (record-new InconsistencyReport
-                  (reason "eq-diff2: x sameAs y and y differentFrom x")
-                  (witnesses (list Triple dt diff-triple)))))))))
-        ((none) (do)))
+      ;; Find all AllDifferent declarations
+      (let ((ad-triples (indexed-graph-match arena g no-term (some type-pred) (some ad-class))))
+        (for-each (ad-triple ad-triples)
+          (let ((ad-node (triple-subject ad-triple)))
+            (let ((m-triples (indexed-graph-match arena g (some ad-node) (some members-pred) no-term)))
+              (for-each (m-triple m-triples)
+                (let ((list-head (triple-object m-triple))
+                      (members (rdf-list-elements-indexed arena g list-head)))
+                  (for-each (zi members)
+                    (for-each (zj members)
+                      (when (not (term-eq zi zj))
+                        (let ((same-triple (make-triple arena zi same-as zj)))
+                          (when (indexed-graph-contains g same-triple)
+                            (return (some (record-new InconsistencyReport
+                              (reason "eq-diff2: members of AllDifferent are sameAs")
+                              (witnesses (list Triple same-triple ad-triple))))))))))))))))
 
       (none)))
 
   ;; ============================================================
-  ;; eq-diff3: sameAs + differentFrom Inconsistency (Symmetric 2)
+  ;; eq-diff3: AllDifferent + owl:distinctMembers Inconsistency
   ;;
-  ;; If (?y owl:sameAs ?x) and (?x owl:differentFrom ?y)
+  ;; If (?x rdf:type owl:AllDifferent),
+  ;;    (?x owl:distinctMembers ?list),
+  ;;    (?zi owl:sameAs ?zj) for some zi, zj in ?list where i != j,
   ;; then INCONSISTENT
   ;; ============================================================
 
   (fn eq-diff3 ((arena Arena) (g IndexedGraph) (delta Delta))
-    (@intent "Detect symmetric sameAs/differentFrom contradiction (variant 2)")
+    (@intent "Detect AllDifferent violation via owl:distinctMembers: members declared sameAs")
     (@spec ((Arena IndexedGraph Delta) -> (Option InconsistencyReport)))
     (@alloc arena)
     (@pure)
@@ -699,20 +708,27 @@
              ((none) true)
              ((some r) (>= (list-len (. r witnesses)) 2))))
     (let ((same-as (make-iri arena OWL_SAME_AS))
-          (different-from (make-iri arena OWL_DIFFERENT_FROM)))
+          (ad-class (make-iri arena OWL_ALL_DIFFERENT))
+          (type-pred (make-iri arena RDF_TYPE))
+          (distinct-pred (make-iri arena OWL_DISTINCT_MEMBERS))
+          (no-term (Option Term) (none)))
 
-      (match (map-get (. delta by-predicate) different-from)
-        ((some pred-triples)
-          (for-each (dt pred-triples)
-            (let ((x (triple-subject dt))
-                  (y (triple-object dt))
-                  ;; Check y sameAs x
-                  (same-triple (make-triple arena y same-as x)))
-              (when (indexed-graph-contains g same-triple)
-                (return (some (record-new InconsistencyReport
-                  (reason "eq-diff3: y sameAs x and x differentFrom y")
-                  (witnesses (list Triple dt same-triple)))))))))
-        ((none) (do)))
+      ;; Find all AllDifferent declarations
+      (let ((ad-triples (indexed-graph-match arena g no-term (some type-pred) (some ad-class))))
+        (for-each (ad-triple ad-triples)
+          (let ((ad-node (triple-subject ad-triple)))
+            (let ((d-triples (indexed-graph-match arena g (some ad-node) (some distinct-pred) no-term)))
+              (for-each (d-triple d-triples)
+                (let ((list-head (triple-object d-triple))
+                      (members (rdf-list-elements-indexed arena g list-head)))
+                  (for-each (zi members)
+                    (for-each (zj members)
+                      (when (not (term-eq zi zj))
+                        (let ((same-triple (make-triple arena zi same-as zj)))
+                          (when (indexed-graph-contains g same-triple)
+                            (return (some (record-new InconsistencyReport
+                              (reason "eq-diff3: distinctMembers of AllDifferent are sameAs")
+                              (witnesses (list Triple same-triple ad-triple))))))))))))))))
 
       (none)))
 
