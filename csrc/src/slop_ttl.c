@@ -32,9 +32,9 @@ uint8_t ttl_is_pn_chars(uint8_t c);
 
 static uint8_t _wrap_ttl_is_pn_chars(void* _env, uint8_t _p0) { return ttl_is_pn_chars(_p0); }
 
-static uint8_t _wrap_ttl_is_pn_chars_base(void* _env, uint8_t _p0) { return ttl_is_pn_chars_base(_p0); }
-
 static uint8_t _wrap_strlib_is_digit(void* _env, strlib_AsciiChar _p0) { return strlib_is_digit(_p0); }
+
+static uint8_t _wrap_ttl_is_pn_chars_base(void* _env, uint8_t _p0) { return ttl_is_pn_chars_base(_p0); }
 
 ttl_PrefixMap ttl_make_prefix_map(slop_arena* arena) {
     ttl_PrefixMap _retval = {0};
@@ -455,7 +455,7 @@ slop_result_ttl_TermResult_common_ParseError ttl_parse_literal(slop_arena* arena
                     {
                         __auto_type s2 = common_state_advance(arena, s);
                         {
-                            __auto_type lang_result = common_parse_while(arena, s2, (slop_closure_t){(void*)_wrap_ttl_is_pn_chars_base, NULL});
+                            __auto_type lang_result = common_parse_while(arena, s2, (slop_closure_t){(void*)_wrap_ttl_is_pn_chars, NULL});
                             return ((slop_result_ttl_TermResult_common_ParseError){ .is_ok = true, .data.ok = ((ttl_TermResult){.term = rdf_make_literal(arena, val, ((slop_option_string){.has_value = false}), (slop_option_string){.has_value = 1, .value = lang_result.result}), .ctx = ((ttl_TtlParseContext){.prefixes = sr.ctx.prefixes, .base_iri = sr.ctx.base_iri, .blank_labels = sr.ctx.blank_labels, .blank_counter = sr.ctx.blank_counter, .state = lang_result.state})}) });
                         }
                     }

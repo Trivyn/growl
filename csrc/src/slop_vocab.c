@@ -392,6 +392,7 @@ const slop_string vocab_SHACL_PROPERTY = SLOP_STR("http://www.w3.org/ns/shacl#pr
 const slop_string vocab_SHACL_QUALIFIED_VALUE_SHAPE = SLOP_STR("http://www.w3.org/ns/shacl#qualifiedValueShape");
 const slop_string vocab_SHACL_QUALIFIED_MIN_COUNT = SLOP_STR("http://www.w3.org/ns/shacl#qualifiedMinCount");
 const slop_string vocab_SHACL_QUALIFIED_MAX_COUNT = SLOP_STR("http://www.w3.org/ns/shacl#qualifiedMaxCount");
+const slop_string vocab_SHACL_QUALIFIED_VALUE_SHAPES_DISJOINT = SLOP_STR("http://www.w3.org/ns/shacl#qualifiedValueShapesDisjoint");
 const slop_string vocab_SHACL_CLOSED = SLOP_STR("http://www.w3.org/ns/shacl#closed");
 const slop_string vocab_SHACL_IGNORED_PROPERTIES = SLOP_STR("http://www.w3.org/ns/shacl#ignoredProperties");
 const slop_string vocab_SHACL_HAS_VALUE = SLOP_STR("http://www.w3.org/ns/shacl#hasValue");

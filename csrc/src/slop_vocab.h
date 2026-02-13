@@ -396,6 +396,7 @@ extern const slop_string vocab_SHACL_PROPERTY;
 extern const slop_string vocab_SHACL_QUALIFIED_VALUE_SHAPE;
 extern const slop_string vocab_SHACL_QUALIFIED_MIN_COUNT;
 extern const slop_string vocab_SHACL_QUALIFIED_MAX_COUNT;
+extern const slop_string vocab_SHACL_QUALIFIED_VALUE_SHAPES_DISJOINT;
 extern const slop_string vocab_SHACL_CLOSED;
 extern const slop_string vocab_SHACL_IGNORED_PROPERTIES;
 extern const slop_string vocab_SHACL_HAS_VALUE;
