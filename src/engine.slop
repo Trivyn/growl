@@ -10,9 +10,10 @@
 (module engine
   (@doc "Parallel fixpoint rule engine with fork-join pattern")
 
-  (import rdf (Term Triple triple-eq make-iri make-triple make-blank triple-subject triple-predicate triple-object))
+  (import rdf (Term Triple triple-eq term-eq make-iri make-triple make-blank triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match indexed-graph-for-each))
-  (import vocab (RDF_TYPE RDF_PROPERTY RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF OWL_CLASS OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_SAME_AS
+  (import vocab (RDF_TYPE RDF_PROPERTY RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF RDFS_DOMAIN RDFS_RANGE
+                 OWL_CLASS OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_SAME_AS
                  OWL_DIFFERENT_FROM OWL_SYMMETRIC_PROPERTY
                  OWL_OBJECT_PROPERTY OWL_DATATYPE_PROPERTY OWL_FUNCTIONAL_PROPERTY
                  OWL_INVERSE_FUNCTIONAL_PROPERTY OWL_TRANSITIVE_PROPERTY
@@ -178,23 +179,62 @@
                         ((none) report)))
                     (if (and (>= blank-id 20000000) (< blank-id 40000000))
                       ;; Property range: blank_id in [20M, 40M) — subject or object blank
+                      ;; Check witness predicate: rdf:type means class-level rule (cax-dw),
+                      ;; anything else means property-level rule (prp-asyp etc.)
                       (let ((prop-index (if (< blank-id 30000000)
                                           (- blank-id 20000000)
                                           (- blank-id 30000000)))
-                            (props (collect-declared-properties arena pre-inject-graph)))
-                        (match (list-get props prop-index)
-                          ((some prop)
-                            (match prop
-                              ((term-iri iri)
-                                (let ((prop-name (. iri value))
-                                      (enriched (string-concat arena
-                                                  (string-concat arena "Unsatisfiable property usage: " prop-name)
-                                                  (string-concat arena " (" (string-concat arena original-reason ")")))))
-                                  (record-new InconsistencyReport
-                                    (reason enriched)
-                                    (witnesses witnesses))))
-                              (_ report)))
-                          ((none) report)))
+                            (props (collect-declared-properties arena pre-inject-graph))
+                            (witness-pred (triple-predicate first-witness))
+                            (type-pred (make-iri arena RDF_TYPE)))
+                        (if (term-eq witness-pred type-pred)
+                          ;; Class-level rule fired via domain/range — trace back to class
+                          (match (list-get props prop-index)
+                            ((some prop)
+                              (let ((domain-or-range-pred (make-iri arena (if (< blank-id 30000000) RDFS_DOMAIN RDFS_RANGE)))
+                                    (no-term (Option Term) (none))
+                                    (class-triples (indexed-graph-match arena pre-inject-graph
+                                                     (some prop) (some domain-or-range-pred) no-term)))
+                                (match (list-get class-triples 0)
+                                  ((some class-triple)
+                                    (let ((cls (triple-object class-triple)))
+                                      (match cls
+                                        ((term-iri iri)
+                                          (let ((class-name (. iri value))
+                                                (enriched (string-concat arena
+                                                            (string-concat arena "Unsatisfiable class: " class-name)
+                                                            (string-concat arena " (" (string-concat arena original-reason ")")))))
+                                            (record-new InconsistencyReport
+                                              (reason enriched)
+                                              (witnesses witnesses))))
+                                        (_ report))))
+                                  ;; No domain/range found — fall back to property report
+                                  ((none)
+                                    (match prop
+                                      ((term-iri iri)
+                                        (let ((prop-name (. iri value))
+                                              (enriched (string-concat arena
+                                                          (string-concat arena "Unsatisfiable property usage: " prop-name)
+                                                          (string-concat arena " (" (string-concat arena original-reason ")")))))
+                                          (record-new InconsistencyReport
+                                            (reason enriched)
+                                            (witnesses witnesses))))
+                                      (_ report))))))
+                            ((none) report))
+                          ;; Property-level rule fired — report property
+                          (match (list-get props prop-index)
+                            ((some prop)
+                              (match prop
+                                ((term-iri iri)
+                                  (let ((prop-name (. iri value))
+                                        (enriched (string-concat arena
+                                                    (string-concat arena "Unsatisfiable property usage: " prop-name)
+                                                    (string-concat arena " (" (string-concat arena original-reason ")")))))
+                                    (record-new InconsistencyReport
+                                      (reason enriched)
+                                      (witnesses witnesses))))
+                                (_ report)))
+                            ((none) report))))
                       ;; Unknown range
                       report))))
               (_ report))))

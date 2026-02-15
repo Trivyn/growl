@@ -8,13 +8,14 @@
 (module test
   (@doc "End-to-end tests for growl reasoner")
 
-  (import rdf (Term Triple make-iri make-triple term-eq))
+  (import rdf (Term Triple make-iri make-triple make-blank term-eq triple-subject triple-predicate))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-match indexed-graph-size))
-  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS OWL_DIFFERENT_FROM
-                 OWL_EQUIVALENT_CLASS OWL_DISJOINT_WITH))
-  (import growl (reason get-types get-same-as get-inferred-count
-                 ReasonerResult))
+  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF RDFS_DOMAIN OWL_SAME_AS OWL_DIFFERENT_FROM
+                 OWL_EQUIVALENT_CLASS OWL_DISJOINT_WITH OWL_CLASS
+                 OWL_OBJECT_PROPERTY OWL_SYMMETRIC_PROPERTY OWL_ASYMMETRIC_PROPERTY))
+  (import growl (reason reason-with-config get-types get-same-as get-inferred-count
+                 ReasonerResult ReasonerConfig))
 
   ;; ============================================================
   ;; Test Utilities
@@ -304,6 +305,179 @@
           false))))
 
   ;; ============================================================
+  ;; Validate Mode Helper
+  ;; ============================================================
+
+  (fn make-validate-config ()
+    (@intent "Create a config with validate=true, verbose=false")
+    (@spec (() -> ReasonerConfig))
+    (record-new ReasonerConfig
+      (worker-count 4)
+      (channel-buffer 256)
+      (max-iterations 1000)
+      (verbose false)
+      (fast false)
+      (complete false)
+      (validate true)))
+
+  ;; ============================================================
+  ;; Test 9: Validate Detects Unsatisfiable Class
+  ;;
+  ;; TBox: Animal disjointWith Plant, Triffid subClassOf both
+  ;; Expected: Inconsistency (Triffid is unsatisfiable)
+  ;; ============================================================
+
+  (fn test-validate-unsat-class ((arena Arena))
+    (@intent "Validate mode detects unsatisfiable class via synthetic injection")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (@example (arena) -> true)
+    (let ((mut g (indexed-graph-create arena))
+          (animal (make-iri arena "http://ex.org/Animal"))
+          (plant (make-iri arena "http://ex.org/Plant"))
+          (triffid (make-iri arena "http://ex.org/Triffid"))
+          (type-pred (make-iri arena RDF_TYPE))
+          (class-type (make-iri arena OWL_CLASS))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (disjoint-pred (make-iri arena OWL_DISJOINT_WITH)))
+
+      ;; Declare classes
+      (set! g (indexed-graph-add arena g (make-triple arena animal type-pred class-type)))
+      (set! g (indexed-graph-add arena g (make-triple arena plant type-pred class-type)))
+      (set! g (indexed-graph-add arena g (make-triple arena triffid type-pred class-type)))
+
+      ;; Animal disjointWith Plant
+      (set! g (indexed-graph-add arena g (make-triple arena animal disjoint-pred plant)))
+
+      ;; Triffid subClassOf Animal AND Plant → unsatisfiable
+      (set! g (indexed-graph-add arena g (make-triple arena triffid subclass-pred animal)))
+      (set! g (indexed-graph-add arena g (make-triple arena triffid subclass-pred plant)))
+
+      ;; Run with validate
+      (match (reason-with-config arena g (make-validate-config))
+        ((reason-inconsistent _) true)
+        ((reason-success _) false))))
+
+  ;; ============================================================
+  ;; Test 10: Validate Passes Clean TBox
+  ;;
+  ;; TBox: Dog subClassOf Animal, Animal disjointWith Plant
+  ;; Expected: Success (no contradictions)
+  ;; ============================================================
+
+  (fn test-validate-clean-tbox ((arena Arena))
+    (@intent "Validate mode passes a TBox with no unsatisfiable classes")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (@example (arena) -> true)
+    (let ((mut g (indexed-graph-create arena))
+          (animal (make-iri arena "http://ex.org/Animal"))
+          (dog (make-iri arena "http://ex.org/Dog"))
+          (plant (make-iri arena "http://ex.org/Plant"))
+          (type-pred (make-iri arena RDF_TYPE))
+          (class-type (make-iri arena OWL_CLASS))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (disjoint-pred (make-iri arena OWL_DISJOINT_WITH)))
+
+      ;; Declare classes
+      (set! g (indexed-graph-add arena g (make-triple arena animal type-pred class-type)))
+      (set! g (indexed-graph-add arena g (make-triple arena dog type-pred class-type)))
+      (set! g (indexed-graph-add arena g (make-triple arena plant type-pred class-type)))
+
+      ;; Dog subClassOf Animal (fine), Animal disjointWith Plant (fine)
+      (set! g (indexed-graph-add arena g (make-triple arena dog subclass-pred animal)))
+      (set! g (indexed-graph-add arena g (make-triple arena animal disjoint-pred plant)))
+
+      ;; Run with validate — should pass
+      (match (reason-with-config arena g (make-validate-config))
+        ((reason-success _) true)
+        ((reason-inconsistent _) false))))
+
+  ;; ============================================================
+  ;; Test 11: Validate Detects Unsatisfiable Property
+  ;;
+  ;; TBox: hasEnemy is both SymmetricProperty and AsymmetricProperty
+  ;; Expected: Inconsistency (contradictory property characteristics)
+  ;; ============================================================
+
+  (fn test-validate-unsat-property ((arena Arena))
+    (@intent "Validate mode detects property that is both symmetric and asymmetric")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (@example (arena) -> true)
+    (let ((mut g (indexed-graph-create arena))
+          (has-enemy (make-iri arena "http://ex.org/hasEnemy"))
+          (type-pred (make-iri arena RDF_TYPE))
+          (obj-prop (make-iri arena OWL_OBJECT_PROPERTY))
+          (sym-prop (make-iri arena OWL_SYMMETRIC_PROPERTY))
+          (asym-prop (make-iri arena OWL_ASYMMETRIC_PROPERTY)))
+
+      ;; Declare hasEnemy as ObjectProperty + Symmetric + Asymmetric → contradiction
+      (set! g (indexed-graph-add arena g (make-triple arena has-enemy type-pred obj-prop)))
+      (set! g (indexed-graph-add arena g (make-triple arena has-enemy type-pred sym-prop)))
+      (set! g (indexed-graph-add arena g (make-triple arena has-enemy type-pred asym-prop)))
+
+      ;; Run with validate — should detect inconsistency
+      (match (reason-with-config arena g (make-validate-config))
+        ((reason-inconsistent _) true)
+        ((reason-success _) false))))
+
+  ;; ============================================================
+  ;; Test 12: Domain-Mediated Class Detection
+  ;;
+  ;; TBox: Animal disjointWith Plant, MeteoriteLandings subClassOf both
+  ;;       hasScore domain MeteoriteLandings
+  ;; Expected: Inconsistency detected, enriched report says
+  ;;           "Unsatisfiable class:" not "Unsatisfiable property usage:"
+  ;; ============================================================
+
+  (fn test-validate-domain-reports-class ((arena Arena))
+    (@intent "Validate correctly attributes inconsistency to domain class, not property")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (@example (arena) -> true)
+    (let ((mut g (indexed-graph-create arena))
+          (animal (make-iri arena "http://ex.org/Animal"))
+          (plant (make-iri arena "http://ex.org/Plant"))
+          (meteorite (make-iri arena "http://ex.org/MeteoriteLandings"))
+          (has-score (make-iri arena "http://ex.org/hasScore"))
+          (type-pred (make-iri arena RDF_TYPE))
+          (class-type (make-iri arena OWL_CLASS))
+          (obj-prop (make-iri arena OWL_OBJECT_PROPERTY))
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF))
+          (disjoint-pred (make-iri arena OWL_DISJOINT_WITH))
+          (domain-pred (make-iri arena RDFS_DOMAIN)))
+
+      ;; Declare classes
+      (set! g (indexed-graph-add arena g (make-triple arena animal type-pred class-type)))
+      (set! g (indexed-graph-add arena g (make-triple arena plant type-pred class-type)))
+      (set! g (indexed-graph-add arena g (make-triple arena meteorite type-pred class-type)))
+
+      ;; Animal disjointWith Plant
+      (set! g (indexed-graph-add arena g (make-triple arena animal disjoint-pred plant)))
+
+      ;; MeteoriteLandings subClassOf both → unsatisfiable
+      (set! g (indexed-graph-add arena g (make-triple arena meteorite subclass-pred animal)))
+      (set! g (indexed-graph-add arena g (make-triple arena meteorite subclass-pred plant)))
+
+      ;; hasScore is a property with domain MeteoriteLandings
+      (set! g (indexed-graph-add arena g (make-triple arena has-score type-pred obj-prop)))
+      (set! g (indexed-graph-add arena g (make-triple arena has-score domain-pred meteorite)))
+
+      ;; Run with validate — should detect inconsistency
+      (match (reason-with-config arena g (make-validate-config))
+        ((reason-inconsistent report)
+          ;; The enriched reason should reference the CLASS, not the property.
+          ;; "Unsatisfiable class:" vs "Unsatisfiable property usage:"
+          ;; Byte at offset 14: 'c' (99) = class, 'p' (112) = property
+          (let ((reason (. report reason))
+                (len (string-len reason)))
+            (if (> len 20)
+              (== (cast Int (@ (. reason data) 14)) 99)
+              false)))
+        ((reason-success _) false))))
+
+  ;; ============================================================
   ;; Main Test Runner
   ;; ============================================================
 
@@ -311,7 +485,7 @@
     (@intent "Run all end-to-end tests")
     (@spec (() -> Int))
     :c-name "main"
-    (with-arena 131072
+    (with-arena 4194304
       (let ((mut passed 0)
             (mut failed 0))
 
@@ -372,6 +546,34 @@
         ;; Test 8: Empty graph
         (let ((result (test-empty-graph arena)))
           (print-test-result "edge case: empty graph" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 9: Validate detects unsatisfiable class
+        (let ((result (test-validate-unsat-class arena)))
+          (print-test-result "validate: unsatisfiable class" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 10: Validate passes clean TBox
+        (let ((result (test-validate-clean-tbox arena)))
+          (print-test-result "validate: clean TBox passes" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 11: Validate detects unsatisfiable property
+        (let ((result (test-validate-unsat-property arena)))
+          (print-test-result "validate: unsatisfiable property" result)
+          (if result
+            (set! passed (+ passed 1))
+            (set! failed (+ failed 1))))
+
+        ;; Test 12: Domain-mediated reports class, not property
+        (let ((result (test-validate-domain-reports-class arena)))
+          (print-test-result "validate: domain-mediated reports class" result)
           (if result
             (set! passed (+ passed 1))
             (set! failed (+ failed 1))))

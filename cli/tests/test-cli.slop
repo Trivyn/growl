@@ -460,6 +460,44 @@
               false))))))
 
   ;; ============================================================
+  ;; Test 16: --validate domain-mediated reports class, not property
+  ;; ============================================================
+
+  (fn test-validate-domain-reports-class ((arena Arena))
+    (@intent "Property with unsatisfiable domain class should report class, not property")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-domain-unsat.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-domain-unsat.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent report)
+              ;; Check that enriched reason says "Unsatisfiable class:" not "Unsatisfiable property usage:"
+              ;; Byte at offset 14: 'c' (99) = class, 'p' (112) = property
+              (let ((reason (. report reason))
+                    (len (string-len reason)))
+                (if (> len 20)
+                  (== (cast Int (@ (. reason data) 14)) 99)
+                  (do
+                    (print "  ERROR: reason too short: ")
+                    (println reason)
+                    false))))
+            ((reason-success _)
+              (println "  ERROR: should have detected inconsistency")
+              false))))))
+
+  ;; ============================================================
   ;; Main Test Runner
   ;; ============================================================
 
@@ -536,6 +574,10 @@
 
         (let ((r (test-validate-unsat-prop arena)))
           (print-result "validate: unsatisfiable property detected" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-validate-domain-reports-class arena)))
+          (print-result "validate: domain-mediated reports class" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Error handling

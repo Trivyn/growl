@@ -747,6 +747,116 @@ fn reasoner_validate_property() {
 }
 
 #[test]
+fn validate_property_domain_reports_class() {
+    // Property hasScore with domain MeteoriteLandings.
+    // MeteoriteLandings subClassOf Animal and Plant, which are disjoint.
+    // The domain class is unsatisfiable — validate should report the CLASS, not the property.
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let animal = arena.make_iri(&format!("{}Animal", EX));
+    let plant = arena.make_iri(&format!("{}Plant", EX));
+    let meteorite = arena.make_iri(&format!("{}MeteoriteLandings", EX));
+    let has_score = arena.make_iri(&format!("{}hasScore", EX));
+    let a = rdf_type(&arena);
+    let cls = owl_class(&arena);
+    let sub = rdfs_subclass(&arena);
+    let disjoint = arena.make_iri(&format!("{}disjointWith", OWL));
+    let obj_prop = arena.make_iri(&format!("{}ObjectProperty", OWL));
+    let rdfs_domain = arena.make_iri(&format!("{}domain", RDFS));
+
+    // Declare classes
+    graph.add_triple(arena.make_triple(animal, a, cls));
+    graph.add_triple(arena.make_triple(plant, a, cls));
+    graph.add_triple(arena.make_triple(meteorite, a, cls));
+
+    // Animal disjointWith Plant
+    graph.add_triple(arena.make_triple(animal, disjoint, plant));
+
+    // MeteoriteLandings subClassOf both → unsatisfiable
+    graph.add_triple(arena.make_triple(meteorite, sub, animal));
+    graph.add_triple(arena.make_triple(meteorite, sub, plant));
+
+    // hasScore is a property with domain MeteoriteLandings
+    graph.add_triple(arena.make_triple(has_score, a, obj_prop));
+    graph.add_triple(arena.make_triple(has_score, rdfs_domain, meteorite));
+
+    match validate(&arena, &graph) {
+        ValidateResult::Unsatisfiable {
+            entity,
+            reason,
+            ..
+        } => {
+            // Should report the CLASS, not the property
+            assert_eq!(
+                entity,
+                Term::Iri(&format!("{}MeteoriteLandings", EX)),
+                "should identify MeteoriteLandings as unsatisfiable, not hasScore. reason: {}",
+                reason
+            );
+            assert!(
+                reason.contains("Unsatisfiable class"),
+                "reason should contain 'Unsatisfiable class', got: {}",
+                reason
+            );
+        }
+        ValidateResult::Satisfiable => {
+            panic!("validate should detect unsatisfiable MeteoriteLandings via property domain");
+        }
+    }
+}
+
+#[test]
+fn reasoner_validate_property_domain_reports_class() {
+    // Same scenario as above but via Reasoner high-level API
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+
+    let rdf_type_iri = format!("{}type", RDF);
+    let rdfs_sub_iri = format!("{}subClassOf", RDFS);
+    let owl_class_iri = format!("{}Class", OWL);
+    let disjoint_iri = format!("{}disjointWith", OWL);
+    let obj_prop_iri = format!("{}ObjectProperty", OWL);
+    let rdfs_domain_iri = format!("{}domain", RDFS);
+
+    let animal_iri = format!("{}Animal", EX);
+    let plant_iri = format!("{}Plant", EX);
+    let meteorite_iri = format!("{}MeteoriteLandings", EX);
+    let has_score_iri = format!("{}hasScore", EX);
+
+    reasoner.add_iri_triple(&animal_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&plant_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&meteorite_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&animal_iri, &disjoint_iri, &plant_iri);
+    reasoner.add_iri_triple(&meteorite_iri, &rdfs_sub_iri, &animal_iri);
+    reasoner.add_iri_triple(&meteorite_iri, &rdfs_sub_iri, &plant_iri);
+    reasoner.add_iri_triple(&has_score_iri, &rdf_type_iri, &obj_prop_iri);
+    reasoner.add_iri_triple(&has_score_iri, &rdfs_domain_iri, &meteorite_iri);
+
+    match reasoner.validate() {
+        OwnedValidateResult::Unsatisfiable {
+            entity,
+            reason,
+            ..
+        } => {
+            assert_eq!(
+                entity,
+                OwnedTerm::Iri(meteorite_iri),
+                "should identify MeteoriteLandings as unsatisfiable, not hasScore. reason: {}",
+                reason
+            );
+            assert!(
+                reason.contains("Unsatisfiable class"),
+                "reason should contain 'Unsatisfiable class', got: {}",
+                reason
+            );
+        }
+        OwnedValidateResult::Satisfiable => {
+            panic!("Reasoner.validate() should detect unsatisfiable MeteoriteLandings via property domain");
+        }
+    }
+}
+
+#[test]
 fn validate_clean_properties_pass() {
     let arena = Arena::new(4 * 1024 * 1024);
     let mut graph = IndexedGraph::new(&arena);

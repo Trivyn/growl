@@ -593,6 +593,39 @@ fn resolve_unsatisfiable_property<'a>(
     props.into_iter().nth(prop_index)
 }
 
+const RDF_TYPE_IRI: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
+const RDFS_DOMAIN_IRI: &str = "http://www.w3.org/2000/01/rdf-schema#domain";
+const RDFS_RANGE_IRI: &str = "http://www.w3.org/2000/01/rdf-schema#range";
+
+/// Check if a witness predicate is rdf:type (class-level rule like cax-dw).
+fn witness_is_rdf_type(witness: &Triple<'_>) -> bool {
+    matches!(&witness.predicate, Term::Iri(v) if *v == RDF_TYPE_IRI)
+}
+
+/// Check if a witness predicate is rdf:type (class-level rule) for owned triples.
+fn owned_witness_is_rdf_type(witness: &OwnedTriple) -> bool {
+    matches!(&witness.predicate, OwnedTerm::Iri(v) if v == RDF_TYPE_IRI)
+}
+
+/// Trace back from a property blank to the domain/range class.
+/// If blank_id < 30M → domain, else → range.
+fn resolve_domain_range_class<'a>(
+    arena: &'a Arena,
+    graph: &IndexedGraph<'a>,
+    blank_id: i64,
+) -> Option<Term<'a>> {
+    let prop = resolve_unsatisfiable_property(arena, graph, blank_id)?;
+    let prop_ffi = term_to_ffi(arena, &prop);
+    let dr_iri = if blank_id < 30_000_000 {
+        RDFS_DOMAIN_IRI
+    } else {
+        RDFS_RANGE_IRI
+    };
+    let dr_pred = arena.make_iri(dr_iri);
+    let classes = graph.objects(prop_ffi, dr_pred);
+    classes.into_iter().next()
+}
+
 // ---------------------------------------------------------------------------
 // Free functions
 // ---------------------------------------------------------------------------
@@ -635,7 +668,15 @@ pub fn validate<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>) -> ValidateResul
                         resolve_unsatisfiable_class(arena, graph, *id)
                     }
                     Term::Blank(id) if *id >= 20_000_000 && *id < 40_000_000 => {
-                        resolve_unsatisfiable_property(arena, graph, *id)
+                        if witness_is_rdf_type(w) {
+                            // Class-level rule (cax-dw) fired via domain/range inference.
+                            // Trace back to the domain/range class.
+                            resolve_domain_range_class(arena, graph, *id)
+                                .or_else(|| resolve_unsatisfiable_property(arena, graph, *id))
+                        } else {
+                            // Property-level rule (prp-asyp etc.) fired directly.
+                            resolve_unsatisfiable_property(arena, graph, *id)
+                        }
                     }
                     _ => None,
                 })
@@ -906,6 +947,20 @@ impl Reasoner {
         self.triple_count += 1;
     }
 
+    /// Add a triple from borrowed terms (zero heap allocations).
+    ///
+    /// This is the preferred method when converting from external RDF stores
+    /// where string data can be borrowed directly as `&str`.
+    pub fn add_triple_ref(&mut self, s: &Term, p: &Term, o: &Term) {
+        let sf = term_to_ffi(&self.arena, s);
+        let pf = term_to_ffi(&self.arena, p);
+        let of = term_to_ffi(&self.arena, o);
+        let triple = self.arena.make_triple(sf, pf, of);
+        self.graph_raw =
+            unsafe { ffi::rdf_indexed_graph_add(self.arena.as_ptr(), self.graph_raw, triple) };
+        self.triple_count += 1;
+    }
+
     /// Convenience: add a triple where all three terms are IRIs.
     pub fn add_iri_triple(&mut self, s: &str, p: &str, o: &str) {
         let sf = self.arena.make_iri(s);
@@ -998,9 +1053,7 @@ impl Reasoner {
                     .first()
                     .and_then(|w| match &w.subject {
                         OwnedTerm::Blank(id) if *id >= 10_000_000 && *id < 20_000_000 => {
-                            let rdf_type = self.arena.make_iri(
-                                "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
-                            );
+                            let rdf_type = self.arena.make_iri(RDF_TYPE_IRI);
                             let owl_class =
                                 self.arena.make_iri("http://www.w3.org/2002/07/owl#Class");
                             let classes =
@@ -1009,13 +1062,19 @@ impl Reasoner {
                             classes.get(idx).map(|t| OwnedTerm::from(t.subject.clone()))
                         }
                         OwnedTerm::Blank(id) if *id >= 20_000_000 && *id < 40_000_000 => {
-                            let props = collect_declared_properties(&self.arena, &ig);
-                            let prop_index = if *id < 30_000_000 {
-                                (*id - 20_000_000) as usize
+                            if owned_witness_is_rdf_type(w) {
+                                // Class-level rule fired via domain/range — trace back to class
+                                resolve_domain_range_class(&self.arena, &ig, *id)
+                                    .map(OwnedTerm::from)
+                                    .or_else(|| {
+                                        resolve_unsatisfiable_property(&self.arena, &ig, *id)
+                                            .map(OwnedTerm::from)
+                                    })
                             } else {
-                                (*id - 30_000_000) as usize
-                            };
-                            props.into_iter().nth(prop_index).map(|t| OwnedTerm::from(t))
+                                // Property-level rule fired directly
+                                resolve_unsatisfiable_property(&self.arena, &ig, *id)
+                                    .map(OwnedTerm::from)
+                            }
                         }
                         _ => None,
                     })
