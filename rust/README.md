@@ -8,11 +8,9 @@ A C compiler is required. The `cc` crate handles compilation automatically — n
 
 ## Installation
 
-The crate is not yet published on crates.io. Add it as a path dependency:
-
 ```toml
 [dependencies]
-growl = { path = "rust" }
+growl = "0.1"
 ```
 
 ## Quick Start
@@ -298,4 +296,4 @@ The build script (`build.rs`) compiles all C sources automatically via the `cc` 
 
 ## License
 
-Apache License 2.0 — see [LICENSE](../LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE).

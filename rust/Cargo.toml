@@ -3,6 +3,21 @@ name = "growl"
 version = "0.1.0"
 edition = "2021"
 description = "Rust bindings for the Growl OWL 2 RL reasoner"
+license = "Apache-2.0"
+repository = "https://github.com/Trivyn/growl"
+keywords = ["owl", "rdf", "reasoner", "ontology", "semantic-web"]
+categories = ["science", "algorithms"]
+readme = "README.md"
+include = [
+    "src/**/*",
+    "tests/**/*",
+    "csrc/**/*",
+    "csrc_shim.c",
+    "build.rs",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE",
+]
 
 [build-dependencies]
 cc = "1"
