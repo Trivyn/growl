@@ -492,6 +492,108 @@ impl<'a> ReasonerResult<'a> {
 }
 
 // ---------------------------------------------------------------------------
+// ValidateResult
+// ---------------------------------------------------------------------------
+
+/// Result of TBox validation — ergonomic wrapper for validate mode.
+#[derive(Debug)]
+pub enum ValidateResult<'a> {
+    /// All classes and properties are satisfiable.
+    Satisfiable,
+    /// An unsatisfiable class or property was detected.
+    Unsatisfiable {
+        /// The unsatisfiable entity (class or property, resolved from synthetic blank).
+        entity: Term<'a>,
+        /// Enriched reason string from the engine.
+        reason: String,
+        /// Witness triples from the inconsistency check.
+        witnesses: Vec<Triple<'a>>,
+    },
+}
+
+/// Owned validation result — no lifetime dependency.
+#[derive(Debug)]
+pub enum OwnedValidateResult {
+    /// All classes and properties are satisfiable.
+    Satisfiable,
+    /// An unsatisfiable class or property was detected.
+    Unsatisfiable {
+        /// The unsatisfiable entity (class or property, resolved from synthetic blank).
+        entity: OwnedTerm,
+        /// Enriched reason string from the engine.
+        reason: String,
+        /// Witness triples from the inconsistency check.
+        witnesses: Vec<OwnedTriple>,
+    },
+}
+
+/// Resolve synthetic blank node ID to the original owl:Class.
+/// blank_id = 10_000_000 + index into owl:Class declarations.
+fn resolve_unsatisfiable_class<'a>(
+    arena: &'a Arena,
+    graph: &IndexedGraph<'a>,
+    blank_id: i64,
+) -> Option<Term<'a>> {
+    let rdf_type = arena.make_iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+    let owl_class = arena.make_iri("http://www.w3.org/2002/07/owl#Class");
+    let classes = graph.match_pattern(None, Some(rdf_type), Some(owl_class));
+    let idx = (blank_id - 10_000_000) as usize;
+    classes.get(idx).map(|t| t.subject.clone())
+}
+
+/// The 10 property metaclasses used for synthetic property injection.
+const PROPERTY_METACLASSES: [&str; 10] = [
+    "http://www.w3.org/2002/07/owl#ObjectProperty",
+    "http://www.w3.org/2002/07/owl#DatatypeProperty",
+    "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property",
+    "http://www.w3.org/2002/07/owl#FunctionalProperty",
+    "http://www.w3.org/2002/07/owl#InverseFunctionalProperty",
+    "http://www.w3.org/2002/07/owl#TransitiveProperty",
+    "http://www.w3.org/2002/07/owl#SymmetricProperty",
+    "http://www.w3.org/2002/07/owl#AsymmetricProperty",
+    "http://www.w3.org/2002/07/owl#ReflexiveProperty",
+    "http://www.w3.org/2002/07/owl#IrreflexiveProperty",
+];
+
+/// Collect all unique declared properties across 10 property metaclasses.
+/// Mirrors the SLOP `collect-declared-properties` logic.
+fn collect_declared_properties<'a>(
+    arena: &'a Arena,
+    graph: &IndexedGraph<'a>,
+) -> Vec<Term<'a>> {
+    let rdf_type = arena.make_iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+    let mut seen = std::collections::HashSet::new();
+    let mut result = Vec::new();
+    for mc in &PROPERTY_METACLASSES {
+        let mc_term = arena.make_iri(mc);
+        let matches = graph.match_pattern(None, Some(rdf_type), Some(mc_term));
+        for t in matches {
+            let key = format!("{}", t.subject);
+            if seen.insert(key) {
+                result.push(t.subject);
+            }
+        }
+    }
+    result
+}
+
+/// Resolve synthetic blank node ID to the original property.
+/// blank_id in [20M, 30M) or [30M, 40M) → prop_index into declared properties.
+fn resolve_unsatisfiable_property<'a>(
+    arena: &'a Arena,
+    graph: &IndexedGraph<'a>,
+    blank_id: i64,
+) -> Option<Term<'a>> {
+    let prop_index = if blank_id < 30_000_000 {
+        (blank_id - 20_000_000) as usize
+    } else {
+        (blank_id - 30_000_000) as usize
+    };
+    let props = collect_declared_properties(arena, graph);
+    props.into_iter().nth(prop_index)
+}
+
+// ---------------------------------------------------------------------------
 // Free functions
 // ---------------------------------------------------------------------------
 
@@ -517,12 +619,34 @@ pub fn reason_with_config<'a>(
 
 /// Check TBox satisfiability via synthetic instance injection.
 ///
-/// Injects a synthetic blank node instance for each declared `owl:Class`,
-/// then runs normal OWL-RL reasoning. Returns `Inconsistent` if any class
-/// is unsatisfiable.
-pub fn validate<'a>(arena: &'a Arena, graph: &IndexedGraph) -> ReasonerResult<'a> {
+/// Injects a synthetic blank node instance for each declared `owl:Class`
+/// and a synthetic property usage for each declared property, then runs
+/// normal OWL-RL reasoning. Returns `Unsatisfiable` if any class or property
+/// is unsatisfiable, with the offending entity resolved from the synthetic blank.
+pub fn validate<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>) -> ValidateResult<'a> {
     let config = ReasonerConfig::new().verbose(false).validate(true);
-    reason_with_config(arena, graph, &config)
+    match reason_with_config(arena, graph, &config) {
+        ReasonerResult::Success { .. } => ValidateResult::Satisfiable,
+        ReasonerResult::Inconsistent { reason, witnesses } => {
+            let entity = witnesses
+                .first()
+                .and_then(|w| match &w.subject {
+                    Term::Blank(id) if *id >= 10_000_000 && *id < 20_000_000 => {
+                        resolve_unsatisfiable_class(arena, graph, *id)
+                    }
+                    Term::Blank(id) if *id >= 20_000_000 && *id < 40_000_000 => {
+                        resolve_unsatisfiable_property(arena, graph, *id)
+                    }
+                    _ => None,
+                })
+                .unwrap_or(Term::Blank(-1));
+            ValidateResult::Unsatisfiable {
+                entity,
+                reason,
+                witnesses,
+            }
+        }
+    }
 }
 
 /// Check whether the graph is consistent under OWL 2 RL rules.
@@ -856,13 +980,53 @@ impl Reasoner {
     /// Check TBox satisfiability via synthetic instance injection.
     ///
     /// For each declared `owl:Class`, injects a synthetic blank node instance,
-    /// then runs normal OWL-RL reasoning. Returns `Inconsistent` if any class
-    /// is unsatisfiable (e.g. subClassOf two disjoint classes).
+    /// and for each declared property, injects a synthetic usage triple.
+    /// Returns `Unsatisfiable` with the offending entity if any class or
+    /// property is unsatisfiable.
     ///
     /// Note: `--validate` overrides `--fast` since schema materialization is required.
-    pub fn validate(&self) -> OwnedReasonerResult {
+    pub fn validate(&self) -> OwnedValidateResult {
         let config = ReasonerConfig::new().verbose(false).validate(true);
-        self.reason_with_config(&config)
+        match self.reason_with_config(&config) {
+            OwnedReasonerResult::Success { .. } => OwnedValidateResult::Satisfiable,
+            OwnedReasonerResult::Inconsistent { reason, witnesses } => {
+                let ig = IndexedGraph {
+                    raw: self.graph_raw,
+                    arena: &self.arena,
+                };
+                let entity = witnesses
+                    .first()
+                    .and_then(|w| match &w.subject {
+                        OwnedTerm::Blank(id) if *id >= 10_000_000 && *id < 20_000_000 => {
+                            let rdf_type = self.arena.make_iri(
+                                "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+                            );
+                            let owl_class =
+                                self.arena.make_iri("http://www.w3.org/2002/07/owl#Class");
+                            let classes =
+                                ig.match_pattern(None, Some(rdf_type), Some(owl_class));
+                            let idx = (*id - 10_000_000) as usize;
+                            classes.get(idx).map(|t| OwnedTerm::from(t.subject.clone()))
+                        }
+                        OwnedTerm::Blank(id) if *id >= 20_000_000 && *id < 40_000_000 => {
+                            let props = collect_declared_properties(&self.arena, &ig);
+                            let prop_index = if *id < 30_000_000 {
+                                (*id - 20_000_000) as usize
+                            } else {
+                                (*id - 30_000_000) as usize
+                            };
+                            props.into_iter().nth(prop_index).map(|t| OwnedTerm::from(t))
+                        }
+                        _ => None,
+                    })
+                    .unwrap_or(OwnedTerm::Blank(-1));
+                OwnedValidateResult::Unsatisfiable {
+                    entity,
+                    reason,
+                    witnesses,
+                }
+            }
+        }
     }
 
     /// Quick consistency check (no inferred triples returned).

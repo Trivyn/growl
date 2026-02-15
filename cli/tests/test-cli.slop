@@ -432,6 +432,34 @@
             false)))))
 
   ;; ============================================================
+  ;; Test 15: --validate detects unsatisfiable property usage
+  ;; ============================================================
+
+  (fn test-validate-unsat-prop ((arena Arena))
+    (@intent "Parse property with both Symmetric and Asymmetric, verify --validate catches it")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-unsat-prop.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-unsat-prop.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent _) true)
+            ((reason-success _)
+              (println "  ERROR: should have detected unsatisfiable property")
+              false))))))
+
+  ;; ============================================================
   ;; Main Test Runner
   ;; ============================================================
 
@@ -504,6 +532,10 @@
 
         (let ((r (test-no-validate-unsat-passes arena)))
           (print-result "validate: unsat TBox passes without --validate" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-validate-unsat-prop arena)))
+          (print-result "validate: unsatisfiable property detected" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Error handling

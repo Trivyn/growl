@@ -64,9 +64,19 @@ static void* slop_thread_int_entry(void* arg) {
 }
 #endif
 
+#ifndef SLOP_LIST_RDF_TERM_DEFINED
+#define SLOP_LIST_RDF_TERM_DEFINED
+SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
+#endif
+
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
 #define SLOP_LIST_RDF_TRIPLE_DEFINED
 SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
+#endif
+
+#ifndef SLOP_OPTION_RDF_TERM_DEFINED
+#define SLOP_OPTION_RDF_TERM_DEFINED
+SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
@@ -177,7 +187,6 @@ static inline bool slop_eq_rdf_Term(const void* a, const void* b) {
     }
     return false;
 }
-SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
 #endif
 
 #ifndef SLOP_RESULT_TYPES_ENGINESTATE_TYPES_INCONSISTENCYREPORT_DEFINED
@@ -273,7 +282,9 @@ static slop_result_engine_WorkerMessage_thread_ChanError thread_recv_slop_chan_e
 }
 
 void engine_print_ms(slop_arena* arena, int64_t ms);
+slop_list_rdf_Term engine_collect_declared_properties(slop_arena* arena, index_IndexedGraph g);
 index_IndexedGraph engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose);
+types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types_InconsistencyReport report, index_IndexedGraph pre_inject_graph);
 types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial);
 types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g);
 slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred);
@@ -289,6 +300,11 @@ slop_result_types_Delta_types_InconsistencyReport engine_collect_worker_results(
 #ifndef SLOP_OPTION_ENGINE_WORKERMESSAGE_DEFINED
 #define SLOP_OPTION_ENGINE_WORKERMESSAGE_DEFINED
 SLOP_OPTION_DEFINE(engine_WorkerMessage, slop_option_engine_WorkerMessage)
+#endif
+
+#ifndef SLOP_OPTION_RDF_TERM_DEFINED
+#define SLOP_OPTION_RDF_TERM_DEFINED
+SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED

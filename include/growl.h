@@ -109,6 +109,7 @@ struct types_ReasonerConfig {
     uint8_t verbose;
     uint8_t fast;
     uint8_t complete;
+    uint8_t validate;
 };
 typedef struct types_ReasonerConfig types_ReasonerConfig;
 

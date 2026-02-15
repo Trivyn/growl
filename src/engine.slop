@@ -12,8 +12,11 @@
 
   (import rdf (Term Triple triple-eq make-iri make-triple make-blank triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match indexed-graph-for-each))
-  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF OWL_CLASS OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_SAME_AS
-                 OWL_DIFFERENT_FROM OWL_SYMMETRIC_PROPERTY))
+  (import vocab (RDF_TYPE RDF_PROPERTY RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF OWL_CLASS OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_SAME_AS
+                 OWL_DIFFERENT_FROM OWL_SYMMETRIC_PROPERTY
+                 OWL_OBJECT_PROPERTY OWL_DATATYPE_PROPERTY OWL_FUNCTIONAL_PROPERTY
+                 OWL_INVERSE_FUNCTIONAL_PROPERTY OWL_TRANSITIVE_PROPERTY
+                 OWL_ASYMMETRIC_PROPERTY OWL_REFLEXIVE_PROPERTY OWL_IRREFLEXIVE_PROPERTY))
   (import thread (chan-buffered send recv spawn join))
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
@@ -65,8 +68,38 @@
   ;; Synthetic Instance Injection (--validate mode)
   ;; ============================================================
 
+  (fn collect-declared-properties ((arena Arena) (g IndexedGraph))
+    (@intent "Collect all unique declared properties across 10 property metaclasses")
+    (@spec ((Arena IndexedGraph) -> (List Term)))
+    (@alloc arena)
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (no-term (Option Term) (none))
+          (mut seen (set-new arena Term))
+          (mut result (list-new arena Term))
+          ;; 10 property metaclasses (excluding AnnotationProperty)
+          (mut meta-types (list-new arena Term)))
+      (list-push meta-types (make-iri arena OWL_OBJECT_PROPERTY))
+      (list-push meta-types (make-iri arena OWL_DATATYPE_PROPERTY))
+      (list-push meta-types (make-iri arena RDF_PROPERTY))
+      (list-push meta-types (make-iri arena OWL_FUNCTIONAL_PROPERTY))
+      (list-push meta-types (make-iri arena OWL_INVERSE_FUNCTIONAL_PROPERTY))
+      (list-push meta-types (make-iri arena OWL_TRANSITIVE_PROPERTY))
+      (list-push meta-types (make-iri arena OWL_SYMMETRIC_PROPERTY))
+      (list-push meta-types (make-iri arena OWL_ASYMMETRIC_PROPERTY))
+      (list-push meta-types (make-iri arena OWL_REFLEXIVE_PROPERTY))
+      (list-push meta-types (make-iri arena OWL_IRREFLEXIVE_PROPERTY))
+      (for-each (mt meta-types)
+        (let ((matches (indexed-graph-match arena g no-term (some type-pred) (some mt))))
+          (for-each (t matches)
+            (let ((prop (triple-subject t)))
+              (when (not (set-has seen prop))
+                (do
+                  (set-put seen prop)
+                  (list-push result prop)))))))
+      result))
+
   (fn inject-validate-instances ((arena Arena) (g IndexedGraph) (verbose Bool))
-    (@intent "Inject synthetic blank node instances for each declared owl:Class")
+    (@intent "Inject synthetic blank node instances for each declared owl:Class and property usage")
     (@spec ((Arena IndexedGraph Bool) -> IndexedGraph))
     (@alloc arena)
     (let ((type-pred (make-iri arena RDF_TYPE))
@@ -76,6 +109,7 @@
           (class-triples (indexed-graph-match arena g no-term (some type-pred) (some class-type)))
           (mut result g)
           (mut count 0))
+      ;; Phase 1: Inject synthetic class instances (_:10M+N rdf:type C)
       (for-each (t class-triples)
         (let ((cls (triple-subject t))
               ;; Use high blank node IDs to avoid collision with parser-generated bnodes
@@ -87,8 +121,84 @@
         (do
           (print "[validate] injected ")
           (print (int-to-string arena count))
-          (println " synthetic instances")))
+          (println " synthetic class instances")))
+      ;; Phase 2: Inject synthetic property usages (_:20M+N P _:30M+N)
+      (let ((props (collect-declared-properties arena g))
+            (mut prop-count 0))
+        (for-each (p props)
+          (let ((subj-blank (make-blank arena (+ 20000000 prop-count)))
+                (obj-blank (make-blank arena (+ 30000000 prop-count)))
+                (prop-triple (make-triple arena subj-blank p obj-blank)))
+            (set! result (indexed-graph-add arena result prop-triple))
+            (set! prop-count (+ prop-count 1))))
+        (when verbose
+          (do
+            (print "[validate] injected ")
+            (print (int-to-string arena prop-count))
+            (println " synthetic property usages"))))
       result))
+
+  ;; ============================================================
+  ;; Validate Report Enrichment
+  ;; ============================================================
+
+  (fn enrich-validate-report ((arena Arena) (report InconsistencyReport) (pre-inject-graph IndexedGraph))
+    (@intent "Enrich validate inconsistency report with unsatisfiable class or property IRI")
+    (@spec ((Arena InconsistencyReport IndexedGraph) -> InconsistencyReport))
+    (@alloc arena)
+    (let ((witnesses (. report witnesses))
+          (original-reason (. report reason)))
+      (match (list-get witnesses 0)
+        ((some first-witness)
+          (let ((subj (triple-subject first-witness)))
+            (match subj
+              ((term-blank bnode)
+                (let ((blank-id (. bnode id)))
+                  (if (and (>= blank-id 10000000) (< blank-id 20000000))
+                    ;; Class range: blank_id in [10M, 20M)
+                    (let ((class-index (- blank-id 10000000))
+                          (type-pred (make-iri arena RDF_TYPE))
+                          (class-type (make-iri arena OWL_CLASS))
+                          (no-term (Option Term) (none))
+                          (class-triples (indexed-graph-match arena pre-inject-graph
+                                           no-term (some type-pred) (some class-type))))
+                      (match (list-get class-triples class-index)
+                        ((some class-triple)
+                          (let ((cls (triple-subject class-triple)))
+                            (match cls
+                              ((term-iri iri)
+                                (let ((class-name (. iri value))
+                                      (enriched (string-concat arena
+                                                  (string-concat arena "Unsatisfiable class: " class-name)
+                                                  (string-concat arena " (" (string-concat arena original-reason ")")))))
+                                  (record-new InconsistencyReport
+                                    (reason enriched)
+                                    (witnesses witnesses))))
+                              (_ report))))
+                        ((none) report)))
+                    (if (and (>= blank-id 20000000) (< blank-id 40000000))
+                      ;; Property range: blank_id in [20M, 40M) — subject or object blank
+                      (let ((prop-index (if (< blank-id 30000000)
+                                          (- blank-id 20000000)
+                                          (- blank-id 30000000)))
+                            (props (collect-declared-properties arena pre-inject-graph)))
+                        (match (list-get props prop-index)
+                          ((some prop)
+                            (match prop
+                              ((term-iri iri)
+                                (let ((prop-name (. iri value))
+                                      (enriched (string-concat arena
+                                                  (string-concat arena "Unsatisfiable property usage: " prop-name)
+                                                  (string-concat arena " (" (string-concat arena original-reason ")")))))
+                                  (record-new InconsistencyReport
+                                    (reason enriched)
+                                    (witnesses witnesses))))
+                              (_ report)))
+                          ((none) report)))
+                      ;; Unknown range
+                      report))))
+              (_ report))))
+        ((none) report))))
 
   ;; ============================================================
   ;; Main Engine Loop
@@ -212,7 +322,12 @@
 
       ;; Return result
       (match inconsistency
-        ((some report) (union-new ReasonerResult reason-inconsistent report))
+        ((some report)
+          (let ((final-report
+                  (if (. config validate)
+                    (enrich-validate-report arena report complete-graph)
+                    report)))
+            (union-new ReasonerResult reason-inconsistent final-report)))
         ((none)
           ;; In complete mode, do one final eq-ref pass on full graph
           ;; to cover schema-materialized resources

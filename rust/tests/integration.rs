@@ -1,6 +1,7 @@
 use growl::{Arena, IndexedGraph, ReasonerConfig, ReasonerResult, Term, Triple};
 use growl::{get_types, is_consistent, reason, reason_with_config, validate, filter_annotations};
 use growl::{OwnedReasonerResult, OwnedTerm, Reasoner, STANDARD_ANNOTATION_PROPERTIES};
+use growl::{ValidateResult, OwnedValidateResult};
 
 const OWL: &str = "http://www.w3.org/2002/07/owl#";
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
@@ -501,10 +502,23 @@ fn validate_detects_unsatisfiable_class() {
     let graph = build_unsat_tbox(&arena);
 
     match validate(&arena, &graph) {
-        ReasonerResult::Inconsistent { .. } => {
-            // Expected: Triffid is unsatisfiable
+        ValidateResult::Unsatisfiable {
+            entity,
+            reason,
+            ..
+        } => {
+            assert_eq!(
+                entity,
+                Term::Iri(&format!("{}Triffid", EX)),
+                "should identify Triffid as unsatisfiable"
+            );
+            assert!(
+                reason.contains("Unsatisfiable class"),
+                "reason should contain 'Unsatisfiable class', got: {}",
+                reason
+            );
         }
-        ReasonerResult::Success { .. } => {
+        ValidateResult::Satisfiable => {
             panic!("validate should detect unsatisfiable class Triffid");
         }
     }
@@ -530,10 +544,10 @@ fn validate_passes_clean_tbox() {
     graph.add_triple(arena.make_triple(animal, disjoint, plant));
 
     match validate(&arena, &graph) {
-        ReasonerResult::Success { .. } => {
+        ValidateResult::Satisfiable => {
             // Expected: all classes are satisfiable
         }
-        ReasonerResult::Inconsistent { reason, .. } => {
+        ValidateResult::Unsatisfiable { reason, .. } => {
             panic!("clean TBox should pass validation, got: {}", reason);
         }
     }
@@ -565,8 +579,12 @@ fn validate_config_builder() {
 
     let config = ReasonerConfig::new().verbose(false).validate(true);
     match reason_with_config(&arena, &graph, &config) {
-        ReasonerResult::Inconsistent { .. } => {
-            // Expected
+        ReasonerResult::Inconsistent { reason, .. } => {
+            assert!(
+                reason.contains("Unsatisfiable class"),
+                "reason should contain 'Unsatisfiable class', got: {}",
+                reason
+            );
         }
         ReasonerResult::Success { .. } => {
             panic!("validate via config builder should detect unsatisfiable class");
@@ -595,14 +613,23 @@ fn reasoner_validate_method() {
     reasoner.add_iri_triple(&triffid_iri, &rdfs_sub_iri, &plant_iri);
 
     match reasoner.validate() {
-        OwnedReasonerResult::Inconsistent { reason, .. } => {
+        OwnedValidateResult::Unsatisfiable {
+            entity,
+            reason,
+            ..
+        } => {
+            assert_eq!(
+                entity,
+                OwnedTerm::Iri(triffid_iri),
+                "should identify Triffid as unsatisfiable"
+            );
             assert!(
-                reason.contains("disjoint"),
-                "reason should mention disjoint classes, got: {}",
+                reason.contains("Unsatisfiable class"),
+                "reason should contain 'Unsatisfiable class', got: {}",
                 reason
             );
         }
-        OwnedReasonerResult::Success { .. } => {
+        OwnedValidateResult::Satisfiable => {
             panic!("Reasoner.validate() should detect unsatisfiable Triffid class");
         }
     }
@@ -624,11 +651,121 @@ fn reasoner_validate_clean() {
     reasoner.add_iri_triple(&dog_iri, &rdfs_sub_iri, &animal_iri);
 
     match reasoner.validate() {
-        OwnedReasonerResult::Success { .. } => {
+        OwnedValidateResult::Satisfiable => {
             // Expected
         }
-        OwnedReasonerResult::Inconsistent { reason, .. } => {
+        OwnedValidateResult::Unsatisfiable { reason, .. } => {
             panic!("clean ontology should pass validation, got: {}", reason);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Property validation tests
+// ---------------------------------------------------------------------------
+
+/// Build a TBox with a property declared as both Symmetric and Asymmetric.
+fn build_unsat_property_graph(arena: &Arena) -> IndexedGraph<'_> {
+    let mut graph = IndexedGraph::new(arena);
+
+    let has_enemy = arena.make_iri(&format!("{}hasEnemy", EX));
+    let a = rdf_type(arena);
+    let obj_prop = arena.make_iri(&format!("{}ObjectProperty", OWL));
+    let sym_prop = arena.make_iri(&format!("{}SymmetricProperty", OWL));
+    let asym_prop = arena.make_iri(&format!("{}AsymmetricProperty", OWL));
+
+    graph.add_triple(arena.make_triple(has_enemy, a, obj_prop));
+    graph.add_triple(arena.make_triple(has_enemy, a, sym_prop));
+    graph.add_triple(arena.make_triple(has_enemy, a, asym_prop));
+
+    graph
+}
+
+#[test]
+fn validate_detects_unsatisfiable_property() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let graph = build_unsat_property_graph(&arena);
+
+    match validate(&arena, &graph) {
+        ValidateResult::Unsatisfiable {
+            entity,
+            reason,
+            ..
+        } => {
+            assert_eq!(
+                entity,
+                Term::Iri(&format!("{}hasEnemy", EX)),
+                "should identify hasEnemy as unsatisfiable"
+            );
+            assert!(
+                reason.contains("Unsatisfiable property usage"),
+                "reason should contain 'Unsatisfiable property usage', got: {}",
+                reason
+            );
+        }
+        ValidateResult::Satisfiable => {
+            panic!("validate should detect unsatisfiable property hasEnemy");
+        }
+    }
+}
+
+#[test]
+fn reasoner_validate_property() {
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+
+    let rdf_type_iri = format!("{}type", RDF);
+    let has_enemy_iri = format!("{}hasEnemy", EX);
+    let obj_prop_iri = format!("{}ObjectProperty", OWL);
+    let sym_prop_iri = format!("{}SymmetricProperty", OWL);
+    let asym_prop_iri = format!("{}AsymmetricProperty", OWL);
+
+    reasoner.add_iri_triple(&has_enemy_iri, &rdf_type_iri, &obj_prop_iri);
+    reasoner.add_iri_triple(&has_enemy_iri, &rdf_type_iri, &sym_prop_iri);
+    reasoner.add_iri_triple(&has_enemy_iri, &rdf_type_iri, &asym_prop_iri);
+
+    match reasoner.validate() {
+        OwnedValidateResult::Unsatisfiable {
+            entity,
+            reason,
+            ..
+        } => {
+            assert_eq!(
+                entity,
+                OwnedTerm::Iri(has_enemy_iri),
+                "should identify hasEnemy as unsatisfiable"
+            );
+            assert!(
+                reason.contains("Unsatisfiable property usage"),
+                "reason should contain 'Unsatisfiable property usage', got: {}",
+                reason
+            );
+        }
+        OwnedValidateResult::Satisfiable => {
+            panic!("Reasoner.validate() should detect unsatisfiable hasEnemy property");
+        }
+    }
+}
+
+#[test]
+fn validate_clean_properties_pass() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let has_friend = arena.make_iri(&format!("{}hasFriend", EX));
+    let a = rdf_type(&arena);
+    let obj_prop = arena.make_iri(&format!("{}ObjectProperty", OWL));
+    let sym_prop = arena.make_iri(&format!("{}SymmetricProperty", OWL));
+
+    // Only symmetric, no asymmetric — no contradiction
+    graph.add_triple(arena.make_triple(has_friend, a, obj_prop));
+    graph.add_triple(arena.make_triple(has_friend, a, sym_prop));
+
+    match validate(&arena, &graph) {
+        ValidateResult::Satisfiable => {
+            // Expected: symmetric-only property is satisfiable
+        }
+        ValidateResult::Unsatisfiable { reason, .. } => {
+            panic!("symmetric-only property should pass validation, got: {}", reason);
         }
     }
 }
