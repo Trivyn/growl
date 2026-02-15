@@ -18,6 +18,9 @@ uint8_t test_cli_test_invalid_literal_file(slop_arena* arena);
 uint8_t test_cli_test_valid_literals_file(slop_arena* arena);
 uint8_t test_cli_test_emit_roundtrip(slop_arena* arena);
 uint8_t test_cli_test_missing_file(slop_arena* arena);
+uint8_t test_cli_test_validate_unsat(slop_arena* arena);
+uint8_t test_cli_test_validate_clean(slop_arena* arena);
+uint8_t test_cli_test_no_validate_unsat_passes(slop_arena* arena);
 int main(int argc, char** _c_argv);
 
 index_IndexedGraph test_cli_graph_to_indexed(slop_arena* arena, rdf_Graph g) {
@@ -414,6 +417,89 @@ uint8_t test_cli_test_missing_file(slop_arena* arena) {
     }
 }
 
+uint8_t test_cli_test_validate_unsat(slop_arena* arena) {
+    __auto_type _mv_352 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-unsat.ttl"));
+    if (!_mv_352.is_ok) {
+        __auto_type _ = _mv_352.data.err;
+        printf("%s\n", "  ERROR: failed to parse validate-unsat.ttl");
+        return 0;
+    } else if (_mv_352.is_ok) {
+        __auto_type g = _mv_352.data.ok;
+        {
+            __auto_type ig = test_cli_graph_to_indexed(arena, g);
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1});
+            __auto_type _mv_353 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_353.tag) {
+                case types_ReasonerResult_reason_inconsistent:
+                {
+                    __auto_type _ = _mv_353.data.reason_inconsistent;
+                    return 1;
+                }
+                case types_ReasonerResult_reason_success:
+                {
+                    __auto_type _ = _mv_353.data.reason_success;
+                    printf("%s\n", "  ERROR: should have detected unsatisfiable class");
+                    return 0;
+                }
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_validate_clean(slop_arena* arena) {
+    __auto_type _mv_354 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-clean.ttl"));
+    if (!_mv_354.is_ok) {
+        __auto_type _ = _mv_354.data.err;
+        printf("%s\n", "  ERROR: failed to parse validate-clean.ttl");
+        return 0;
+    } else if (_mv_354.is_ok) {
+        __auto_type g = _mv_354.data.ok;
+        {
+            __auto_type ig = test_cli_graph_to_indexed(arena, g);
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1});
+            __auto_type _mv_355 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_355.tag) {
+                case types_ReasonerResult_reason_success:
+                {
+                    __auto_type _ = _mv_355.data.reason_success;
+                    return 1;
+                }
+                case types_ReasonerResult_reason_inconsistent:
+                {
+                    __auto_type report = _mv_355.data.reason_inconsistent;
+                    printf("%s", "  ERROR: unexpected inconsistency: ");
+                    printf("%.*s\n", (int)(report.reason).len, (report.reason).data);
+                    return 0;
+                }
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_no_validate_unsat_passes(slop_arena* arena) {
+    __auto_type _mv_356 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/validate-unsat.ttl"));
+    if (!_mv_356.has_value) {
+        printf("%s\n", "  ERROR: failed to parse validate-unsat.ttl");
+        return 0;
+    } else if (_mv_356.has_value) {
+        __auto_type result = _mv_356.value;
+        __auto_type _mv_357 = result;
+        switch (_mv_357.tag) {
+            case types_ReasonerResult_reason_success:
+            {
+                __auto_type _ = _mv_357.data.reason_success;
+                return 1;
+            }
+            case types_ReasonerResult_reason_inconsistent:
+            {
+                __auto_type _ = _mv_357.data.reason_inconsistent;
+                printf("%s\n", "  ERROR: should pass without --validate (TBox only)");
+                return 0;
+            }
+        }
+    }
+}
+
 int main(int argc, char** _c_argv) {
     uint8_t** argv = (uint8_t**)_c_argv;
     {
@@ -516,6 +602,33 @@ int main(int argc, char** _c_argv) {
             {
                 __auto_type r = test_cli_test_emit_roundtrip(arena);
                 test_cli_print_result(SLOP_STR("emit roundtrip (serialize + re-parse)"), r);
+                if (r) {
+                    passed = (passed + 1);
+                } else {
+                    failed = (failed + 1);
+                }
+            }
+            {
+                __auto_type r = test_cli_test_validate_unsat(arena);
+                test_cli_print_result(SLOP_STR("validate: unsatisfiable class detected"), r);
+                if (r) {
+                    passed = (passed + 1);
+                } else {
+                    failed = (failed + 1);
+                }
+            }
+            {
+                __auto_type r = test_cli_test_validate_clean(arena);
+                test_cli_print_result(SLOP_STR("validate: clean TBox passes"), r);
+                if (r) {
+                    passed = (passed + 1);
+                } else {
+                    failed = (failed + 1);
+                }
+            }
+            {
+                __auto_type r = test_cli_test_no_validate_unsat_passes(arena);
+                test_cli_print_result(SLOP_STR("validate: unsat TBox passes without --validate"), r);
                 if (r) {
                     passed = (passed + 1);
                 } else {

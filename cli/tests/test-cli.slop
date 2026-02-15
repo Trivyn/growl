@@ -14,7 +14,7 @@
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
   (import serialize-ttl (SerializeConfig serialize-ttl-string serialize-ttl-stream))
   (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS))
-  (import growl (reason ReasonerResult ReasonerSuccess InconsistencyReport
+  (import growl (reason reason-with-config ReasonerConfig ReasonerResult ReasonerSuccess InconsistencyReport
                  get-inferred-count get-types get-same-as))
 
   ;; ============================================================
@@ -356,6 +356,82 @@
         false)))
 
   ;; ============================================================
+  ;; Test 12: --validate detects unsatisfiable TBox class
+  ;; ============================================================
+
+  (fn test-validate-unsat ((arena Arena))
+    (@intent "Parse TBox-only ontology with unsatisfiable class, verify --validate catches it")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-unsat.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-unsat.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent _) true)
+            ((reason-success _)
+              (println "  ERROR: should have detected unsatisfiable class")
+              false))))))
+
+  ;; ============================================================
+  ;; Test 13: --validate passes clean TBox
+  ;; ============================================================
+
+  (fn test-validate-clean ((arena Arena))
+    (@intent "Parse TBox-only ontology with no issues, verify --validate passes")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-clean.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-clean.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true))))
+          (match (reason-with-config arena ig config)
+            ((reason-success _) true)
+            ((reason-inconsistent report)
+              (print "  ERROR: unexpected inconsistency: ")
+              (println (. report reason))
+              false))))))
+
+  ;; ============================================================
+  ;; Test 14: Same unsatisfiable TBox passes WITHOUT --validate
+  ;; ============================================================
+
+  (fn test-no-validate-unsat-passes ((arena Arena))
+    (@intent "Same TBox-only ontology without --validate should pass (no instances)")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/validate-unsat.ttl")
+      ((none)
+        (println "  ERROR: failed to parse validate-unsat.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success _) true)
+          ((reason-inconsistent _)
+            (println "  ERROR: should pass without --validate (TBox only)")
+            false)))))
+
+  ;; ============================================================
   ;; Main Test Runner
   ;; ============================================================
 
@@ -415,6 +491,19 @@
         ;; Emit roundtrip
         (let ((r (test-emit-roundtrip arena)))
           (print-result "emit roundtrip (serialize + re-parse)" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Validate mode
+        (let ((r (test-validate-unsat arena)))
+          (print-result "validate: unsatisfiable class detected" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-validate-clean arena)))
+          (print-result "validate: clean TBox passes" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-no-validate-unsat-passes arena)))
+          (print-result "validate: unsat TBox passes without --validate" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Error handling

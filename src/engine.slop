@@ -10,9 +10,9 @@
 (module engine
   (@doc "Parallel fixpoint rule engine with fork-join pattern")
 
-  (import rdf (Term Triple triple-eq make-iri make-triple triple-subject triple-predicate triple-object))
+  (import rdf (Term Triple triple-eq make-iri make-triple make-blank triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match indexed-graph-for-each))
-  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_SAME_AS
+  (import vocab (RDF_TYPE RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF OWL_CLASS OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_SAME_AS
                  OWL_DIFFERENT_FROM OWL_SYMMETRIC_PROPERTY))
   (import thread (chan-buffered send recv spawn join))
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
@@ -60,6 +60,35 @@
     (@spec ((Arena I64) -> Unit))
     (print (int-to-string arena ms))
     (print "ms"))
+
+  ;; ============================================================
+  ;; Synthetic Instance Injection (--validate mode)
+  ;; ============================================================
+
+  (fn inject-validate-instances ((arena Arena) (g IndexedGraph) (verbose Bool))
+    (@intent "Inject synthetic blank node instances for each declared owl:Class")
+    (@spec ((Arena IndexedGraph Bool) -> IndexedGraph))
+    (@alloc arena)
+    (let ((type-pred (make-iri arena RDF_TYPE))
+          (class-type (make-iri arena OWL_CLASS))
+          (no-term (Option Term) (none))
+          ;; Find all (?c rdf:type owl:Class) triples
+          (class-triples (indexed-graph-match arena g no-term (some type-pred) (some class-type)))
+          (mut result g)
+          (mut count 0))
+      (for-each (t class-triples)
+        (let ((cls (triple-subject t))
+              ;; Use high blank node IDs to avoid collision with parser-generated bnodes
+              (synthetic (make-blank arena (+ 10000000 count)))
+              (type-triple (make-triple arena synthetic type-pred cls)))
+          (set! result (indexed-graph-add arena result type-triple))
+          (set! count (+ count 1))))
+      (when verbose
+        (do
+          (print "[validate] injected ")
+          (print (int-to-string arena count))
+          (println " synthetic instances")))
+      result))
 
   ;; ============================================================
   ;; Main Engine Loop
@@ -134,10 +163,21 @@
                       (make-iri arena OWL_SYMMETRIC_PROPERTY)))))
                 cg)
               dt-graph))
-          ;; Phase 2: Main fixpoint uses materialized graph + original delta
+          ;; Phase 2a: Inject synthetic instances for --validate mode
+          (validate-graph
+            (if (. config validate)
+              (inject-validate-instances arena complete-graph (. config verbose))
+              complete-graph))
+          ;; Phase 2b: Main fixpoint uses (possibly augmented) graph
+          ;; In validate mode, recreate delta from the augmented graph
+          ;; so synthetic type triples are seen as "new" by the rules
+          (fixpoint-delta
+            (if (. config validate)
+              (make-initial-delta arena validate-graph)
+              initial-delta))
           (mut state (record-new EngineState
-                       (graph complete-graph)
-                       (delta initial-delta)
+                       (graph validate-graph)
+                       (delta fixpoint-delta)
                        (iteration 0)
                        (config config)))
           (mut done false)

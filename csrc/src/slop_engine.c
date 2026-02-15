@@ -2,6 +2,7 @@
 #include "slop_engine.h"
 
 void engine_print_ms(slop_arena* arena, int64_t ms);
+index_IndexedGraph engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose);
 types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial);
 types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g);
 slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred);
@@ -59,6 +60,36 @@ void engine_print_ms(slop_arena* arena, int64_t ms) {
     printf("%s", "ms");
 }
 
+index_IndexedGraph engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose) {
+    {
+        __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
+        __auto_type class_type = rdf_make_iri(arena, vocab_OWL_CLASS);
+        slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
+        __auto_type class_triples = rdf_indexed_graph_match(arena, g, no_term, (slop_option_rdf_Term){.has_value = 1, .value = type_pred}, (slop_option_rdf_Term){.has_value = 1, .value = class_type});
+        __auto_type result = g;
+        int64_t count = 0;
+        {
+            __auto_type _coll = class_triples;
+            for (size_t _i = 0; _i < _coll.len; _i++) {
+                __auto_type t = _coll.data[_i];
+                {
+                    __auto_type cls = rdf_triple_subject(t);
+                    __auto_type synthetic = rdf_make_blank(arena, (10000000 + count));
+                    __auto_type type_triple = rdf_make_triple(arena, synthetic, type_pred, cls);
+                    result = rdf_indexed_graph_add(arena, result, type_triple);
+                    count = (count + 1);
+                }
+            }
+        }
+        if (verbose) {
+            printf("%s", "[validate] injected ");
+            printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
+            printf("%s\n", " synthetic instances");
+        }
+        return result;
+    }
+}
+
 types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial) {
     SLOP_PRE(((config.worker_count >= 1)), "(>= (. config worker-count) 1)");
     SLOP_PRE(((config.max_iterations >= 1)), "(>= (. config max-iterations) 1)");
@@ -70,7 +101,9 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
         __auto_type materialized_graph = ((config.fast) ? initial : engine_schema_materialize(arena, initial, engine_make_initial_delta(arena, initial), config));
         __auto_type dt_graph = ((config.fast) ? materialized_graph : ({ __auto_type mg = materialized_graph; ({ __auto_type _coll = dt_dt_type1(arena, mg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ mg = rdf_indexed_graph_add(arena, mg, t); (void)0; }); } 0; }); mg; }));
         __auto_type complete_graph = (((!(config.fast) && config.complete)) ? ({ __auto_type cg = dt_graph; ({ __auto_type _coll = prp_prp_ap(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } 0; }); ({ __auto_type _coll = cls_cls_thing(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } 0; }); ({ __auto_type _coll = cls_cls_nothing1(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } 0; }); ({ __auto_type _coll = dt_dt_type2(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } 0; }); ({ __auto_type thing = rdf_make_iri(arena, vocab_OWL_THING); __auto_type nothing = rdf_make_iri(arena, vocab_OWL_NOTHING); __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF); __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_CLASS); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, thing, subclass_pred, thing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, thing, equiv_pred, thing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, subclass_pred, nothing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, equiv_pred, nothing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, subclass_pred, thing)); (void)0; }); }); ({ __auto_type same_as = rdf_make_iri(arena, vocab_OWL_SAME_AS); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, same_as, same_as, same_as)); (void)0; }); }); ({ __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, rdf_make_iri(arena, vocab_OWL_DIFFERENT_FROM), type_pred, rdf_make_iri(arena, vocab_OWL_SYMMETRIC_PROPERTY))); (void)0; }); }); cg; }) : dt_graph);
-        __auto_type state = ((types_EngineState){.graph = complete_graph, .delta = initial_delta, .iteration = 0, .config = config});
+        __auto_type validate_graph = ((config.validate) ? engine_inject_validate_instances(arena, complete_graph, config.verbose) : complete_graph);
+        __auto_type fixpoint_delta = ((config.validate) ? engine_make_initial_delta(arena, validate_graph) : initial_delta);
+        __auto_type state = ((types_EngineState){.graph = validate_graph, .delta = fixpoint_delta, .iteration = 0, .config = config});
         uint8_t done = 0;
         slop_option_types_InconsistencyReport inconsistency = (slop_option_types_InconsistencyReport){.has_value = false};
         if (!(config.fast)) {

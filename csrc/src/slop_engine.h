@@ -273,6 +273,7 @@ static slop_result_engine_WorkerMessage_thread_ChanError thread_recv_slop_chan_e
 }
 
 void engine_print_ms(slop_arena* arena, int64_t ms);
+index_IndexedGraph engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose);
 types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial);
 types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g);
 slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred);

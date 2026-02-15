@@ -21,6 +21,7 @@ struct main_CliArgs {
     uint8_t quiet;
     uint8_t fast;
     uint8_t complete;
+    uint8_t validate;
     uint8_t show_help;
     uint8_t show_version;
 };

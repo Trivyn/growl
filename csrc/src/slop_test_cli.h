@@ -33,6 +33,9 @@ uint8_t test_cli_test_invalid_literal_file(slop_arena* arena);
 uint8_t test_cli_test_valid_literals_file(slop_arena* arena);
 uint8_t test_cli_test_emit_roundtrip(slop_arena* arena);
 uint8_t test_cli_test_missing_file(slop_arena* arena);
+uint8_t test_cli_test_validate_unsat(slop_arena* arena);
+uint8_t test_cli_test_validate_clean(slop_arena* arena);
+uint8_t test_cli_test_no_validate_unsat_passes(slop_arena* arena);
 int main(int argc, char** _c_argv);
 
 #ifndef SLOP_OPTION_TYPES_REASONERRESULT_DEFINED

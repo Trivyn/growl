@@ -1,5 +1,5 @@
 use growl::{Arena, IndexedGraph, ReasonerConfig, ReasonerResult, Term, Triple};
-use growl::{get_types, is_consistent, reason, reason_with_config, filter_annotations};
+use growl::{get_types, is_consistent, reason, reason_with_config, validate, filter_annotations};
 use growl::{OwnedReasonerResult, OwnedTerm, Reasoner, STANDARD_ANNOTATION_PROPERTIES};
 
 const OWL: &str = "http://www.w3.org/2002/07/owl#";
@@ -466,4 +466,169 @@ fn standard_annotation_properties_count() {
     // Spot check a few
     assert!(STANDARD_ANNOTATION_PROPERTIES.contains(&"http://www.w3.org/2000/01/rdf-schema#label"));
     assert!(STANDARD_ANNOTATION_PROPERTIES.contains(&"http://purl.org/dc/terms/abstract"));
+}
+
+// ---------------------------------------------------------------------------
+// Validate mode tests
+// ---------------------------------------------------------------------------
+
+/// Build a TBox-only graph: Animal disjointWith Plant, Triffid subClassOf both.
+/// This is unsatisfiable — Triffid can't have instances.
+fn build_unsat_tbox(arena: &Arena) -> IndexedGraph<'_> {
+    let mut graph = IndexedGraph::new(arena);
+
+    let animal = arena.make_iri(&format!("{}Animal", EX));
+    let plant = arena.make_iri(&format!("{}Plant", EX));
+    let triffid = arena.make_iri(&format!("{}Triffid", EX));
+    let a = rdf_type(arena);
+    let cls = owl_class(arena);
+    let sub = rdfs_subclass(arena);
+    let disjoint = arena.make_iri(&format!("{}disjointWith", OWL));
+
+    graph.add_triple(arena.make_triple(animal, a, cls));
+    graph.add_triple(arena.make_triple(plant, a, cls));
+    graph.add_triple(arena.make_triple(triffid, a, cls));
+    graph.add_triple(arena.make_triple(animal, disjoint, plant));
+    graph.add_triple(arena.make_triple(triffid, sub, animal));
+    graph.add_triple(arena.make_triple(triffid, sub, plant));
+
+    graph
+}
+
+#[test]
+fn validate_detects_unsatisfiable_class() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let graph = build_unsat_tbox(&arena);
+
+    match validate(&arena, &graph) {
+        ReasonerResult::Inconsistent { .. } => {
+            // Expected: Triffid is unsatisfiable
+        }
+        ReasonerResult::Success { .. } => {
+            panic!("validate should detect unsatisfiable class Triffid");
+        }
+    }
+}
+
+#[test]
+fn validate_passes_clean_tbox() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let animal = arena.make_iri(&format!("{}Animal", EX));
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let plant = arena.make_iri(&format!("{}Plant", EX));
+    let a = rdf_type(&arena);
+    let cls = owl_class(&arena);
+    let sub = rdfs_subclass(&arena);
+    let disjoint = arena.make_iri(&format!("{}disjointWith", OWL));
+
+    graph.add_triple(arena.make_triple(animal, a, cls));
+    graph.add_triple(arena.make_triple(dog, a, cls));
+    graph.add_triple(arena.make_triple(plant, a, cls));
+    graph.add_triple(arena.make_triple(dog, sub, animal));
+    graph.add_triple(arena.make_triple(animal, disjoint, plant));
+
+    match validate(&arena, &graph) {
+        ReasonerResult::Success { .. } => {
+            // Expected: all classes are satisfiable
+        }
+        ReasonerResult::Inconsistent { reason, .. } => {
+            panic!("clean TBox should pass validation, got: {}", reason);
+        }
+    }
+}
+
+#[test]
+fn unsat_tbox_passes_without_validate() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let graph = build_unsat_tbox(&arena);
+
+    // Without validate, TBox-only should be consistent (no instances to trigger cax-dw)
+    match reason(&arena, &graph) {
+        ReasonerResult::Success { .. } => {
+            // Expected
+        }
+        ReasonerResult::Inconsistent { reason, .. } => {
+            panic!(
+                "TBox-only should be consistent without validate, got: {}",
+                reason
+            );
+        }
+    }
+}
+
+#[test]
+fn validate_config_builder() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let graph = build_unsat_tbox(&arena);
+
+    let config = ReasonerConfig::new().verbose(false).validate(true);
+    match reason_with_config(&arena, &graph, &config) {
+        ReasonerResult::Inconsistent { .. } => {
+            // Expected
+        }
+        ReasonerResult::Success { .. } => {
+            panic!("validate via config builder should detect unsatisfiable class");
+        }
+    }
+}
+
+#[test]
+fn reasoner_validate_method() {
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+
+    let rdf_type_iri = format!("{}type", RDF);
+    let rdfs_sub_iri = format!("{}subClassOf", RDFS);
+    let owl_class_iri = format!("{}Class", OWL);
+    let disjoint_iri = format!("{}disjointWith", OWL);
+
+    let animal_iri = format!("{}Animal", EX);
+    let plant_iri = format!("{}Plant", EX);
+    let triffid_iri = format!("{}Triffid", EX);
+
+    reasoner.add_iri_triple(&animal_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&plant_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&triffid_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&animal_iri, &disjoint_iri, &plant_iri);
+    reasoner.add_iri_triple(&triffid_iri, &rdfs_sub_iri, &animal_iri);
+    reasoner.add_iri_triple(&triffid_iri, &rdfs_sub_iri, &plant_iri);
+
+    match reasoner.validate() {
+        OwnedReasonerResult::Inconsistent { reason, .. } => {
+            assert!(
+                reason.contains("disjoint"),
+                "reason should mention disjoint classes, got: {}",
+                reason
+            );
+        }
+        OwnedReasonerResult::Success { .. } => {
+            panic!("Reasoner.validate() should detect unsatisfiable Triffid class");
+        }
+    }
+}
+
+#[test]
+fn reasoner_validate_clean() {
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+
+    let rdf_type_iri = format!("{}type", RDF);
+    let rdfs_sub_iri = format!("{}subClassOf", RDFS);
+    let owl_class_iri = format!("{}Class", OWL);
+
+    let animal_iri = format!("{}Animal", EX);
+    let dog_iri = format!("{}Dog", EX);
+
+    reasoner.add_iri_triple(&animal_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&dog_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&dog_iri, &rdfs_sub_iri, &animal_iri);
+
+    match reasoner.validate() {
+        OwnedReasonerResult::Success { .. } => {
+            // Expected
+        }
+        OwnedReasonerResult::Inconsistent { reason, .. } => {
+            panic!("clean ontology should pass validation, got: {}", reason);
+        }
+    }
 }

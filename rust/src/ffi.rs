@@ -147,6 +147,7 @@ pub struct ReasonerConfigFfi {
     pub verbose: u8,
     pub fast: u8,
     pub complete: u8,
+    pub validate: u8,
 }
 
 #[repr(C)]

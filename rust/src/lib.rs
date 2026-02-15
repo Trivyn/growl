@@ -433,6 +433,11 @@ impl ReasonerConfig {
         self.raw.complete = v as u8;
         self
     }
+
+    pub fn validate(mut self, v: bool) -> Self {
+        self.raw.validate = v as u8;
+        self
+    }
 }
 
 impl Default for ReasonerConfig {
@@ -508,6 +513,16 @@ pub fn reason_with_config<'a>(
         let raw = ffi::growl_reason_with_config(arena.as_ptr(), graph.raw(), config.raw);
         ReasonerResult::from_ffi(raw, arena)
     }
+}
+
+/// Check TBox satisfiability via synthetic instance injection.
+///
+/// Injects a synthetic blank node instance for each declared `owl:Class`,
+/// then runs normal OWL-RL reasoning. Returns `Inconsistent` if any class
+/// is unsatisfiable.
+pub fn validate<'a>(arena: &'a Arena, graph: &IndexedGraph) -> ReasonerResult<'a> {
+    let config = ReasonerConfig::new().verbose(false).validate(true);
+    reason_with_config(arena, graph, &config)
 }
 
 /// Check whether the graph is consistent under OWL 2 RL rules.
@@ -836,6 +851,18 @@ impl Reasoner {
                 ffi::ReasonerResultTag::Inconsistent => self.convert_result(raw_result),
             }
         }
+    }
+
+    /// Check TBox satisfiability via synthetic instance injection.
+    ///
+    /// For each declared `owl:Class`, injects a synthetic blank node instance,
+    /// then runs normal OWL-RL reasoning. Returns `Inconsistent` if any class
+    /// is unsatisfiable (e.g. subClassOf two disjoint classes).
+    ///
+    /// Note: `--validate` overrides `--fast` since schema materialization is required.
+    pub fn validate(&self) -> OwnedReasonerResult {
+        let config = ReasonerConfig::new().verbose(false).validate(true);
+        self.reason_with_config(&config)
     }
 
     /// Quick consistency check (no inferred triples returned).

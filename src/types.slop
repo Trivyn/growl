@@ -44,7 +44,8 @@
     (max-iterations (Int 1 .. 10000))
     (verbose Bool)
     (fast Bool)
-    (complete Bool)))
+    (complete Bool)
+    (validate Bool)))
 
   ;; Engine state during fixpoint computation
   (type EngineState (record
