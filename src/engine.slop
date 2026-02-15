@@ -19,6 +19,7 @@
                  OWL_INVERSE_FUNCTIONAL_PROPERTY OWL_TRANSITIVE_PROPERTY
                  OWL_ASYMMETRIC_PROPERTY OWL_REFLEXIVE_PROPERTY OWL_IRREFLEXIVE_PROPERTY))
   (import thread (chan-buffered send recv spawn join))
+  (import strlib (starts-with))
   (import types (Delta ReasonerConfig EngineState ReasonerResult ReasonerSuccess
                  InconsistencyReport make-delta delta-add delta-merge delta-is-empty))
   (import cax (apply-cax-rules cax-sco cax-eqc1 cax-eqc2 cax-dw cax-adc))
@@ -99,9 +100,19 @@
                   (list-push result prop)))))))
       result))
 
-  (fn inject-validate-instances ((arena Arena) (g IndexedGraph) (verbose Bool))
+  (fn iri-matches-ns ((term Term) (ns String))
+    (@intent "Check if a term is an IRI that starts with the given namespace prefix")
+    (@spec ((Term String) -> Bool))
+    (@pure)
+    (if (== (. ns len) 0)
+      true
+      (match term
+        ((term-iri iri) (starts-with (. iri value) ns))
+        (_ false))))
+
+  (fn inject-validate-instances ((arena Arena) (g IndexedGraph) (verbose Bool) (validate-ns String))
     (@intent "Inject synthetic blank node instances for each declared owl:Class and property usage")
-    (@spec ((Arena IndexedGraph Bool) -> IndexedGraph))
+    (@spec ((Arena IndexedGraph Bool String) -> IndexedGraph))
     (@alloc arena)
     (let ((type-pred (make-iri arena RDF_TYPE))
           (class-type (make-iri arena OWL_CLASS))
@@ -112,12 +123,13 @@
           (mut count 0))
       ;; Phase 1: Inject synthetic class instances (_:10M+N rdf:type C)
       (for-each (t class-triples)
-        (let ((cls (triple-subject t))
-              ;; Use high blank node IDs to avoid collision with parser-generated bnodes
-              (synthetic (make-blank arena (+ 10000000 count)))
-              (type-triple (make-triple arena synthetic type-pred cls)))
-          (set! result (indexed-graph-add arena result type-triple))
-          (set! count (+ count 1))))
+        (let ((cls (triple-subject t)))
+          (when (iri-matches-ns cls validate-ns)
+            (do
+              (let ((synthetic (make-blank arena (+ 10000000 count)))
+                    (type-triple (make-triple arena synthetic type-pred cls)))
+                (set! result (indexed-graph-add arena result type-triple))
+                (set! count (+ count 1)))))))
       (when verbose
         (do
           (print "[validate] injected ")
@@ -127,11 +139,13 @@
       (let ((props (collect-declared-properties arena g))
             (mut prop-count 0))
         (for-each (p props)
-          (let ((subj-blank (make-blank arena (+ 20000000 prop-count)))
-                (obj-blank (make-blank arena (+ 30000000 prop-count)))
-                (prop-triple (make-triple arena subj-blank p obj-blank)))
-            (set! result (indexed-graph-add arena result prop-triple))
-            (set! prop-count (+ prop-count 1))))
+          (when (iri-matches-ns p validate-ns)
+            (do
+              (let ((subj-blank (make-blank arena (+ 20000000 prop-count)))
+                    (obj-blank (make-blank arena (+ 30000000 prop-count)))
+                    (prop-triple (make-triple arena subj-blank p obj-blank)))
+                (set! result (indexed-graph-add arena result prop-triple))
+                (set! prop-count (+ prop-count 1))))))
         (when verbose
           (do
             (print "[validate] injected ")
@@ -143,9 +157,9 @@
   ;; Validate Report Enrichment
   ;; ============================================================
 
-  (fn enrich-validate-report ((arena Arena) (report InconsistencyReport) (pre-inject-graph IndexedGraph))
+  (fn enrich-validate-report ((arena Arena) (report InconsistencyReport) (pre-inject-graph IndexedGraph) (validate-ns String))
     (@intent "Enrich validate inconsistency report with unsatisfiable class or property IRI")
-    (@spec ((Arena InconsistencyReport IndexedGraph) -> InconsistencyReport))
+    (@spec ((Arena InconsistencyReport IndexedGraph String) -> InconsistencyReport))
     (@alloc arena)
     (let ((witnesses (. report witnesses))
           (original-reason (. report reason)))
@@ -157,25 +171,34 @@
                 (let ((blank-id (. bnode id)))
                   (if (and (>= blank-id 10000000) (< blank-id 20000000))
                     ;; Class range: blank_id in [10M, 20M)
-                    (let ((class-index (- blank-id 10000000))
-                          (type-pred (make-iri arena RDF_TYPE))
+                    ;; Build filtered class list matching same logic as inject
+                    (let ((type-pred (make-iri arena RDF_TYPE))
                           (class-type (make-iri arena OWL_CLASS))
                           (no-term (Option Term) (none))
-                          (class-triples (indexed-graph-match arena pre-inject-graph
-                                           no-term (some type-pred) (some class-type))))
-                      (match (list-get class-triples class-index)
-                        ((some class-triple)
-                          (let ((cls (triple-subject class-triple)))
-                            (match cls
-                              ((term-iri iri)
-                                (let ((class-name (. iri value))
-                                      (enriched (string-concat arena
-                                                  (string-concat arena "Unsatisfiable class: " class-name)
-                                                  (string-concat arena " (" (string-concat arena original-reason ")")))))
-                                  (record-new InconsistencyReport
-                                    (reason enriched)
-                                    (witnesses witnesses))))
-                              (_ report))))
+                          (all-class-triples (indexed-graph-match arena pre-inject-graph
+                                               no-term (some type-pred) (some class-type)))
+                          (class-index (- blank-id 10000000))
+                          ;; Filter to matching namespace (same as inject)
+                          (mut filtered-classes (list-new arena Term))
+                          (mut _fi 0))
+                      (for-each (ct all-class-triples)
+                        (let ((cls (triple-subject ct)))
+                          (when (iri-matches-ns cls validate-ns)
+                            (do
+                              (list-push filtered-classes cls)
+                              (set! _fi (+ _fi 1))))))
+                      (match (list-get filtered-classes class-index)
+                        ((some cls)
+                          (match cls
+                            ((term-iri iri)
+                              (let ((class-name (. iri value))
+                                    (enriched (string-concat arena
+                                                (string-concat arena "Unsatisfiable class: " class-name)
+                                                (string-concat arena " (" (string-concat arena original-reason ")")))))
+                                (record-new InconsistencyReport
+                                  (reason enriched)
+                                  (witnesses witnesses))))
+                            (_ report)))
                         ((none) report)))
                     (if (and (>= blank-id 20000000) (< blank-id 40000000))
                       ;; Property range: blank_id in [20M, 40M) — subject or object blank
@@ -184,57 +207,65 @@
                       (let ((prop-index (if (< blank-id 30000000)
                                           (- blank-id 20000000)
                                           (- blank-id 30000000)))
-                            (props (collect-declared-properties arena pre-inject-graph))
-                            (witness-pred (triple-predicate first-witness))
-                            (type-pred (make-iri arena RDF_TYPE)))
-                        (if (term-eq witness-pred type-pred)
-                          ;; Class-level rule fired via domain/range — trace back to class
-                          (match (list-get props prop-index)
-                            ((some prop)
-                              (let ((domain-or-range-pred (make-iri arena (if (< blank-id 30000000) RDFS_DOMAIN RDFS_RANGE)))
-                                    (no-term (Option Term) (none))
-                                    (class-triples (indexed-graph-match arena pre-inject-graph
-                                                     (some prop) (some domain-or-range-pred) no-term)))
-                                (match (list-get class-triples 0)
-                                  ((some class-triple)
-                                    (let ((cls (triple-object class-triple)))
-                                      (match cls
+                            ;; Filter properties by namespace (same as inject)
+                            (all-props (collect-declared-properties arena pre-inject-graph))
+                            (mut filtered-props (list-new arena Term))
+                            (mut _pi 0))
+                        (for-each (fp all-props)
+                          (when (iri-matches-ns fp validate-ns)
+                            (do
+                              (list-push filtered-props fp)
+                              (set! _pi (+ _pi 1)))))
+                        (let ((witness-pred (triple-predicate first-witness))
+                              (type-pred (make-iri arena RDF_TYPE)))
+                          (if (term-eq witness-pred type-pred)
+                            ;; Class-level rule fired via domain/range — trace back to class
+                            (match (list-get filtered-props prop-index)
+                              ((some prop)
+                                (let ((domain-or-range-pred (make-iri arena (if (< blank-id 30000000) RDFS_DOMAIN RDFS_RANGE)))
+                                      (no-term (Option Term) (none))
+                                      (class-triples (indexed-graph-match arena pre-inject-graph
+                                                       (some prop) (some domain-or-range-pred) no-term)))
+                                  (match (list-get class-triples 0)
+                                    ((some class-triple)
+                                      (let ((cls (triple-object class-triple)))
+                                        (match cls
+                                          ((term-iri iri)
+                                            (let ((class-name (. iri value))
+                                                  (enriched (string-concat arena
+                                                              (string-concat arena "Unsatisfiable class: " class-name)
+                                                              (string-concat arena " (" (string-concat arena original-reason ")")))))
+                                              (record-new InconsistencyReport
+                                                (reason enriched)
+                                                (witnesses witnesses))))
+                                          (_ report))))
+                                    ;; No domain/range found — fall back to property report
+                                    ((none)
+                                      (match prop
                                         ((term-iri iri)
-                                          (let ((class-name (. iri value))
+                                          (let ((prop-name (. iri value))
                                                 (enriched (string-concat arena
-                                                            (string-concat arena "Unsatisfiable class: " class-name)
+                                                            (string-concat arena "Unsatisfiable property usage: " prop-name)
                                                             (string-concat arena " (" (string-concat arena original-reason ")")))))
                                             (record-new InconsistencyReport
                                               (reason enriched)
                                               (witnesses witnesses))))
-                                        (_ report))))
-                                  ;; No domain/range found — fall back to property report
-                                  ((none)
-                                    (match prop
-                                      ((term-iri iri)
-                                        (let ((prop-name (. iri value))
-                                              (enriched (string-concat arena
-                                                          (string-concat arena "Unsatisfiable property usage: " prop-name)
-                                                          (string-concat arena " (" (string-concat arena original-reason ")")))))
-                                          (record-new InconsistencyReport
-                                            (reason enriched)
-                                            (witnesses witnesses))))
-                                      (_ report))))))
-                            ((none) report))
-                          ;; Property-level rule fired — report property
-                          (match (list-get props prop-index)
-                            ((some prop)
-                              (match prop
-                                ((term-iri iri)
-                                  (let ((prop-name (. iri value))
-                                        (enriched (string-concat arena
-                                                    (string-concat arena "Unsatisfiable property usage: " prop-name)
-                                                    (string-concat arena " (" (string-concat arena original-reason ")")))))
-                                    (record-new InconsistencyReport
-                                      (reason enriched)
-                                      (witnesses witnesses))))
-                                (_ report)))
-                            ((none) report))))
+                                        (_ report))))))
+                              ((none) report))
+                            ;; Property-level rule fired — report property
+                            (match (list-get filtered-props prop-index)
+                              ((some prop)
+                                (match prop
+                                  ((term-iri iri)
+                                    (let ((prop-name (. iri value))
+                                          (enriched (string-concat arena
+                                                      (string-concat arena "Unsatisfiable property usage: " prop-name)
+                                                      (string-concat arena " (" (string-concat arena original-reason ")")))))
+                                      (record-new InconsistencyReport
+                                        (reason enriched)
+                                        (witnesses witnesses))))
+                                  (_ report)))
+                              ((none) report)))))
                       ;; Unknown range
                       report))))
               (_ report))))
@@ -316,7 +347,7 @@
           ;; Phase 2a: Inject synthetic instances for --validate mode
           (validate-graph
             (if (. config validate)
-              (inject-validate-instances arena complete-graph (. config verbose))
+              (inject-validate-instances arena complete-graph (. config verbose) (. config validate-ns))
               complete-graph))
           ;; Phase 2b: Main fixpoint uses (possibly augmented) graph
           ;; In validate mode, recreate delta from the augmented graph
@@ -365,7 +396,7 @@
         ((some report)
           (let ((final-report
                   (if (. config validate)
-                    (enrich-validate-report arena report complete-graph)
+                    (enrich-validate-report arena report complete-graph (. config validate-ns))
                     report)))
             (union-new ReasonerResult reason-inconsistent final-report)))
         ((none)

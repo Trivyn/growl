@@ -1,5 +1,5 @@
 use growl::{Arena, IndexedGraph, ReasonerConfig, ReasonerResult, Term, Triple};
-use growl::{get_types, is_consistent, reason, reason_with_config, validate, filter_annotations};
+use growl::{get_types, is_consistent, reason, reason_with_config, validate, validate_with_ns, filter_annotations};
 use growl::{OwnedReasonerResult, OwnedTerm, Reasoner, STANDARD_ANNOTATION_PROPERTIES};
 use growl::{ValidateResult, OwnedValidateResult};
 
@@ -876,6 +876,155 @@ fn validate_clean_properties_pass() {
         }
         ValidateResult::Unsatisfiable { reason, .. } => {
             panic!("symmetric-only property should pass validation, got: {}", reason);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Namespace scoping tests (validate-ns)
+// ---------------------------------------------------------------------------
+
+const TLO: &str = "http://tlo.org/";
+
+/// Build a combined graph: TLO classes (tlo:Animal, tlo:Plant disjoint) + domain class (ex:Bad subclassof both).
+fn build_combined_tlo_domain(arena: &Arena) -> IndexedGraph<'_> {
+    let mut graph = IndexedGraph::new(arena);
+
+    let animal = arena.make_iri(&format!("{}Animal", TLO));
+    let plant = arena.make_iri(&format!("{}Plant", TLO));
+    let bad = arena.make_iri(&format!("{}Bad", EX));
+    let a = rdf_type(arena);
+    let cls = owl_class(arena);
+    let sub = rdfs_subclass(arena);
+    let disjoint = arena.make_iri(&format!("{}disjointWith", OWL));
+
+    // TLO classes
+    graph.add_triple(arena.make_triple(animal, a, cls));
+    graph.add_triple(arena.make_triple(plant, a, cls));
+    graph.add_triple(arena.make_triple(animal, disjoint, plant));
+
+    // Domain class: Bad subClassOf both → unsatisfiable
+    graph.add_triple(arena.make_triple(bad, a, cls));
+    graph.add_triple(arena.make_triple(bad, sub, animal));
+    graph.add_triple(arena.make_triple(bad, sub, plant));
+
+    graph
+}
+
+#[test]
+fn validate_ns_scopes_to_domain() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let graph = build_combined_tlo_domain(&arena);
+
+    // With ns scoping to example.org, only ex:Bad gets synthetic instances
+    match validate_with_ns(&arena, &graph, EX) {
+        ValidateResult::Unsatisfiable { entity, reason, .. } => {
+            assert_eq!(
+                entity,
+                Term::Iri(&format!("{}Bad", EX)),
+                "should identify ex:Bad as unsatisfiable"
+            );
+            assert!(
+                reason.contains("Unsatisfiable class"),
+                "reason should contain 'Unsatisfiable class', got: {}",
+                reason
+            );
+        }
+        ValidateResult::Satisfiable => {
+            panic!("validate_with_ns should detect unsatisfiable ex:Bad");
+        }
+    }
+}
+
+#[test]
+fn validate_ns_filters_tlo_entities() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    // Only TLO classes, no domain entities
+    let animal = arena.make_iri(&format!("{}Animal", TLO));
+    let plant = arena.make_iri(&format!("{}Plant", TLO));
+    let a = rdf_type(&arena);
+    let cls = owl_class(&arena);
+    let disjoint = arena.make_iri(&format!("{}disjointWith", OWL));
+
+    graph.add_triple(arena.make_triple(animal, a, cls));
+    graph.add_triple(arena.make_triple(plant, a, cls));
+    graph.add_triple(arena.make_triple(animal, disjoint, plant));
+
+    // With ns=http://example.org/, no synthetic instances → should pass
+    match validate_with_ns(&arena, &graph, EX) {
+        ValidateResult::Satisfiable => {
+            // Expected: TLO entities not validated
+        }
+        ValidateResult::Unsatisfiable { reason, .. } => {
+            panic!("TLO-only graph with ns scoping should pass, got: {}", reason);
+        }
+    }
+}
+
+#[test]
+fn reasoner_validate_ns() {
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+
+    let rdf_type_iri = format!("{}type", RDF);
+    let rdfs_sub_iri = format!("{}subClassOf", RDFS);
+    let owl_class_iri = format!("{}Class", OWL);
+    let disjoint_iri = format!("{}disjointWith", OWL);
+
+    let animal_iri = format!("{}Animal", TLO);
+    let plant_iri = format!("{}Plant", TLO);
+    let bad_iri = format!("{}Bad", EX);
+
+    // TLO
+    reasoner.add_iri_triple(&animal_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&plant_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&animal_iri, &disjoint_iri, &plant_iri);
+
+    // Domain
+    reasoner.add_iri_triple(&bad_iri, &rdf_type_iri, &owl_class_iri);
+    reasoner.add_iri_triple(&bad_iri, &rdfs_sub_iri, &animal_iri);
+    reasoner.add_iri_triple(&bad_iri, &rdfs_sub_iri, &plant_iri);
+
+    match reasoner.validate_ns(EX) {
+        OwnedValidateResult::Unsatisfiable { entity, reason, .. } => {
+            assert_eq!(
+                entity,
+                OwnedTerm::Iri(bad_iri),
+                "should identify Bad as unsatisfiable"
+            );
+            assert!(
+                reason.contains("Unsatisfiable class"),
+                "reason should contain 'Unsatisfiable class', got: {}",
+                reason
+            );
+        }
+        OwnedValidateResult::Satisfiable => {
+            panic!("Reasoner.validate_ns should detect unsatisfiable Bad class");
+        }
+    }
+}
+
+#[test]
+fn validate_ns_config_builder() {
+    let arena = Arena::new(4 * 1024 * 1024);
+    let graph = build_combined_tlo_domain(&arena);
+
+    let config = ReasonerConfig::new()
+        .verbose(false)
+        .validate(true)
+        .validate_ns(EX);
+
+    match reason_with_config(&arena, &graph, &config) {
+        ReasonerResult::Inconsistent { reason, .. } => {
+            assert!(
+                reason.contains("Unsatisfiable class"),
+                "reason should contain 'Unsatisfiable class', got: {}",
+                reason
+            );
+        }
+        ReasonerResult::Success { .. } => {
+            panic!("validate_ns via config builder should detect unsatisfiable class");
         }
     }
 }

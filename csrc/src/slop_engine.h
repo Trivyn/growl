@@ -8,6 +8,7 @@
 #include "slop_index.h"
 #include "slop_vocab.h"
 #include "slop_thread.h"
+#include "slop_strlib.h"
 #include "slop_types.h"
 #include "slop_cax.h"
 #include "slop_scm.h"
@@ -283,8 +284,9 @@ static slop_result_engine_WorkerMessage_thread_ChanError thread_recv_slop_chan_e
 
 void engine_print_ms(slop_arena* arena, int64_t ms);
 slop_list_rdf_Term engine_collect_declared_properties(slop_arena* arena, index_IndexedGraph g);
-index_IndexedGraph engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose);
-types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types_InconsistencyReport report, index_IndexedGraph pre_inject_graph);
+uint8_t engine_iri_matches_ns(rdf_Term term, slop_string ns);
+index_IndexedGraph engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose, slop_string validate_ns);
+types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types_InconsistencyReport report, index_IndexedGraph pre_inject_graph, slop_string validate_ns);
 types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial);
 types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g);
 slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred);

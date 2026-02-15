@@ -52,6 +52,8 @@
   (type CliArgs (record
     (input-file (Option String))
     (emit-file (Option String))
+    (background-file (Option String))
+    (validate-ns (Option String))
     (quiet Bool)
     (fast Bool)
     (complete Bool)
@@ -71,6 +73,8 @@
     (@alloc arena)
     (let ((mut input (Option String) (none))
           (mut emit (Option String) (none))
+          (mut background (Option String) (none))
+          (mut validate-ns-opt (Option String) (none))
           (mut quiet false)
           (mut fast false)
           (mut complete false)
@@ -99,6 +103,24 @@
             ((string-eq arg "--validate")
               (set! validate true)
               (set! i (+ i 1)))
+            ((string-eq arg "--validate-ns")
+              (if (< (+ i 1) argc)
+                (do
+                  (set! validate-ns-opt (some (argv-to-string argv (+ i 1))))
+                  (set! i (+ i 2)))
+                (do
+                  (println "Error: --validate-ns requires an IRI prefix")
+                  (set! help true)
+                  (set! i (+ i 1)))))
+            ((or (string-eq arg "--background") (string-eq arg "-b"))
+              (if (< (+ i 1) argc)
+                (do
+                  (set! background (some (argv-to-string argv (+ i 1))))
+                  (set! i (+ i 2)))
+                (do
+                  (println "Error: --background requires a file path")
+                  (set! help true)
+                  (set! i (+ i 1)))))
             ((or (string-eq arg "--emit") (string-eq arg "-o"))
               (if (< (+ i 1) argc)
                 (do
@@ -114,6 +136,8 @@
       (record-new CliArgs
         (input-file input)
         (emit-file emit)
+        (background-file background)
+        (validate-ns validate-ns-opt)
         (quiet quiet)
         (fast fast)
         (complete complete)
@@ -135,6 +159,8 @@
     (println "  -f, --fast       Skip schema rules and consistency checks")
     (println "  -c, --complete   Enable cls-thing and prp-ap for spec completeness")
     (println "  --validate       Check TBox satisfiability via synthetic instance injection")
+    (println "  --validate-ns NS Only validate entities with IRIs starting with NS")
+    (println "  -b, --background FILE  Load background ontology (e.g. TLO) for reasoning context")
     (println "  -V, --version    Show version information"))
 
   ;; ============================================================
@@ -208,9 +234,36 @@
                     (print-elapsed arena parse-elapsed)
                     (println ")"))
 
+                  ;; Merge background file if provided
+                  (let ((mut combined-ig ig))
+                  (match (. args background-file)
+                    ((some bg-path)
+                      (match (parse-ttl-file arena bg-path)
+                        ((error _)
+                          (print "Error: failed to parse background file ")
+                          (println bg-path)
+                          (return 1))
+                        ((ok bg-graph)
+                          (let ((bg-annot-set (collect-annotation-properties arena bg-graph))
+                                (bg-ig (graph-to-indexed arena bg-graph bg-annot-set)))
+                            (when (not quiet)
+                              (print "Loaded ")
+                              (print (int-to-string arena (indexed-graph-size bg-ig)))
+                              (print " background triples from ")
+                              (println bg-path))
+                            ;; Merge background triples into combined graph
+                            (let ((bg-triples (. bg-ig triples)))
+                              (for-each (t bg-triples)
+                                (set! combined-ig (indexed-graph-add arena combined-ig t))))))))
+                    ((none) (do)))
+
                   ;; --validate overrides --fast (needs schema materialization)
                   (let ((validate-mode (. args validate))
-                        (effective-fast (and (. args fast) (not validate-mode))))
+                        (effective-fast (and (. args fast) (not validate-mode)))
+                        ;; Extract validate-ns from args, default to ""
+                        (ns-filter (match (. args validate-ns)
+                                     ((some ns) ns)
+                                     ((none) ""))))
                   (when (and (. args fast) validate-mode)
                     (println "Warning: --validate overrides --fast (schema materialization required)"))
 
@@ -223,8 +276,9 @@
                                   (verbose (not quiet))
                                   (fast effective-fast)
                                   (complete (. args complete))
-                                  (validate validate-mode))))
-                  (match (reason-with-config arena ig config)
+                                  (validate validate-mode)
+                                  (validate-ns ns-filter))))
+                  (match (reason-with-config arena combined-ig config)
                     ((reason-success s)
                       (let ((inferred (. s inferred-count))
                             (iters (. s iterations))
@@ -308,4 +362,4 @@
                             (println "[FAIL] Ontology is inconsistent")
                             (print "  Reason: ")
                             (println (. report reason))
-                            1)))))))))))))))))))
+                            1))))))))))))))))))))

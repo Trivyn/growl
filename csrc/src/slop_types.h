@@ -60,6 +60,7 @@ struct types_ReasonerConfig {
     uint8_t fast;
     uint8_t complete;
     uint8_t validate;
+    slop_string validate_ns;
 };
 typedef struct types_ReasonerConfig types_ReasonerConfig;
 

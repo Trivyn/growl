@@ -38,6 +38,8 @@ uint8_t test_cli_test_validate_clean(slop_arena* arena);
 uint8_t test_cli_test_no_validate_unsat_passes(slop_arena* arena);
 uint8_t test_cli_test_validate_unsat_prop(slop_arena* arena);
 uint8_t test_cli_test_validate_domain_reports_class(slop_arena* arena);
+uint8_t test_cli_test_validate_ns_scoping(slop_arena* arena);
+uint8_t test_cli_test_validate_ns_filters_tlo(slop_arena* arena);
 int main(int argc, char** _c_argv);
 
 #ifndef SLOP_OPTION_TYPES_REASONERRESULT_DEFINED

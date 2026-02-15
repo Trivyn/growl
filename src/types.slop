@@ -45,7 +45,8 @@
     (verbose Bool)
     (fast Bool)
     (complete Bool)
-    (validate Bool)))
+    (validate Bool)
+    (validate-ns String)))
 
   ;; Engine state during fixpoint computation
   (type EngineState (record

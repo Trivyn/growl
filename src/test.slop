@@ -318,7 +318,8 @@
       (verbose false)
       (fast false)
       (complete false)
-      (validate true)))
+      (validate true)
+      (validate-ns "")))
 
   ;; ============================================================
   ;; Test 9: Validate Detects Unsatisfiable Class

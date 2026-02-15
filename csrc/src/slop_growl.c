@@ -11,7 +11,7 @@ int64_t growl_get_inferred_count(types_ReasonerResult result);
 
 types_ReasonerConfig growl_default_config(void) {
     types_ReasonerConfig _retval = {0};
-    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0, .validate = 0});
+    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0, .validate = 0, .validate_ns = SLOP_STR("")});
     SLOP_POST(((_retval.worker_count == 4)), "(== (. $result worker-count) 4)");
     SLOP_POST(((_retval.channel_buffer == 256)), "(== (. $result channel-buffer) 256)");
     SLOP_POST(((_retval.max_iterations == 1000)), "(== (. $result max-iterations) 1000)");
@@ -42,16 +42,16 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
 
 uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
-    __auto_type _mv_322 = growl_reason(arena, input);
-    switch (_mv_322.tag) {
+    __auto_type _mv_323 = growl_reason(arena, input);
+    switch (_mv_323.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type _ = _mv_322.data.reason_success;
+            __auto_type _ = _mv_323.data.reason_success;
             return 1;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_322.data.reason_inconsistent;
+            __auto_type _ = _mv_323.data.reason_inconsistent;
             return 0;
         }
     }
@@ -110,16 +110,16 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 
 int64_t growl_get_inferred_count(types_ReasonerResult result) {
     int64_t _retval = {0};
-    __auto_type _mv_323 = result;
-    switch (_mv_323.tag) {
+    __auto_type _mv_324 = result;
+    switch (_mv_324.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type s = _mv_323.data.reason_success;
+            __auto_type s = _mv_324.data.reason_success;
             return s.inferred_count;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_323.data.reason_inconsistent;
+            __auto_type _ = _mv_324.data.reason_inconsistent;
             return 0;
         }
     }

@@ -60,7 +60,7 @@
     (@post {(. $result fast) == false})
     (@post {(. $result complete) == false})
     (@post {(. $result validate) == false})
-    (@example () -> (ReasonerConfig 4 256 1000 true false false false))
+    (@example () -> (ReasonerConfig 4 256 1000 true false false false ""))
     :c-name "growl_default_config"
     (record-new ReasonerConfig
       (worker-count 4)
@@ -69,7 +69,8 @@
       (verbose true)
       (fast false)
       (complete false)
-      (validate false)))
+      (validate false)
+      (validate-ns "")))
 
   ;; ============================================================
   ;; Public API

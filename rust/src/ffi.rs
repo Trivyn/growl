@@ -148,6 +148,7 @@ pub struct ReasonerConfigFfi {
     pub fast: u8,
     pub complete: u8,
     pub validate: u8,
+    pub validate_ns: SlopString,
 }
 
 #[repr(C)]

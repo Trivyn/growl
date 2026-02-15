@@ -376,7 +376,8 @@
                         (verbose false)
                         (fast false)
                         (complete false)
-                        (validate true))))
+                        (validate true)
+                        (validate-ns ""))))
           (match (reason-with-config arena ig config)
             ((reason-inconsistent _) true)
             ((reason-success _)
@@ -404,7 +405,8 @@
                         (verbose false)
                         (fast false)
                         (complete false)
-                        (validate true))))
+                        (validate true)
+                        (validate-ns ""))))
           (match (reason-with-config arena ig config)
             ((reason-success _) true)
             ((reason-inconsistent report)
@@ -452,7 +454,8 @@
                         (verbose false)
                         (fast false)
                         (complete false)
-                        (validate true))))
+                        (validate true)
+                        (validate-ns ""))))
           (match (reason-with-config arena ig config)
             ((reason-inconsistent _) true)
             ((reason-success _)
@@ -480,7 +483,8 @@
                         (verbose false)
                         (fast false)
                         (complete false)
-                        (validate true))))
+                        (validate true)
+                        (validate-ns ""))))
           (match (reason-with-config arena ig config)
             ((reason-inconsistent report)
               ;; Check that enriched reason says "Unsatisfiable class:" not "Unsatisfiable property usage:"
@@ -495,6 +499,81 @@
                     false))))
             ((reason-success _)
               (println "  ERROR: should have detected inconsistency")
+              false))))))
+
+  ;; ============================================================
+  ;; Test 17: --validate-ns scopes to domain namespace only
+  ;; ============================================================
+
+  (fn test-validate-ns-scoping ((arena Arena))
+    (@intent "Combined ontology with TLO + domain: validate-ns limits to domain entities only")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    ;; validate-bg-domain.ttl has TLO classes (tlo:Animal, tlo:Plant) and domain class (ex:Bad)
+    ;; ex:Bad subClassOf both disjoint TLO classes → unsatisfiable
+    ;; With validate-ns=http://example.org/, only ex:Bad gets a synthetic instance
+    (match (parse-ttl-file arena "fixtures/validate-bg-domain.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-bg-domain.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns "http://example.org/"))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent report)
+              ;; Should detect ex:Bad as unsatisfiable
+              ;; The enriched reason should mention "Unsatisfiable class"
+              (let ((reason (. report reason))
+                    (len (string-len reason)))
+                (if (> len 20)
+                  (== (cast Int (@ (. reason data) 14)) 99)  ;; 'c' = class
+                  (do
+                    (print "  ERROR: reason too short: ")
+                    (println reason)
+                    false))))
+            ((reason-success _)
+              (println "  ERROR: should have detected unsatisfiable ex:Bad")
+              false))))))
+
+  ;; ============================================================
+  ;; Test 18: --validate-ns filters out TLO entities from validation
+  ;; ============================================================
+
+  (fn test-validate-ns-filters-tlo ((arena Arena))
+    (@intent "TLO-only entities are not validated when validate-ns scopes to domain prefix")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    ;; validate-bg-tlo.ttl has only TLO classes (tlo:Animal, tlo:Plant, disjoint)
+    ;; With validate-ns=http://example.org/, NO synthetic instances are created
+    ;; → should pass even though TLO has disjoint classes
+    (match (parse-ttl-file arena "fixtures/validate-bg-tlo.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-bg-tlo.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns "http://example.org/"))))
+          (match (reason-with-config arena ig config)
+            ((reason-success _) true)
+            ((reason-inconsistent report)
+              (print "  ERROR: unexpected inconsistency: ")
+              (println (. report reason))
               false))))))
 
   ;; ============================================================
@@ -578,6 +657,15 @@
 
         (let ((r (test-validate-domain-reports-class arena)))
           (print-result "validate: domain-mediated reports class" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Validate namespace scoping
+        (let ((r (test-validate-ns-scoping arena)))
+          (print-result "validate-ns: scoped to domain namespace" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-validate-ns-filters-tlo arena)))
+          (print-result "validate-ns: TLO entities filtered out" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Error handling

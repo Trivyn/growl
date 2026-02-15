@@ -395,13 +395,15 @@ impl<'a> IndexedGraph<'a> {
 /// Configuration for the OWL 2 RL reasoner.
 pub struct ReasonerConfig {
     raw: ffi::ReasonerConfigFfi,
+    /// Kept alive so the SlopString pointer in raw.validate_ns stays valid.
+    _validate_ns: Option<ffi::SlopString>,
 }
 
 impl ReasonerConfig {
     /// Create a new config with default values.
     pub fn new() -> Self {
         let raw = unsafe { ffi::growl_default_config() };
-        ReasonerConfig { raw }
+        ReasonerConfig { raw, _validate_ns: None }
     }
 
     pub fn worker_count(mut self, n: u8) -> Self {
@@ -436,6 +438,18 @@ impl ReasonerConfig {
 
     pub fn validate(mut self, v: bool) -> Self {
         self.raw.validate = v as u8;
+        self
+    }
+
+    /// Set the namespace prefix filter for validate mode.
+    ///
+    /// When non-empty, only entities whose IRI starts with this prefix
+    /// will have synthetic instances injected during validation.
+    /// Empty string (default) means validate all entities.
+    pub fn validate_ns(mut self, prefix: &str) -> Self {
+        let interned = str_to_slop_string(prefix);
+        self.raw.validate_ns = interned;
+        self._validate_ns = Some(interned);
         self
     }
 }
@@ -527,19 +541,6 @@ pub enum OwnedValidateResult {
     },
 }
 
-/// Resolve synthetic blank node ID to the original owl:Class.
-/// blank_id = 10_000_000 + index into owl:Class declarations.
-fn resolve_unsatisfiable_class<'a>(
-    arena: &'a Arena,
-    graph: &IndexedGraph<'a>,
-    blank_id: i64,
-) -> Option<Term<'a>> {
-    let rdf_type = arena.make_iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
-    let owl_class = arena.make_iri("http://www.w3.org/2002/07/owl#Class");
-    let classes = graph.match_pattern(None, Some(rdf_type), Some(owl_class));
-    let idx = (blank_id - 10_000_000) as usize;
-    classes.get(idx).map(|t| t.subject.clone())
-}
 
 /// The 10 property metaclasses used for synthetic property injection.
 const PROPERTY_METACLASSES: [&str; 10] = [
@@ -577,21 +578,6 @@ fn collect_declared_properties<'a>(
     result
 }
 
-/// Resolve synthetic blank node ID to the original property.
-/// blank_id in [20M, 30M) or [30M, 40M) → prop_index into declared properties.
-fn resolve_unsatisfiable_property<'a>(
-    arena: &'a Arena,
-    graph: &IndexedGraph<'a>,
-    blank_id: i64,
-) -> Option<Term<'a>> {
-    let prop_index = if blank_id < 30_000_000 {
-        (blank_id - 20_000_000) as usize
-    } else {
-        (blank_id - 30_000_000) as usize
-    };
-    let props = collect_declared_properties(arena, graph);
-    props.into_iter().nth(prop_index)
-}
 
 const RDF_TYPE_IRI: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 const RDFS_DOMAIN_IRI: &str = "http://www.w3.org/2000/01/rdf-schema#domain";
@@ -607,24 +593,6 @@ fn owned_witness_is_rdf_type(witness: &OwnedTriple) -> bool {
     matches!(&witness.predicate, OwnedTerm::Iri(v) if v == RDF_TYPE_IRI)
 }
 
-/// Trace back from a property blank to the domain/range class.
-/// If blank_id < 30M → domain, else → range.
-fn resolve_domain_range_class<'a>(
-    arena: &'a Arena,
-    graph: &IndexedGraph<'a>,
-    blank_id: i64,
-) -> Option<Term<'a>> {
-    let prop = resolve_unsatisfiable_property(arena, graph, blank_id)?;
-    let prop_ffi = term_to_ffi(arena, &prop);
-    let dr_iri = if blank_id < 30_000_000 {
-        RDFS_DOMAIN_IRI
-    } else {
-        RDFS_RANGE_IRI
-    };
-    let dr_pred = arena.make_iri(dr_iri);
-    let classes = graph.objects(prop_ffi, dr_pred);
-    classes.into_iter().next()
-}
 
 // ---------------------------------------------------------------------------
 // Free functions
@@ -657,30 +625,19 @@ pub fn reason_with_config<'a>(
 /// normal OWL-RL reasoning. Returns `Unsatisfiable` if any class or property
 /// is unsatisfiable, with the offending entity resolved from the synthetic blank.
 pub fn validate<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>) -> ValidateResult<'a> {
-    let config = ReasonerConfig::new().verbose(false).validate(true);
+    validate_with_ns(arena, graph, "")
+}
+
+/// Check TBox satisfiability with namespace scoping.
+///
+/// Only entities whose IRI starts with `ns` will have synthetic instances injected.
+/// Pass an empty string to validate all entities.
+pub fn validate_with_ns<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>, ns: &str) -> ValidateResult<'a> {
+    let config = ReasonerConfig::new().verbose(false).validate(true).validate_ns(ns);
     match reason_with_config(arena, graph, &config) {
         ReasonerResult::Success { .. } => ValidateResult::Satisfiable,
         ReasonerResult::Inconsistent { reason, witnesses } => {
-            let entity = witnesses
-                .first()
-                .and_then(|w| match &w.subject {
-                    Term::Blank(id) if *id >= 10_000_000 && *id < 20_000_000 => {
-                        resolve_unsatisfiable_class(arena, graph, *id)
-                    }
-                    Term::Blank(id) if *id >= 20_000_000 && *id < 40_000_000 => {
-                        if witness_is_rdf_type(w) {
-                            // Class-level rule (cax-dw) fired via domain/range inference.
-                            // Trace back to the domain/range class.
-                            resolve_domain_range_class(arena, graph, *id)
-                                .or_else(|| resolve_unsatisfiable_property(arena, graph, *id))
-                        } else {
-                            // Property-level rule (prp-asyp etc.) fired directly.
-                            resolve_unsatisfiable_property(arena, graph, *id)
-                        }
-                    }
-                    _ => None,
-                })
-                .unwrap_or(Term::Blank(-1));
+            let entity = resolve_validate_entity(arena, graph, &witnesses, ns);
             ValidateResult::Unsatisfiable {
                 entity,
                 reason,
@@ -688,6 +645,122 @@ pub fn validate<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>) -> ValidateResul
             }
         }
     }
+}
+
+/// Resolve the unsatisfiable entity from witness triples, applying namespace filter.
+fn resolve_validate_entity<'a>(
+    arena: &'a Arena,
+    graph: &IndexedGraph<'a>,
+    witnesses: &[Triple<'a>],
+    ns: &str,
+) -> Term<'a> {
+    witnesses
+        .first()
+        .and_then(|w| match &w.subject {
+            Term::Blank(id) if *id >= 10_000_000 && *id < 20_000_000 => {
+                resolve_unsatisfiable_class_ns(arena, graph, *id, ns)
+            }
+            Term::Blank(id) if *id >= 20_000_000 && *id < 40_000_000 => {
+                if witness_is_rdf_type(w) {
+                    resolve_domain_range_class_ns(arena, graph, *id, ns)
+                        .or_else(|| resolve_unsatisfiable_property_ns(arena, graph, *id, ns))
+                } else {
+                    resolve_unsatisfiable_property_ns(arena, graph, *id, ns)
+                }
+            }
+            _ => None,
+        })
+        .unwrap_or(Term::Blank(-1))
+}
+
+/// Filter entities by namespace prefix (empty = no filter).
+fn matches_ns(term: &Term<'_>, ns: &str) -> bool {
+    if ns.is_empty() {
+        return true;
+    }
+    matches!(term, Term::Iri(v) if v.starts_with(ns))
+}
+
+/// Resolve synthetic blank to class, with namespace filtering.
+fn resolve_unsatisfiable_class_ns<'a>(
+    arena: &'a Arena,
+    graph: &IndexedGraph<'a>,
+    blank_id: i64,
+    ns: &str,
+) -> Option<Term<'a>> {
+    let rdf_type = arena.make_iri(RDF_TYPE_IRI);
+    let owl_class = arena.make_iri("http://www.w3.org/2002/07/owl#Class");
+    let classes = graph.match_pattern(None, Some(rdf_type), Some(owl_class));
+    let filtered: Vec<_> = classes.into_iter().filter(|t| matches_ns(&t.subject, ns)).collect();
+    let idx = (blank_id - 10_000_000) as usize;
+    filtered.into_iter().nth(idx).map(|t| t.subject)
+}
+
+/// Resolve synthetic blank to property, with namespace filtering.
+fn resolve_unsatisfiable_property_ns<'a>(
+    arena: &'a Arena,
+    graph: &IndexedGraph<'a>,
+    blank_id: i64,
+    ns: &str,
+) -> Option<Term<'a>> {
+    let prop_index = if blank_id < 30_000_000 {
+        (blank_id - 20_000_000) as usize
+    } else {
+        (blank_id - 30_000_000) as usize
+    };
+    let props = collect_declared_properties(arena, graph);
+    let filtered: Vec<_> = props.into_iter().filter(|t| matches_ns(t, ns)).collect();
+    filtered.into_iter().nth(prop_index)
+}
+
+/// Trace back from a property blank to the domain/range class, with ns filtering.
+fn resolve_domain_range_class_ns<'a>(
+    arena: &'a Arena,
+    graph: &IndexedGraph<'a>,
+    blank_id: i64,
+    ns: &str,
+) -> Option<Term<'a>> {
+    let prop = resolve_unsatisfiable_property_ns(arena, graph, blank_id, ns)?;
+    let prop_ffi = term_to_ffi(arena, &prop);
+    let dr_iri = if blank_id < 30_000_000 {
+        RDFS_DOMAIN_IRI
+    } else {
+        RDFS_RANGE_IRI
+    };
+    let dr_pred = arena.make_iri(dr_iri);
+    let classes = graph.objects(prop_ffi, dr_pred);
+    classes.into_iter().next()
+}
+
+/// Resolve the unsatisfiable entity from owned witness triples, with namespace filter.
+fn owned_resolve_validate_entity(
+    arena: &Arena,
+    graph: &IndexedGraph<'_>,
+    witnesses: &[OwnedTriple],
+    ns: &str,
+) -> OwnedTerm {
+    witnesses
+        .first()
+        .and_then(|w| match &w.subject {
+            OwnedTerm::Blank(id) if *id >= 10_000_000 && *id < 20_000_000 => {
+                resolve_unsatisfiable_class_ns(arena, graph, *id, ns).map(OwnedTerm::from)
+            }
+            OwnedTerm::Blank(id) if *id >= 20_000_000 && *id < 40_000_000 => {
+                if owned_witness_is_rdf_type(w) {
+                    resolve_domain_range_class_ns(arena, graph, *id, ns)
+                        .map(OwnedTerm::from)
+                        .or_else(|| {
+                            resolve_unsatisfiable_property_ns(arena, graph, *id, ns)
+                                .map(OwnedTerm::from)
+                        })
+                } else {
+                    resolve_unsatisfiable_property_ns(arena, graph, *id, ns)
+                        .map(OwnedTerm::from)
+                }
+            }
+            _ => None,
+        })
+        .unwrap_or(OwnedTerm::Blank(-1))
 }
 
 /// Check whether the graph is consistent under OWL 2 RL rules.
@@ -1041,7 +1114,15 @@ impl Reasoner {
     ///
     /// Note: `--validate` overrides `--fast` since schema materialization is required.
     pub fn validate(&self) -> OwnedValidateResult {
-        let config = ReasonerConfig::new().verbose(false).validate(true);
+        self.validate_ns("")
+    }
+
+    /// Check TBox satisfiability with namespace scoping.
+    ///
+    /// Only entities whose IRI starts with `ns` will have synthetic instances injected.
+    /// Pass an empty string to validate all entities.
+    pub fn validate_ns(&self, ns: &str) -> OwnedValidateResult {
+        let config = ReasonerConfig::new().verbose(false).validate(true).validate_ns(ns);
         match self.reason_with_config(&config) {
             OwnedReasonerResult::Success { .. } => OwnedValidateResult::Satisfiable,
             OwnedReasonerResult::Inconsistent { reason, witnesses } => {
@@ -1049,36 +1130,7 @@ impl Reasoner {
                     raw: self.graph_raw,
                     arena: &self.arena,
                 };
-                let entity = witnesses
-                    .first()
-                    .and_then(|w| match &w.subject {
-                        OwnedTerm::Blank(id) if *id >= 10_000_000 && *id < 20_000_000 => {
-                            let rdf_type = self.arena.make_iri(RDF_TYPE_IRI);
-                            let owl_class =
-                                self.arena.make_iri("http://www.w3.org/2002/07/owl#Class");
-                            let classes =
-                                ig.match_pattern(None, Some(rdf_type), Some(owl_class));
-                            let idx = (*id - 10_000_000) as usize;
-                            classes.get(idx).map(|t| OwnedTerm::from(t.subject.clone()))
-                        }
-                        OwnedTerm::Blank(id) if *id >= 20_000_000 && *id < 40_000_000 => {
-                            if owned_witness_is_rdf_type(w) {
-                                // Class-level rule fired via domain/range — trace back to class
-                                resolve_domain_range_class(&self.arena, &ig, *id)
-                                    .map(OwnedTerm::from)
-                                    .or_else(|| {
-                                        resolve_unsatisfiable_property(&self.arena, &ig, *id)
-                                            .map(OwnedTerm::from)
-                                    })
-                            } else {
-                                // Property-level rule fired directly
-                                resolve_unsatisfiable_property(&self.arena, &ig, *id)
-                                    .map(OwnedTerm::from)
-                            }
-                        }
-                        _ => None,
-                    })
-                    .unwrap_or(OwnedTerm::Blank(-1));
+                let entity = owned_resolve_validate_entity(&self.arena, &ig, &witnesses, ns);
                 OwnedValidateResult::Unsatisfiable {
                     entity,
                     reason,
