@@ -41,7 +41,7 @@ types_Delta cax_fixture_delta_empty(slop_arena* arena);
 types_Delta cax_fixture_delta_fido_cat(slop_arena* arena);
 types_Delta cax_fixture_delta_fido_dog(slop_arena* arena);
 index_IndexedGraph cax_fixture_g_all_disjoint(slop_arena* arena);
-slop_result_types_Delta_types_InconsistencyReport cax_apply_cax_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
+slop_result_types_Delta_types_InconsistencyReport cax_apply_cax_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate);
 slop_list_rdf_Triple cax_cax_sco(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cax_cax_eqc1(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple cax_cax_eqc2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);

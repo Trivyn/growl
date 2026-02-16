@@ -157,7 +157,7 @@
     (@pure)
     (@post {$result >= 0})
     (@example ((reason-success (ReasonerSuccess _ 42 3))) -> 42)
-    (@example ((reason-inconsistent (InconsistencyReport "conflict" _))) -> 0)
+    (@example ((reason-inconsistent _)) -> 0)
     :c-name "growl_get_inferred_count"
     (match result
       ((reason-success s) (. s inferred-count))

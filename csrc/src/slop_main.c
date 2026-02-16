@@ -2,6 +2,8 @@
 #include "slop_main.h"
 
 void main_print_elapsed(slop_arena* arena, int64_t elapsed);
+rdf_Term main_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset);
+int64_t main_max_blank_id_in_graph(index_IndexedGraph ig);
 slop_string main_argv_to_string(uint8_t** argv, int64_t index);
 main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
 void main_print_usage(void);
@@ -21,6 +23,69 @@ void main_print_elapsed(slop_arena* arena, int64_t elapsed) {
         printf("%.*s", (int)(int_to_string(arena, ms)).len, (int_to_string(arena, ms)).data);
     }
     printf("%s", "s");
+}
+
+rdf_Term main_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
+    __auto_type _mv_353 = t;
+    switch (_mv_353.tag) {
+        case rdf_Term_term_blank:
+        {
+            __auto_type b = _mv_353.data.term_blank;
+            return rdf_make_blank(arena, (b.id + offset));
+        }
+        case rdf_Term_term_iri:
+        {
+            __auto_type _ = _mv_353.data.term_iri;
+            return t;
+        }
+        case rdf_Term_term_literal:
+        {
+            __auto_type _ = _mv_353.data.term_literal;
+            return t;
+        }
+    }
+}
+
+int64_t main_max_blank_id_in_graph(index_IndexedGraph ig) {
+    {
+        __auto_type triples = ig.triples;
+        int64_t max_id = 0;
+        {
+            __auto_type _coll = triples;
+            for (size_t _i = 0; _i < _coll.len; _i++) {
+                __auto_type t = _coll.data[_i];
+                __auto_type _mv_354 = t.subject;
+                switch (_mv_354.tag) {
+                    case rdf_Term_term_blank:
+                    {
+                        __auto_type b = _mv_354.data.term_blank;
+                        if ((b.id > max_id)) {
+                            max_id = b.id;
+                        }
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+                __auto_type _mv_355 = t.object;
+                switch (_mv_355.tag) {
+                    case rdf_Term_term_blank:
+                    {
+                        __auto_type b = _mv_355.data.term_blank;
+                        if ((b.id > max_id)) {
+                            max_id = b.id;
+                        }
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            }
+        }
+        return max_id;
+    }
 }
 
 slop_string main_argv_to_string(uint8_t** argv, int64_t index) {
@@ -135,16 +200,16 @@ int main(int argc, char** _c_argv) {
                 printf("growl %s\n", GROWL_VERSION);
                 return 0;
             } else {
-                __auto_type _mv_349 = args.input_file;
-                if (!_mv_349.has_value) {
+                __auto_type _mv_356 = args.input_file;
+                if (!_mv_356.has_value) {
                     main_print_usage();
                     if (args.show_help) {
                         return 0;
                     } else {
                         return 1;
                     }
-                } else if (_mv_349.has_value) {
-                    __auto_type input_path = _mv_349.value;
+                } else if (_mv_356.has_value) {
+                    __auto_type input_path = _mv_356.value;
                     if (args.show_help) {
                         main_print_usage();
                         return 0;
@@ -152,16 +217,16 @@ int main(int argc, char** _c_argv) {
                         {
                             __auto_type quiet = args.quiet;
                             __auto_type parse_start = slop_now_ms();
-                            __auto_type _mv_350 = ttl_parse_ttl_file(arena, input_path);
-                            if (!_mv_350.is_ok) {
-                                __auto_type e = _mv_350.data.err;
+                            __auto_type _mv_357 = ttl_parse_ttl_file(arena, input_path);
+                            if (!_mv_357.is_ok) {
+                                __auto_type e = _mv_357.data.err;
                                 printf("%s", "Error: failed to parse ");
                                 printf("%.*s\n", (int)(input_path).len, (input_path).data);
-                                __auto_type _mv_351 = e;
-                                switch (_mv_351.tag) {
+                                __auto_type _mv_358 = e;
+                                switch (_mv_358.tag) {
                                     case ttl_TtlFileError_parse_error:
                                     {
-                                        __auto_type pe = _mv_351.data.parse_error;
+                                        __auto_type pe = _mv_358.data.parse_error;
                                         printf("%s", "  at line ");
                                         printf("%.*s", (int)(int_to_string(arena, pe.position.line)).len, (int_to_string(arena, pe.position.line)).data);
                                         printf("%s", ", column ");
@@ -172,14 +237,14 @@ int main(int argc, char** _c_argv) {
                                     }
                                     case ttl_TtlFileError_file_error:
                                     {
-                                        __auto_type _ = _mv_351.data.file_error;
+                                        __auto_type _ = _mv_358.data.file_error;
                                         printf("%s\n", "  (file error)");
                                         break;
                                     }
                                 }
                                 return 1;
-                            } else if (_mv_350.is_ok) {
-                                __auto_type g = _mv_350.data.ok;
+                            } else if (_mv_357.is_ok) {
+                                __auto_type g = _mv_357.data.ok;
                                 {
                                     __auto_type annot_set = growl_collect_annotation_properties(arena, g);
                                     __auto_type original_size = rdf_graph_size(g);
@@ -203,17 +268,17 @@ int main(int argc, char** _c_argv) {
                                     }
                                     {
                                         __auto_type combined_ig = ig;
-                                        __auto_type _mv_352 = args.background_file;
-                                        if (_mv_352.has_value) {
-                                            __auto_type bg_path = _mv_352.value;
-                                            __auto_type _mv_353 = ttl_parse_ttl_file(arena, bg_path);
-                                            if (!_mv_353.is_ok) {
-                                                __auto_type _ = _mv_353.data.err;
+                                        __auto_type _mv_359 = args.background_file;
+                                        if (_mv_359.has_value) {
+                                            __auto_type bg_path = _mv_359.value;
+                                            __auto_type _mv_360 = ttl_parse_ttl_file(arena, bg_path);
+                                            if (!_mv_360.is_ok) {
+                                                __auto_type _ = _mv_360.data.err;
                                                 printf("%s", "Error: failed to parse background file ");
                                                 printf("%.*s\n", (int)(bg_path).len, (bg_path).data);
                                                 return 1;
-                                            } else if (_mv_353.is_ok) {
-                                                __auto_type bg_graph = _mv_353.data.ok;
+                                            } else if (_mv_360.is_ok) {
+                                                __auto_type bg_graph = _mv_360.data.ok;
                                                 {
                                                     __auto_type bg_annot_set = growl_collect_annotation_properties(arena, bg_graph);
                                                     __auto_type bg_ig = growl_graph_to_indexed(arena, bg_graph, bg_annot_set);
@@ -225,17 +290,24 @@ int main(int argc, char** _c_argv) {
                                                     }
                                                     {
                                                         __auto_type bg_triples = bg_ig.triples;
+                                                        __auto_type bg_blank_offset = (main_max_blank_id_in_graph(ig) + 1);
                                                         {
                                                             __auto_type _coll = bg_triples;
                                                             for (size_t _i = 0; _i < _coll.len; _i++) {
                                                                 __auto_type t = _coll.data[_i];
-                                                                combined_ig = rdf_indexed_graph_add(arena, combined_ig, t);
+                                                                {
+                                                                    __auto_type rs = main_remap_blank_term(arena, t.subject, bg_blank_offset);
+                                                                    __auto_type rp = t.predicate;
+                                                                    __auto_type ro = main_remap_blank_term(arena, t.object, bg_blank_offset);
+                                                                    __auto_type remapped = rdf_make_triple(arena, rs, rp, ro);
+                                                                    combined_ig = rdf_indexed_graph_add(arena, combined_ig, remapped);
+                                                                }
                                                             }
                                                         }
                                                     }
                                                 }
                                             }
-                                        } else if (!_mv_352.has_value) {
+                                        } else if (!_mv_359.has_value) {
                                         }
                                         {
                                             __auto_type validate_mode = args.validate;
@@ -253,11 +325,11 @@ int main(int argc, char** _c_argv) {
                                             {
                                                 __auto_type reason_start = slop_now_ms();
                                                 __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet), .fast = effective_fast, .complete = args.complete, .validate = validate_mode, .validate_ns = ns_filter});
-                                                __auto_type _mv_354 = growl_reason_with_config(arena, combined_ig, config);
-                                                switch (_mv_354.tag) {
+                                                __auto_type _mv_361 = growl_reason_with_config(arena, combined_ig, config);
+                                                switch (_mv_361.tag) {
                                                     case types_ReasonerResult_reason_success:
                                                     {
-                                                        __auto_type s = _mv_354.data.reason_success;
+                                                        __auto_type s = _mv_361.data.reason_success;
                                                         {
                                                             __auto_type inferred = s.inferred_count;
                                                             __auto_type iters = s.iterations;
@@ -290,9 +362,9 @@ int main(int argc, char** _c_argv) {
                                                                     printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(s.graph))).len, (int_to_string(arena, rdf_indexed_graph_size(s.graph))).data);
                                                                     printf("%s\n", " triples");
                                                                 }
-                                                                __auto_type _mv_355 = args.emit_file;
-                                                                if (_mv_355.has_value) {
-                                                                    __auto_type emit_path = _mv_355.value;
+                                                                __auto_type _mv_362 = args.emit_file;
+                                                                if (_mv_362.has_value) {
+                                                                    __auto_type emit_path = _mv_362.value;
                                                                     {
                                                                         __auto_type out_ig = s.graph;
                                                                         {
@@ -311,23 +383,23 @@ int main(int argc, char** _c_argv) {
                                                                             __auto_type out_graph = growl_indexed_to_graph(arena, out_ig);
                                                                             slop_option_string no_base = (slop_option_string){.has_value = false};
                                                                             __auto_type config = ((serialize_ttl_SerializeConfig){.prefixes = ttl_make_prefix_map(arena), .base_iri = no_base, .indent_width = 2});
-                                                                            __auto_type _mv_356 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
-                                                                            if (_mv_356.is_ok) {
-                                                                                __auto_type _ = _mv_356.data.ok;
+                                                                            __auto_type _mv_363 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
+                                                                            if (_mv_363.is_ok) {
+                                                                                __auto_type _ = _mv_363.data.ok;
                                                                                 if (!(quiet)) {
                                                                                     printf("%s", "Wrote materialized graph to ");
                                                                                     printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
                                                                                 }
                                                                                 return 0;
-                                                                            } else if (!_mv_356.is_ok) {
-                                                                                __auto_type _ = _mv_356.data.err;
+                                                                            } else if (!_mv_363.is_ok) {
+                                                                                __auto_type _ = _mv_363.data.err;
                                                                                 printf("%s", "Error: failed to write ");
                                                                                 printf("%.*s\n", (int)(emit_path).len, (emit_path).data);
                                                                                 return 1;
                                                                             }
                                                                         }
                                                                     }
-                                                                } else if (!_mv_355.has_value) {
+                                                                } else if (!_mv_362.has_value) {
                                                                     return 0;
                                                                 }
                                                             }
@@ -335,29 +407,54 @@ int main(int argc, char** _c_argv) {
                                                     }
                                                     case types_ReasonerResult_reason_inconsistent:
                                                     {
-                                                        __auto_type report = _mv_354.data.reason_inconsistent;
+                                                        __auto_type reports = _mv_361.data.reason_inconsistent;
                                                         {
                                                             __auto_type reason_elapsed = (slop_now_ms() - reason_start);
                                                             if (validate_mode) {
-                                                                printf("%s\n", "[FAIL] Validation failed");
-                                                                printf("%s", "  Reason: ");
-                                                                printf("%.*s\n", (int)(report.reason).len, (report.reason).data);
+                                                                {
+                                                                    __auto_type report_count = ((int64_t)((reports).len));
+                                                                    printf("%s", "[FAIL] Validation found ");
+                                                                    printf("%.*s", (int)(int_to_string(arena, report_count)).len, (int_to_string(arena, report_count)).data);
+                                                                    printf("%s\n", " unsatisfiable entities");
+                                                                    printf("%s\n", "");
+                                                                    {
+                                                                        __auto_type idx = 0;
+                                                                        {
+                                                                            __auto_type _coll = reports;
+                                                                            for (size_t _i = 0; _i < _coll.len; _i++) {
+                                                                                __auto_type r = _coll.data[_i];
+                                                                                idx = (idx + 1);
+                                                                                printf("%s", "  ");
+                                                                                printf("%.*s", (int)(int_to_string(arena, idx)).len, (int_to_string(arena, idx)).data);
+                                                                                printf("%s", ". ");
+                                                                                printf("%.*s\n", (int)(r.reason).len, (r.reason).data);
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
                                                                 return 1;
                                                             } else {
-                                                                if (quiet) {
-                                                                    printf("%.*s", (int)(input_path).len, (input_path).data);
-                                                                    printf("%s", ": ");
-                                                                    main_print_elapsed(arena, parse_elapsed);
-                                                                    printf("%s", " parse, ");
-                                                                    main_print_elapsed(arena, reason_elapsed);
-                                                                    printf("%s", " reason, ");
-                                                                    printf("%.*s", (int)(int_to_string(arena, input_size)).len, (int_to_string(arena, input_size)).data);
-                                                                    printf("%s\n", " triples [INCONSISTENT]");
+                                                                __auto_type _mv_364 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                                                if (_mv_364.has_value) {
+                                                                    __auto_type report = _mv_364.value;
+                                                                    if (quiet) {
+                                                                        printf("%.*s", (int)(input_path).len, (input_path).data);
+                                                                        printf("%s", ": ");
+                                                                        main_print_elapsed(arena, parse_elapsed);
+                                                                        printf("%s", " parse, ");
+                                                                        main_print_elapsed(arena, reason_elapsed);
+                                                                        printf("%s", " reason, ");
+                                                                        printf("%.*s", (int)(int_to_string(arena, input_size)).len, (int_to_string(arena, input_size)).data);
+                                                                        printf("%s\n", " triples [INCONSISTENT]");
+                                                                    }
+                                                                    printf("%s\n", "[FAIL] Ontology is inconsistent");
+                                                                    printf("%s", "  Reason: ");
+                                                                    printf("%.*s\n", (int)(report.reason).len, (report.reason).data);
+                                                                    return 1;
+                                                                } else if (!_mv_364.has_value) {
+                                                                    printf("%s\n", "[FAIL] Ontology is inconsistent (no details)");
+                                                                    return 1;
                                                                 }
-                                                                printf("%s\n", "[FAIL] Ontology is inconsistent");
-                                                                printf("%s", "  Reason: ");
-                                                                printf("%.*s\n", (int)(report.reason).len, (report.reason).data);
-                                                                return 1;
                                                             }
                                                         }
                                                     }

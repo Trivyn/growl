@@ -173,11 +173,20 @@ pub struct InconsistencyReportFfi {
     pub witnesses: SlopListRdfTriple,
 }
 
+/// A list of InconsistencyReport structs (mirrors SLOP's `(List InconsistencyReport)`).
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct SlopListInconsistencyReport {
+    pub len: usize,
+    pub cap: usize,
+    pub data: *mut InconsistencyReportFfi,
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union ReasonerResultData {
     pub reason_success: ReasonerSuccessFfi,
-    pub reason_inconsistent: InconsistencyReportFfi,
+    pub reason_inconsistent: SlopListInconsistencyReport,
 }
 
 #[repr(C)]

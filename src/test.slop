@@ -468,9 +468,11 @@
 
       ;; Run with validate — should detect inconsistency
       (match (reason-with-config arena g (make-validate-config))
-        ((reason-inconsistent report)
+        ((reason-inconsistent reports)
           ;; The enriched reason should reference the CLASS, not the property.
-          (starts-with (. report reason) "Unsatisfiable class:"))
+          (match (list-get reports 0)
+            ((some report) (starts-with (. report reason) "Unsatisfiable class:"))
+            ((none) false)))
         ((reason-success _) false))))
 
   ;; ============================================================

@@ -464,6 +464,14 @@ impl Default for ReasonerConfig {
 // ReasonerResult
 // ---------------------------------------------------------------------------
 
+/// A single inconsistency report (reason + witness triples).
+pub struct InconsistencyReport<'a> {
+    /// Human-readable reason string.
+    pub reason: String,
+    /// Witness triples from the inconsistency check.
+    pub witnesses: Vec<Triple<'a>>,
+}
+
 /// The result of running the reasoner.
 pub enum ReasonerResult<'a> {
     /// Reasoning completed successfully.
@@ -473,9 +481,10 @@ pub enum ReasonerResult<'a> {
         iterations: i64,
     },
     /// The ontology is inconsistent.
+    /// In validate mode, may contain multiple reports (one per unsatisfiable entity).
+    /// In non-validate mode, always contains exactly one report.
     Inconsistent {
-        reason: String,
-        witnesses: Vec<Triple<'a>>,
+        reports: Vec<InconsistencyReport<'a>>,
     },
 }
 
@@ -495,11 +504,16 @@ impl<'a> ReasonerResult<'a> {
                 }
             }
             ffi::ReasonerResultTag::Inconsistent => {
-                let r = raw.data.reason_inconsistent;
-                ReasonerResult::Inconsistent {
-                    reason: slop_string_to_str(r.reason).to_string(),
-                    witnesses: ffi_triple_list_to_vec(r.witnesses),
+                let list = raw.data.reason_inconsistent;
+                let mut reports = Vec::with_capacity(list.len);
+                for i in 0..list.len {
+                    let r = *list.data.add(i);
+                    reports.push(InconsistencyReport {
+                        reason: slop_string_to_str(r.reason).to_string(),
+                        witnesses: ffi_triple_list_to_vec(r.witnesses),
+                    });
                 }
+                ReasonerResult::Inconsistent { reports }
             }
         }
     }
@@ -509,20 +523,37 @@ impl<'a> ReasonerResult<'a> {
 // ValidateResult
 // ---------------------------------------------------------------------------
 
+/// A single validation failure (entity + reason + witnesses).
+#[derive(Debug)]
+pub struct ValidateReport<'a> {
+    /// The unsatisfiable entity (class or property, resolved from synthetic blank).
+    pub entity: Term<'a>,
+    /// Enriched reason string from the engine.
+    pub reason: String,
+    /// Witness triples from the inconsistency check.
+    pub witnesses: Vec<Triple<'a>>,
+}
+
 /// Result of TBox validation — ergonomic wrapper for validate mode.
 #[derive(Debug)]
 pub enum ValidateResult<'a> {
     /// All classes and properties are satisfiable.
     Satisfiable,
-    /// An unsatisfiable class or property was detected.
+    /// One or more unsatisfiable classes or properties were detected.
     Unsatisfiable {
-        /// The unsatisfiable entity (class or property, resolved from synthetic blank).
-        entity: Term<'a>,
-        /// Enriched reason string from the engine.
-        reason: String,
-        /// Witness triples from the inconsistency check.
-        witnesses: Vec<Triple<'a>>,
+        reports: Vec<ValidateReport<'a>>,
     },
+}
+
+/// Owned validation failure.
+#[derive(Debug)]
+pub struct OwnedValidateReport {
+    /// The unsatisfiable entity (class or property, resolved from synthetic blank).
+    pub entity: OwnedTerm,
+    /// Enriched reason string from the engine.
+    pub reason: String,
+    /// Witness triples from the inconsistency check.
+    pub witnesses: Vec<OwnedTriple>,
 }
 
 /// Owned validation result — no lifetime dependency.
@@ -530,14 +561,9 @@ pub enum ValidateResult<'a> {
 pub enum OwnedValidateResult {
     /// All classes and properties are satisfiable.
     Satisfiable,
-    /// An unsatisfiable class or property was detected.
+    /// One or more unsatisfiable classes or properties were detected.
     Unsatisfiable {
-        /// The unsatisfiable entity (class or property, resolved from synthetic blank).
-        entity: OwnedTerm,
-        /// Enriched reason string from the engine.
-        reason: String,
-        /// Witness triples from the inconsistency check.
-        witnesses: Vec<OwnedTriple>,
+        reports: Vec<OwnedValidateReport>,
     },
 }
 
@@ -636,13 +662,21 @@ pub fn validate_with_ns<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>, ns: &str
     let config = ReasonerConfig::new().verbose(false).validate(true).validate_ns(ns);
     match reason_with_config(arena, graph, &config) {
         ReasonerResult::Success { .. } => ValidateResult::Satisfiable,
-        ReasonerResult::Inconsistent { reason, witnesses } => {
-            let entity = extract_entity_from_reason_borrowed(arena, &reason)
-                .unwrap_or_else(|| resolve_validate_entity(arena, graph, &witnesses, ns));
+        ReasonerResult::Inconsistent { reports } => {
+            let validate_reports: Vec<ValidateReport<'a>> = reports
+                .into_iter()
+                .map(|r| {
+                    let entity = extract_entity_from_reason_borrowed(arena, &r.reason)
+                        .unwrap_or_else(|| resolve_validate_entity(arena, graph, &r.witnesses, ns));
+                    ValidateReport {
+                        entity,
+                        reason: r.reason,
+                        witnesses: r.witnesses,
+                    }
+                })
+                .collect();
             ValidateResult::Unsatisfiable {
-                entity,
-                reason,
-                witnesses,
+                reports: validate_reports,
             }
         }
     }
@@ -954,6 +988,15 @@ impl std::fmt::Display for OwnedTriple {
     }
 }
 
+/// Owned inconsistency report — no lifetime dependency.
+#[derive(Debug, Clone)]
+pub struct OwnedInconsistencyReport {
+    /// Human-readable reason string.
+    pub reason: String,
+    /// Witness triples from the inconsistency check.
+    pub witnesses: Vec<OwnedTriple>,
+}
+
 /// Owned reasoning result — no lifetime dependency.
 pub enum OwnedReasonerResult {
     /// Reasoning completed successfully.
@@ -963,9 +1006,9 @@ pub enum OwnedReasonerResult {
         iterations: i64,
     },
     /// The ontology is inconsistent.
+    /// In validate mode, may contain multiple reports.
     Inconsistent {
-        reason: String,
-        witnesses: Vec<OwnedTriple>,
+        reports: Vec<OwnedInconsistencyReport>,
     },
 }
 
@@ -999,8 +1042,10 @@ pub enum OwnedReasonerResult {
 ///     OwnedReasonerResult::Success { triples, inferred_count, .. } => {
 ///         println!("Inferred {} triples", inferred_count);
 ///     }
-///     OwnedReasonerResult::Inconsistent { reason, .. } => {
-///         println!("Inconsistent: {}", reason);
+///     OwnedReasonerResult::Inconsistent { reports } => {
+///         for r in &reports {
+///             println!("Inconsistent: {}", r.reason);
+///         }
 ///     }
 /// }
 /// ```
@@ -1167,17 +1212,25 @@ impl Reasoner {
         let config = ReasonerConfig::new().verbose(false).validate(true).validate_ns(ns).complete(self.complete);
         match self.reason_with_config(&config) {
             OwnedReasonerResult::Success { .. } => OwnedValidateResult::Satisfiable,
-            OwnedReasonerResult::Inconsistent { reason, witnesses } => {
+            OwnedReasonerResult::Inconsistent { reports } => {
                 let ig = IndexedGraph {
                     raw: self.graph_raw,
                     arena: &self.arena,
                 };
-                let entity = extract_entity_from_reason(&reason)
-                    .unwrap_or_else(|| owned_resolve_validate_entity(&self.arena, &ig, &witnesses, ns));
+                let validate_reports: Vec<OwnedValidateReport> = reports
+                    .into_iter()
+                    .map(|r| {
+                        let entity = extract_entity_from_reason(&r.reason)
+                            .unwrap_or_else(|| owned_resolve_validate_entity(&self.arena, &ig, &r.witnesses, ns));
+                        OwnedValidateReport {
+                            entity,
+                            reason: r.reason,
+                            witnesses: r.witnesses,
+                        }
+                    })
+                    .collect();
                 OwnedValidateResult::Unsatisfiable {
-                    entity,
-                    reason,
-                    witnesses,
+                    reports: validate_reports,
                 }
             }
         }
@@ -1225,15 +1278,20 @@ impl Reasoner {
                 }
             }
             ffi::ReasonerResultTag::Inconsistent => {
-                let r = raw.data.reason_inconsistent;
-                let reason = slop_string_to_str(r.reason).to_string();
-                let mut witnesses = Vec::with_capacity(r.witnesses.len);
-                for i in 0..r.witnesses.len {
-                    let raw_triple = *r.witnesses.data.add(i);
-                    let t = Triple::from_ffi(raw_triple);
-                    witnesses.push(OwnedTriple::from(t));
+                let list = raw.data.reason_inconsistent;
+                let mut reports = Vec::with_capacity(list.len);
+                for i in 0..list.len {
+                    let r = *list.data.add(i);
+                    let reason = slop_string_to_str(r.reason).to_string();
+                    let mut witnesses = Vec::with_capacity(r.witnesses.len);
+                    for j in 0..r.witnesses.len {
+                        let raw_triple = *r.witnesses.data.add(j);
+                        let t = Triple::from_ffi(raw_triple);
+                        witnesses.push(OwnedTriple::from(t));
+                    }
+                    reports.push(OwnedInconsistencyReport { reason, witnesses });
                 }
-                OwnedReasonerResult::Inconsistent { reason, witnesses }
+                OwnedReasonerResult::Inconsistent { reports }
             }
         }
     }

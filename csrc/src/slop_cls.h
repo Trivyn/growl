@@ -56,7 +56,7 @@ types_Delta cls_fixture_delta_maxc(slop_arena* arena);
 index_IndexedGraph cls_fixture_g_one_of(slop_arena* arena);
 types_Delta cls_fixture_delta_one_of(slop_arena* arena);
 uint8_t cls_term_is_int_value(rdf_Term t, slop_string expected);
-slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
+slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate);
 slop_list_rdf_Triple cls_cls_thing(slop_arena* arena, index_IndexedGraph g);
 slop_list_rdf_Triple cls_cls_nothing1(slop_arena* arena, index_IndexedGraph g);
 slop_option_types_InconsistencyReport cls_cls_nothing2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);

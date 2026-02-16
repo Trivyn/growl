@@ -82,8 +82,8 @@ fn subclass_inference() {
             });
             assert!(has_animal, "fido should be inferred as Animal, got: {:?}", types);
         }
-        ReasonerResult::Inconsistent { reason, .. } => {
-            panic!("expected consistent result, got inconsistency: {}", reason);
+        ReasonerResult::Inconsistent { reports } => {
+            panic!("expected consistent result, got inconsistency: {}", reports[0].reason);
         }
     }
 }
@@ -106,8 +106,8 @@ fn reason_with_custom_config() {
     let result = reason_with_config(&arena, &graph, &config);
     match result {
         ReasonerResult::Success { .. } => {}
-        ReasonerResult::Inconsistent { reason, .. } => {
-            panic!("expected consistent result: {}", reason);
+        ReasonerResult::Inconsistent { reports } => {
+            panic!("expected consistent result: {}", reports[0].reason);
         }
     }
 }
@@ -272,8 +272,8 @@ fn reasoner_subclass_inference() {
                 "fido should be inferred as Animal in result triples"
             );
         }
-        OwnedReasonerResult::Inconsistent { reason, .. } => {
-            panic!("expected consistent result, got inconsistency: {}", reason);
+        OwnedReasonerResult::Inconsistent { reports } => {
+            panic!("expected consistent result, got inconsistency: {}", reports[0].reason);
         }
     }
 }
@@ -294,8 +294,8 @@ fn reasoner_inconsistency() {
     reasoner.add_iri_triple(&fido_iri, &rdf_type_iri, &dog_iri);
 
     match reasoner.reason() {
-        OwnedReasonerResult::Inconsistent { reason, .. } => {
-            assert!(!reason.is_empty(), "inconsistency reason should not be empty");
+        OwnedReasonerResult::Inconsistent { reports } => {
+            assert!(!reports[0].reason.is_empty(), "inconsistency reason should not be empty");
         }
         OwnedReasonerResult::Success { .. } => {
             panic!("expected inconsistency for disjoint class violation");
@@ -455,8 +455,8 @@ fn reasoner_filter_annotations_produces_complete_results() {
             });
             assert!(has_animal, "fido should be inferred as Animal");
         }
-        OwnedReasonerResult::Inconsistent { reason, .. } => {
-            panic!("expected consistent result, got: {}", reason);
+        OwnedReasonerResult::Inconsistent { reports } => {
+            panic!("expected consistent result, got: {}", reports[0].reason);
         }
     }
 }
@@ -502,20 +502,16 @@ fn validate_detects_unsatisfiable_class() {
     let graph = build_unsat_tbox(&arena);
 
     match validate(&arena, &graph) {
-        ValidateResult::Unsatisfiable {
-            entity,
-            reason,
-            ..
-        } => {
+        ValidateResult::Unsatisfiable { reports } => {
             assert_eq!(
-                entity,
+                reports[0].entity,
                 Term::Iri(&format!("{}Triffid", EX)),
                 "should identify Triffid as unsatisfiable"
             );
             assert!(
-                reason.contains("Unsatisfiable class"),
+                reports[0].reason.contains("Unsatisfiable class"),
                 "reason should contain 'Unsatisfiable class', got: {}",
-                reason
+                reports[0].reason
             );
         }
         ValidateResult::Satisfiable => {
@@ -547,8 +543,8 @@ fn validate_passes_clean_tbox() {
         ValidateResult::Satisfiable => {
             // Expected: all classes are satisfiable
         }
-        ValidateResult::Unsatisfiable { reason, .. } => {
-            panic!("clean TBox should pass validation, got: {}", reason);
+        ValidateResult::Unsatisfiable { reports } => {
+            panic!("clean TBox should pass validation, got: {}", reports[0].reason);
         }
     }
 }
@@ -563,10 +559,10 @@ fn unsat_tbox_passes_without_validate() {
         ReasonerResult::Success { .. } => {
             // Expected
         }
-        ReasonerResult::Inconsistent { reason, .. } => {
+        ReasonerResult::Inconsistent { reports } => {
             panic!(
                 "TBox-only should be consistent without validate, got: {}",
-                reason
+                reports[0].reason
             );
         }
     }
@@ -579,11 +575,11 @@ fn validate_config_builder() {
 
     let config = ReasonerConfig::new().verbose(false).validate(true);
     match reason_with_config(&arena, &graph, &config) {
-        ReasonerResult::Inconsistent { reason, .. } => {
+        ReasonerResult::Inconsistent { reports } => {
             assert!(
-                reason.contains("Unsatisfiable class"),
+                reports[0].reason.contains("Unsatisfiable class"),
                 "reason should contain 'Unsatisfiable class', got: {}",
-                reason
+                reports[0].reason
             );
         }
         ReasonerResult::Success { .. } => {
@@ -613,20 +609,16 @@ fn reasoner_validate_method() {
     reasoner.add_iri_triple(&triffid_iri, &rdfs_sub_iri, &plant_iri);
 
     match reasoner.validate() {
-        OwnedValidateResult::Unsatisfiable {
-            entity,
-            reason,
-            ..
-        } => {
+        OwnedValidateResult::Unsatisfiable { reports } => {
             assert_eq!(
-                entity,
+                reports[0].entity,
                 OwnedTerm::Iri(triffid_iri),
                 "should identify Triffid as unsatisfiable"
             );
             assert!(
-                reason.contains("Unsatisfiable class"),
+                reports[0].reason.contains("Unsatisfiable class"),
                 "reason should contain 'Unsatisfiable class', got: {}",
-                reason
+                reports[0].reason
             );
         }
         OwnedValidateResult::Satisfiable => {
@@ -654,8 +646,8 @@ fn reasoner_validate_clean() {
         OwnedValidateResult::Satisfiable => {
             // Expected
         }
-        OwnedValidateResult::Unsatisfiable { reason, .. } => {
-            panic!("clean ontology should pass validation, got: {}", reason);
+        OwnedValidateResult::Unsatisfiable { reports } => {
+            panic!("clean ontology should pass validation, got: {}", reports[0].reason);
         }
     }
 }
@@ -687,20 +679,16 @@ fn validate_detects_unsatisfiable_property() {
     let graph = build_unsat_property_graph(&arena);
 
     match validate(&arena, &graph) {
-        ValidateResult::Unsatisfiable {
-            entity,
-            reason,
-            ..
-        } => {
+        ValidateResult::Unsatisfiable { reports } => {
             assert_eq!(
-                entity,
+                reports[0].entity,
                 Term::Iri(&format!("{}hasEnemy", EX)),
                 "should identify hasEnemy as unsatisfiable"
             );
             assert!(
-                reason.contains("Unsatisfiable property usage"),
+                reports[0].reason.contains("Unsatisfiable property usage"),
                 "reason should contain 'Unsatisfiable property usage', got: {}",
-                reason
+                reports[0].reason
             );
         }
         ValidateResult::Satisfiable => {
@@ -724,20 +712,16 @@ fn reasoner_validate_property() {
     reasoner.add_iri_triple(&has_enemy_iri, &rdf_type_iri, &asym_prop_iri);
 
     match reasoner.validate() {
-        OwnedValidateResult::Unsatisfiable {
-            entity,
-            reason,
-            ..
-        } => {
+        OwnedValidateResult::Unsatisfiable { reports } => {
             assert_eq!(
-                entity,
+                reports[0].entity,
                 OwnedTerm::Iri(has_enemy_iri),
                 "should identify hasEnemy as unsatisfiable"
             );
             assert!(
-                reason.contains("Unsatisfiable property usage"),
+                reports[0].reason.contains("Unsatisfiable property usage"),
                 "reason should contain 'Unsatisfiable property usage', got: {}",
-                reason
+                reports[0].reason
             );
         }
         OwnedValidateResult::Satisfiable => {
@@ -782,22 +766,18 @@ fn validate_property_domain_reports_class() {
     graph.add_triple(arena.make_triple(has_score, rdfs_domain, meteorite));
 
     match validate(&arena, &graph) {
-        ValidateResult::Unsatisfiable {
-            entity,
-            reason,
-            ..
-        } => {
+        ValidateResult::Unsatisfiable { reports } => {
             // Should report the CLASS, not the property
             assert_eq!(
-                entity,
+                reports[0].entity,
                 Term::Iri(&format!("{}MeteoriteLandings", EX)),
                 "should identify MeteoriteLandings as unsatisfiable, not hasScore. reason: {}",
-                reason
+                reports[0].reason
             );
             assert!(
-                reason.contains("Unsatisfiable class"),
+                reports[0].reason.contains("Unsatisfiable class"),
                 "reason should contain 'Unsatisfiable class', got: {}",
-                reason
+                reports[0].reason
             );
         }
         ValidateResult::Satisfiable => {
@@ -833,21 +813,17 @@ fn reasoner_validate_property_domain_reports_class() {
     reasoner.add_iri_triple(&has_score_iri, &rdfs_domain_iri, &meteorite_iri);
 
     match reasoner.validate() {
-        OwnedValidateResult::Unsatisfiable {
-            entity,
-            reason,
-            ..
-        } => {
+        OwnedValidateResult::Unsatisfiable { reports } => {
             assert_eq!(
-                entity,
+                reports[0].entity,
                 OwnedTerm::Iri(meteorite_iri),
                 "should identify MeteoriteLandings as unsatisfiable, not hasScore. reason: {}",
-                reason
+                reports[0].reason
             );
             assert!(
-                reason.contains("Unsatisfiable class"),
+                reports[0].reason.contains("Unsatisfiable class"),
                 "reason should contain 'Unsatisfiable class', got: {}",
-                reason
+                reports[0].reason
             );
         }
         OwnedValidateResult::Satisfiable => {
@@ -874,8 +850,8 @@ fn validate_clean_properties_pass() {
         ValidateResult::Satisfiable => {
             // Expected: symmetric-only property is satisfiable
         }
-        ValidateResult::Unsatisfiable { reason, .. } => {
-            panic!("symmetric-only property should pass validation, got: {}", reason);
+        ValidateResult::Unsatisfiable { reports } => {
+            panic!("symmetric-only property should pass validation, got: {}", reports[0].reason);
         }
     }
 }
@@ -918,16 +894,16 @@ fn validate_ns_scopes_to_domain() {
 
     // With ns scoping to example.org, only ex:Bad gets synthetic instances
     match validate_with_ns(&arena, &graph, EX) {
-        ValidateResult::Unsatisfiable { entity, reason, .. } => {
+        ValidateResult::Unsatisfiable { reports } => {
             assert_eq!(
-                entity,
+                reports[0].entity,
                 Term::Iri(&format!("{}Bad", EX)),
                 "should identify ex:Bad as unsatisfiable"
             );
             assert!(
-                reason.contains("Unsatisfiable class"),
+                reports[0].reason.contains("Unsatisfiable class"),
                 "reason should contain 'Unsatisfiable class', got: {}",
-                reason
+                reports[0].reason
             );
         }
         ValidateResult::Satisfiable => {
@@ -957,8 +933,8 @@ fn validate_ns_filters_tlo_entities() {
         ValidateResult::Satisfiable => {
             // Expected: TLO entities not validated
         }
-        ValidateResult::Unsatisfiable { reason, .. } => {
-            panic!("TLO-only graph with ns scoping should pass, got: {}", reason);
+        ValidateResult::Unsatisfiable { reports } => {
+            panic!("TLO-only graph with ns scoping should pass, got: {}", reports[0].reason);
         }
     }
 }
@@ -987,16 +963,16 @@ fn reasoner_validate_ns() {
     reasoner.add_iri_triple(&bad_iri, &rdfs_sub_iri, &plant_iri);
 
     match reasoner.validate_ns(EX) {
-        OwnedValidateResult::Unsatisfiable { entity, reason, .. } => {
+        OwnedValidateResult::Unsatisfiable { reports } => {
             assert_eq!(
-                entity,
+                reports[0].entity,
                 OwnedTerm::Iri(bad_iri),
                 "should identify Bad as unsatisfiable"
             );
             assert!(
-                reason.contains("Unsatisfiable class"),
+                reports[0].reason.contains("Unsatisfiable class"),
                 "reason should contain 'Unsatisfiable class', got: {}",
-                reason
+                reports[0].reason
             );
         }
         OwnedValidateResult::Satisfiable => {
@@ -1016,11 +992,11 @@ fn validate_ns_config_builder() {
         .validate_ns(EX);
 
     match reason_with_config(&arena, &graph, &config) {
-        ReasonerResult::Inconsistent { reason, .. } => {
+        ReasonerResult::Inconsistent { reports } => {
             assert!(
-                reason.contains("Unsatisfiable class"),
+                reports[0].reason.contains("Unsatisfiable class"),
                 "reason should contain 'Unsatisfiable class', got: {}",
-                reason
+                reports[0].reason
             );
         }
         ReasonerResult::Success { .. } => {

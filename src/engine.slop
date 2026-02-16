@@ -14,7 +14,8 @@
   (import index (IndexedGraph indexed-graph-add indexed-graph-contains indexed-graph-size indexed-graph-match indexed-graph-for-each))
   (import vocab (RDF_TYPE RDF_PROPERTY RDFS_SUBCLASS_OF RDFS_SUBPROPERTY_OF RDFS_DOMAIN RDFS_RANGE
                  OWL_CLASS OWL_THING OWL_NOTHING OWL_EQUIVALENT_CLASS OWL_SAME_AS
-                 OWL_DIFFERENT_FROM OWL_SYMMETRIC_PROPERTY
+                 OWL_DIFFERENT_FROM OWL_SYMMETRIC_PROPERTY OWL_DISJOINT_WITH OWL_COMPLEMENT_OF
+                 OWL_PROPERTY_DISJOINT_WITH
                  OWL_OBJECT_PROPERTY OWL_DATATYPE_PROPERTY OWL_FUNCTIONAL_PROPERTY
                  OWL_INVERSE_FUNCTIONAL_PROPERTY OWL_TRANSITIVE_PROPERTY
                  OWL_ASYMMETRIC_PROPERTY OWL_REFLEXIVE_PROPERTY OWL_IRREFLEXIVE_PROPERTY))
@@ -388,6 +389,151 @@
             ((none) report))))))
 
   ;; ============================================================
+  ;; Post-Fixpoint Validation: Check All Synthetic Instances
+  ;; ============================================================
+
+  (fn validate-check-all ((arena Arena) (g IndexedGraph) (pre-inject-graph IndexedGraph)
+                           (validate-ns String) (class-map (List Term)) (prop-map (List Term)))
+    (@intent "After fixpoint, scan ALL synthetic instances for violations and return all reports")
+    (@spec ((Arena IndexedGraph IndexedGraph String (List Term) (List Term)) -> (List InconsistencyReport)))
+    (@alloc arena)
+    (let ((mut reports (list-new arena InconsistencyReport))
+          (type-pred (make-iri arena RDF_TYPE))
+          (nothing-class (make-iri arena OWL_NOTHING))
+          (disjoint-pred (make-iri arena OWL_DISJOINT_WITH))
+          (complement-pred (make-iri arena OWL_COMPLEMENT_OF))
+          (asymm-type (make-iri arena OWL_ASYMMETRIC_PROPERTY))
+          (pdw-pred (make-iri arena OWL_PROPERTY_DISJOINT_WITH))
+          (no-term (Option Term) (none)))
+
+      ;; === Check each class in class-map ===
+      (let ((mut i 0)
+            (class-count (list-len class-map)))
+        (while (< i class-count)
+          (match (list-get class-map i)
+            ((some cls)
+              (let ((blank-id (+ 10000000 i))
+                    (blank (make-blank arena blank-id))
+                    ;; Get all types of this synthetic instance
+                    (types (indexed-graph-match arena g (some blank) (some type-pred) no-term))
+                    (mut found Bool false))
+
+                ;; cls-nothing2: check if blank has rdf:type owl:Nothing
+                (when (not found)
+                  (for-each (tt types)
+                    (when (and (not found) (term-eq (. tt object) nothing-class))
+                      (do
+                        (set! found true)
+                        (let ((raw-report (record-new InconsistencyReport
+                                            (reason "cls-nothing2: individual is member of owl:Nothing")
+                                            (witnesses (let ((mut wl (list-new arena Triple)))
+                                                         (list-push wl tt) wl)))))
+                          (list-push reports
+                            (enrich-validate-report arena raw-report pre-inject-graph validate-ns class-map prop-map)))))))
+
+                ;; cax-dw: for each type, check if blank also typed as a disjoint class
+                (when (not found)
+                  (for-each (tt types)
+                    (when (not found)
+                      (let ((cls-type (. tt object))
+                            ;; Find all (?cls-type owl:disjointWith ?other)
+                            (dj-triples (indexed-graph-match arena g (some cls-type) (some disjoint-pred) no-term)))
+                        (for-each (dj dj-triples)
+                          (when (not found)
+                            (let ((other-cls (. dj object))
+                                  ;; Check if blank also has rdf:type other-cls
+                                  (type-check-triple (make-triple arena blank type-pred other-cls)))
+                              (when (indexed-graph-contains g type-check-triple)
+                                (do
+                                  (set! found true)
+                                  (let ((witness-type-other (make-triple arena blank type-pred other-cls))
+                                        (mut wl (list-new arena Triple)))
+                                    (list-push wl tt)
+                                    (list-push wl witness-type-other)
+                                    (list-push wl dj)
+                                    (let ((raw-report (record-new InconsistencyReport
+                                                        (reason "cax-dw: disjoint classes have common individual")
+                                                        (witnesses wl))))
+                                      (list-push reports
+                                        (enrich-validate-report arena raw-report pre-inject-graph validate-ns class-map prop-map)))))))))))))
+
+                ;; cls-com: check if blank has rdf:type C and rdf:type complement(C)
+                (when (not found)
+                  (for-each (tt types)
+                    (when (not found)
+                      (let ((cls-type (. tt object))
+                            ;; Find (?cls-type owl:complementOf ?comp)
+                            (comp-triples (indexed-graph-match arena g (some cls-type) (some complement-pred) no-term)))
+                        (for-each (ct comp-triples)
+                          (when (not found)
+                            (let ((comp-cls (. ct object))
+                                  (type-check-triple (make-triple arena blank type-pred comp-cls)))
+                              (when (indexed-graph-contains g type-check-triple)
+                                (do
+                                  (set! found true)
+                                  (let ((mut wl (list-new arena Triple)))
+                                    (list-push wl tt)
+                                    (list-push wl (make-triple arena blank type-pred comp-cls))
+                                    (let ((raw-report (record-new InconsistencyReport
+                                                        (reason "cls-com: individual is member of class and its complement")
+                                                        (witnesses wl))))
+                                      (list-push reports
+                                        (enrich-validate-report arena raw-report pre-inject-graph validate-ns class-map prop-map)))))))))))))))
+            ((none) (do)))
+          (set! i (+ i 1))))
+
+      ;; === Check each property in prop-map ===
+      (let ((mut j 0)
+            (prop-count (list-len prop-map)))
+        (while (< j prop-count)
+          (match (list-get prop-map j)
+            ((some prop)
+              (let ((subj-blank (make-blank arena (+ 20000000 j)))
+                    (obj-blank (make-blank arena (+ 30000000 j)))
+                    (mut found Bool false))
+
+                ;; prp-asyp: if property is AsymmetricProperty, check if reverse triple exists
+                (when (not found)
+                  (let ((asymm-check (make-triple arena prop type-pred asymm-type)))
+                    (when (indexed-graph-contains g asymm-check)
+                      (let ((reverse-triple (make-triple arena obj-blank prop subj-blank)))
+                        (when (indexed-graph-contains g reverse-triple)
+                          (do
+                            (set! found true)
+                            (let ((mut wl (list-new arena Triple)))
+                              (list-push wl (make-triple arena subj-blank prop obj-blank))
+                              (list-push wl reverse-triple)
+                              (let ((raw-report (record-new InconsistencyReport
+                                                  (reason "prp-asyp: asymmetric property used symmetrically")
+                                                  (witnesses wl))))
+                                (list-push reports
+                                  (enrich-validate-report arena raw-report pre-inject-graph validate-ns class-map prop-map))))))))))
+
+                ;; prp-pdw: if property is disjoint with another, check if that property also connects the blanks
+                (when (not found)
+                  (let ((pdw-triples (indexed-graph-match arena g (some prop) (some pdw-pred) no-term)))
+                    (for-each (pdw pdw-triples)
+                      (when (not found)
+                        (let ((other-prop (. pdw object))
+                              (other-triple (make-triple arena subj-blank other-prop obj-blank)))
+                          (when (indexed-graph-contains g other-triple)
+                            (do
+                              (set! found true)
+                              (let ((mut wl (list-new arena Triple)))
+                                (list-push wl (make-triple arena subj-blank prop obj-blank))
+                                (list-push wl other-triple)
+                                (list-push wl pdw)
+                                (let ((raw-report (record-new InconsistencyReport
+                                                    (reason "prp-pdw: property disjoint with another property used on same individuals")
+                                                    (witnesses wl))))
+                                  (list-push reports
+                                    (enrich-validate-report arena raw-report pre-inject-graph validate-ns class-map prop-map)))))))))))))
+            ((none) (do)))
+          (set! j (+ j 1))))
+
+      reports))
+
+  ;; ============================================================
   ;; Main Engine Loop
   ;; ============================================================
 
@@ -484,13 +630,21 @@
                        (iteration 0)
                        (config config)))
           (mut done false)
-          (mut inconsistency (Option InconsistencyReport) (none)))
+          (mut inconsistency (Option InconsistencyReport) (none))
+          ;; Collect dt-not-type issue for validate mode (instead of early return)
+          (mut dt-report (Option InconsistencyReport) (none)))
 
       ;; One-time datatype validation (skip in fast mode)
       (when (not (. config fast))
         (match (dt-not-type arena (. state graph))
           ((some report)
-            (return (union-new ReasonerResult reason-inconsistent report)))
+            (if (. config validate)
+              ;; In validate mode, collect instead of returning
+              (set! dt-report (some report))
+              (do
+                (let ((mut reports (list-new arena InconsistencyReport)))
+                  (list-push reports report)
+                  (return (union-new ReasonerResult reason-inconsistent reports))))))
           ((none) (do))))
 
       ;; Main fixpoint loop
@@ -514,25 +668,58 @@
               (set! inconsistency (some report))))))
 
       ;; Return result
-      (match inconsistency
-        ((some report)
-          (let ((final-report
-                  (if (. config validate)
-                    (enrich-validate-report arena report complete-graph (. config validate-ns) validate-class-map validate-prop-map)
-                    report)))
-            (union-new ReasonerResult reason-inconsistent final-report)))
-        ((none)
-          ;; In complete mode, do one final eq-ref pass on full graph
-          ;; to cover schema-materialized resources
-          (let ((mut final-graph (. state graph)))
-            (when (. config complete)
-              (let ((full-delta (make-initial-delta arena final-graph)))
-                (for-each (t (eq-ref arena final-graph full-delta))
-                  (set! final-graph (indexed-graph-add arena final-graph t)))))
-            (union-new ReasonerResult reason-success (record-new ReasonerSuccess
-              (graph final-graph)
-              (inferred-count (- (indexed-graph-size final-graph) initial-size))
-              (iterations (. state iteration)))))))))
+      (if (. config validate)
+        ;; === Validate mode: post-fixpoint scan for all violations ===
+        (match inconsistency
+          ((some report)
+            ;; Shouldn't happen (checks are skipped), but handle gracefully
+            (let ((mut reports (list-new arena InconsistencyReport))
+                  (enriched (enrich-validate-report arena report complete-graph (. config validate-ns) validate-class-map validate-prop-map)))
+              (list-push reports enriched)
+              (union-new ReasonerResult reason-inconsistent reports)))
+          ((none)
+            ;; Run post-fixpoint scan on converged graph
+            (let ((all-reports (validate-check-all arena (. state graph) complete-graph
+                                 (. config validate-ns) validate-class-map validate-prop-map)))
+              ;; Prepend any dt-not-type issue
+              (match dt-report
+                ((some dt-r)
+                  (let ((mut combined (list-new arena InconsistencyReport)))
+                    (list-push combined dt-r)
+                    (for-each (r all-reports)
+                      (list-push combined r))
+                    (if (> (list-len combined) 0)
+                      (union-new ReasonerResult reason-inconsistent combined)
+                      (union-new ReasonerResult reason-success (record-new ReasonerSuccess
+                        (graph (. state graph))
+                        (inferred-count (- (indexed-graph-size (. state graph)) initial-size))
+                        (iterations (. state iteration)))))))
+                ((none)
+                  (if (> (list-len all-reports) 0)
+                    (union-new ReasonerResult reason-inconsistent all-reports)
+                    (union-new ReasonerResult reason-success (record-new ReasonerSuccess
+                      (graph (. state graph))
+                      (inferred-count (- (indexed-graph-size (. state graph)) initial-size))
+                      (iterations (. state iteration))))))))))
+
+        ;; === Non-validate mode: original behavior ===
+        (match inconsistency
+          ((some report)
+            (let ((mut reports (list-new arena InconsistencyReport)))
+              (list-push reports report)
+              (union-new ReasonerResult reason-inconsistent reports)))
+          ((none)
+            ;; In complete mode, do one final eq-ref pass on full graph
+            ;; to cover schema-materialized resources
+            (let ((mut final-graph (. state graph)))
+              (when (. config complete)
+                (let ((full-delta (make-initial-delta arena final-graph)))
+                  (for-each (t (eq-ref arena final-graph full-delta))
+                    (set! final-graph (indexed-graph-add arena final-graph t)))))
+              (union-new ReasonerResult reason-success (record-new ReasonerSuccess
+                (graph final-graph)
+                (inferred-count (- (indexed-graph-size final-graph) initial-size))
+                (iterations (. state iteration))))))))))
 
   (fn make-initial-delta ((arena Arena) (g IndexedGraph))
     (@intent "Create initial delta containing all triples in graph")
@@ -926,8 +1113,9 @@
       ;; so they are always skipped in the main loop.
 
       ;; Class axiom rules (subclass propagation)
-      (let ((t0 (now-ms)))
-        (match (apply-cax-rules arena g delta fast)
+      (let ((t0 (now-ms))
+            (validate (. config validate)))
+        (match (apply-cax-rules arena g delta fast validate)
           ((ok cax-delta)
             (do
               (when verbose
@@ -936,8 +1124,9 @@
           ((error report) (return (error report)))))
 
       ;; Property rules
-      (let ((t0 (now-ms)))
-        (match (apply-prp-rules arena g delta fast)
+      (let ((t0 (now-ms))
+            (validate (. config validate)))
+        (match (apply-prp-rules arena g delta fast validate)
           ((ok prp-delta)
             (do
               (when verbose
@@ -946,8 +1135,9 @@
           ((error report) (return (error report)))))
 
       ;; Equality rules
-      (let ((t0 (now-ms)))
-        (match (apply-eq-rules arena g delta fast)
+      (let ((t0 (now-ms))
+            (validate (. config validate)))
+        (match (apply-eq-rules arena g delta fast validate)
           ((ok eq-delta)
             (do
               (when verbose
@@ -956,8 +1146,9 @@
           ((error report) (return (error report)))))
 
       ;; Class expression rules
-      (let ((t0 (now-ms)))
-        (match (apply-cls-rules arena g delta fast)
+      (let ((t0 (now-ms))
+            (validate (. config validate)))
+        (match (apply-cls-rules arena g delta fast validate)
           ((ok cls-delta)
             (do
               (when verbose
@@ -997,13 +1188,13 @@
           (arena-cls-set    (arena-new 1048576))
           (arena-cls-ind    (arena-new 1048576)))
 
-      ;; Spawn sub-workers (count varies with fast mode)
+      ;; Spawn sub-workers (count varies with fast mode and validate mode)
       (let ((workers (spawn-rule-workers arena g delta result-chan
                                          arena-cax-infer arena-cax-check
                                          arena-prp-char arena-prp-chain arena-prp-check
                                          arena-eq-infer arena-eq-check
                                          arena-cls-set arena-cls-ind
-                                         (. config verbose) fast)))
+                                         (. config verbose) fast (. config validate))))
 
         ;; Collect results from all workers
         (let ((result (collect-worker-results arena result-chan workers next-iter)))
@@ -1053,10 +1244,10 @@
                           (arena-prp-char Arena) (arena-prp-chain Arena) (arena-prp-check Arena)
                           (arena-eq-infer Arena) (arena-eq-check Arena)
                           (arena-cls-set Arena) (arena-cls-ind Arena)
-                          (verbose Bool) (fast Bool))
+                          (verbose Bool) (fast Bool) (validate Bool))
     (@intent "Spawn sub-worker threads, each handling a semantic subset of rules")
     (@spec ((Arena IndexedGraph Delta (Ptr (Chan WorkerMessage))
-             Arena Arena Arena Arena Arena Arena Arena Arena Arena Bool Bool)
+             Arena Arena Arena Arena Arena Arena Arena Arena Arena Bool Bool Bool)
             -> (List (Ptr (Thread Unit)))))
     (@alloc arena)
     (let ((mut workers (list-new arena (Ptr (Thread Unit))))
@@ -1082,19 +1273,20 @@
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; cax-check: cax-dw, cax-adc (always runs)
-      (list-push workers
-        (spawn arena (fn ()
-          (let ((t0 (now-ms)))
-            (match (cax-dw arena-cax-check g delta)
-              ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-              ((none)
-                (match (cax-adc arena-cax-check g delta)
-                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                  ((none) (do)))))
-            (when verbose
-              (do (print "  cax-check: ") (print-ms arena-cax-check (- (now-ms) t0)) (println "")))
-            (send result-chan (union-new WorkerMessage msg-done unit))))))
+      ;; cax-check: cax-dw, cax-adc (skip in validate mode)
+      (when (not validate)
+        (list-push workers
+          (spawn arena (fn ()
+            (let ((t0 (now-ms)))
+              (match (cax-dw arena-cax-check g delta)
+                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                ((none)
+                  (match (cax-adc arena-cax-check g delta)
+                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                    ((none) (do)))))
+              (when verbose
+                (do (print "  cax-check: ") (print-ms arena-cax-check (- (now-ms) t0)) (println "")))
+              (send result-chan (union-new WorkerMessage msg-done unit)))))))
 
       ;; ---- PRP sub-workers ----
 
@@ -1144,31 +1336,32 @@
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; prp-check: prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2 (always runs)
-      (list-push workers
-        (spawn arena (fn ()
-          (let ((t0 (now-ms)))
-            (match (prp-asyp arena-prp-check g delta)
-              ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-              ((none)
-                (match (prp-irp arena-prp-check g delta)
-                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                  ((none)
-                    (match (prp-pdw arena-prp-check g delta)
-                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                      ((none)
-                        (match (prp-adp arena-prp-check g delta)
-                          ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                          ((none)
-                            (match (prp-npa1 arena-prp-check g delta)
-                              ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                              ((none)
-                                (match (prp-npa2 arena-prp-check g delta)
-                                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                                  ((none) (do)))))))))))))
-            (when verbose
-              (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
-            (send result-chan (union-new WorkerMessage msg-done unit))))))
+      ;; prp-check: prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1, prp-npa2 (skip in validate mode)
+      (when (not validate)
+        (list-push workers
+          (spawn arena (fn ()
+            (let ((t0 (now-ms)))
+              (match (prp-asyp arena-prp-check g delta)
+                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                ((none)
+                  (match (prp-irp arena-prp-check g delta)
+                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                    ((none)
+                      (match (prp-pdw arena-prp-check g delta)
+                        ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                        ((none)
+                          (match (prp-adp arena-prp-check g delta)
+                            ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                            ((none)
+                              (match (prp-npa1 arena-prp-check g delta)
+                                ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                                ((none)
+                                  (match (prp-npa2 arena-prp-check g delta)
+                                    ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                                    ((none) (do)))))))))))))
+              (when verbose
+                (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
+              (send result-chan (union-new WorkerMessage msg-done unit)))))))
 
       ;; ---- EQ sub-workers ----
 
@@ -1193,8 +1386,8 @@
             (send result-chan (union-new WorkerMessage msg-delta result))
             (send result-chan (union-new WorkerMessage msg-done unit))))))
 
-      ;; eq-check: eq-diff1, eq-diff2, eq-diff3 (skipped in fast mode)
-      (when (not fast)
+      ;; eq-check: eq-diff1, eq-diff2, eq-diff3 (skipped in fast mode or validate mode)
+      (when (and (not fast) (not validate))
         (list-push workers
           (spawn arena (fn ()
             (let ((t0 (now-ms)))
@@ -1247,18 +1440,22 @@
             ;; Cardinality rules (skipped in fast mode)
             (when (not fast)
               (do
-                (match (cls-maxc1 arena-cls-ind g delta)
-                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                  ((none) (do)))
-                (for-each (t (cls-maxc2 arena-cls-ind g delta))
-                  (set! result (delta-add arena-cls-ind result t)))
-                ;; Qualified cardinality checks
-                (match (cls-maxqc1 arena-cls-ind g delta)
-                  ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                  ((none)
-                    (match (cls-maxqc2 arena-cls-ind g delta)
+                (when (not validate)
+                  (do
+                    (match (cls-maxc1 arena-cls-ind g delta)
                       ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
                       ((none) (do)))))
+                (for-each (t (cls-maxc2 arena-cls-ind g delta))
+                  (set! result (delta-add arena-cls-ind result t)))
+                ;; Qualified cardinality checks (skip in validate mode)
+                (when (not validate)
+                  (do
+                    (match (cls-maxqc1 arena-cls-ind g delta)
+                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                      ((none)
+                        (match (cls-maxqc2 arena-cls-ind g delta)
+                          ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                          ((none) (do)))))))
                 ;; Qualified cardinality inferences
                 (for-each (t (cls-maxqc3 arena-cls-ind g delta))
                   (set! result (delta-add arena-cls-ind result t)))
@@ -1266,13 +1463,15 @@
                   (set! result (delta-add arena-cls-ind result t)))))
             (for-each (t (cls-oo arena-cls-ind g delta))
               (set! result (delta-add arena-cls-ind result t)))
-            ;; cls-nothing2 and cls-com are check rules (always run)
-            (match (cls-nothing2 arena-cls-ind g delta)
-              ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-              ((none)
-                (match (cls-com arena-cls-ind g delta)
+            ;; cls-nothing2 and cls-com are check rules (skip in validate mode)
+            (when (not validate)
+              (do
+                (match (cls-nothing2 arena-cls-ind g delta)
                   ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
-                  ((none) (do)))))
+                  ((none)
+                    (match (cls-com arena-cls-ind g delta)
+                      ((some report) (do (send result-chan (union-new WorkerMessage msg-inconsistent report)) (do)))
+                      ((none) (do)))))))
             (when verbose
               (do (print "  cls-ind: ") (print-ms arena-cls-ind (- (now-ms) t0)) (println "")))
             (send result-chan (union-new WorkerMessage msg-delta result))

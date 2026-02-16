@@ -10,8 +10,8 @@
 (module main
   (@doc "CLI interface for growl OWL 2 RL reasoner")
 
-  (import rdf (Term Triple Graph GraphSize make-graph graph-size make-iri term-eq
-               triple-predicate triple-object))
+  (import rdf (Term Triple Graph GraphSize make-graph graph-size make-iri make-blank make-triple term-eq
+               triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-size))
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file TtlFileError))
@@ -44,6 +44,34 @@
         (print "0"))
       (print (int-to-string arena ms)))
     (print "s"))
+
+  ;; ============================================================
+  ;; Blank Node Remapping (for background file merge)
+  ;; ============================================================
+
+  (fn remap-blank-term ((arena Arena) (t Term) (offset I64))
+    (@intent "If term is a blank node, return new blank with ID + offset; otherwise return unchanged")
+    (@spec ((Arena Term I64) -> Term))
+    (@alloc arena)
+    (match t
+      ((term-blank b) (make-blank arena (+ (. b id) offset)))
+      ((term-iri _) t)
+      ((term-literal _) t)))
+
+  (fn max-blank-id-in-graph ((ig IndexedGraph))
+    (@intent "Find the highest blank node ID across all triples in the graph")
+    (@spec ((IndexedGraph) -> I64))
+    (@pure)
+    (let ((triples (. ig triples))
+          (mut max-id 0))
+      (for-each (t triples)
+        (match (. t subject)
+          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
+          (_ (do)))
+        (match (. t object)
+          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
+          (_ (do))))
+      max-id))
 
   ;; ============================================================
   ;; Argument Parsing
@@ -251,10 +279,15 @@
                               (print (int-to-string arena (indexed-graph-size bg-ig)))
                               (print " background triples from ")
                               (println bg-path))
-                            ;; Merge background triples into combined graph
-                            (let ((bg-triples (. bg-ig triples)))
+                            ;; Remap background blank node IDs to avoid collision with main file
+                            (let ((bg-triples (. bg-ig triples))
+                                  (bg-blank-offset (+ (max-blank-id-in-graph ig) 1)))
                               (for-each (t bg-triples)
-                                (set! combined-ig (indexed-graph-add arena combined-ig t))))))))
+                                (let ((rs (remap-blank-term arena (. t subject) bg-blank-offset))
+                                      (rp (. t predicate))
+                                      (ro (remap-blank-term arena (. t object) bg-blank-offset))
+                                      (remapped (make-triple arena rs rp ro)))
+                                  (set! combined-ig (indexed-graph-add arena combined-ig remapped)))))))))
                     ((none) (do)))
 
                   ;; --validate overrides --fast (needs schema materialization)
@@ -347,25 +380,41 @@
                                         1)))))
                               ((none) 0))))))
 
-                    ((reason-inconsistent report)
+                    ((reason-inconsistent reports)
                       (let ((reason-elapsed (- (slop_now_ms) reason-start)))
                         (if validate-mode
                           (do
-                            (println "[FAIL] Validation failed")
-                            (print "  Reason: ")
-                            (println (. report reason))
+                            (let ((report-count (list-len reports)))
+                              (print "[FAIL] Validation found ")
+                              (print (int-to-string arena report-count))
+                              (println " unsatisfiable entities")
+                              (println "")
+                              (let ((mut idx 0))
+                                (for-each (r reports)
+                                  (set! idx (+ idx 1))
+                                  (print "  ")
+                                  (print (int-to-string arena idx))
+                                  (print ". ")
+                                  (println (. r reason)))))
                             1)
-                          (do
-                            (when quiet
-                              (print input-path)
-                              (print ": ")
-                              (print-elapsed arena parse-elapsed)
-                              (print " parse, ")
-                              (print-elapsed arena reason-elapsed)
-                              (print " reason, ")
-                              (print (int-to-string arena input-size))
-                              (println " triples [INCONSISTENT]"))
-                            (println "[FAIL] Ontology is inconsistent")
-                            (print "  Reason: ")
-                            (println (. report reason))
-                            1))))))))))))))))))))
+                          ;; Non-validate: use first report (always exactly 1)
+                          (match (list-get reports 0)
+                            ((some report)
+                              (do
+                                (when quiet
+                                  (do
+                                    (print input-path)
+                                    (print ": ")
+                                    (print-elapsed arena parse-elapsed)
+                                    (print " parse, ")
+                                    (print-elapsed arena reason-elapsed)
+                                    (print " reason, ")
+                                    (print (int-to-string arena input-size))
+                                    (println " triples [INCONSISTENT]")))
+                                (println "[FAIL] Ontology is inconsistent")
+                                (print "  Reason: ")
+                                (println (. report reason))
+                                1))
+                            ((none)
+                              (println "[FAIL] Ontology is inconsistent (no details)")
+                              1)))))))))))))))))))))

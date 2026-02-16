@@ -204,9 +204,9 @@
   ;; Rule Dispatcher
   ;; ============================================================
 
-  (fn apply-cax-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool))
+  (fn apply-cax-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool) (validate Bool))
     (@intent "Apply all class axiom rules (Table 7) and return inferred triples")
-    (@spec ((Arena IndexedGraph Delta Bool) -> (Result Delta InconsistencyReport)))
+    (@spec ((Arena IndexedGraph Delta Bool Bool) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
@@ -225,16 +225,18 @@
       (for-each (t (cax-eqc2 arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Consistency checks (always run)
-      ;; cax-dw: disjoint class violation detection
-      (match (cax-dw arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
+      ;; Consistency checks (skip in validate mode — post-fixpoint scan handles these)
+      (when (not validate)
+        (do
+          ;; cax-dw: disjoint class violation detection
+          (match (cax-dw arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))
 
-      ;; cax-adc: AllDisjointClasses violation detection
-      (match (cax-adc arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
+          ;; cax-adc: AllDisjointClasses violation detection
+          (match (cax-adc arena g delta)
+            ((some report) (return (error report)))
+            ((none) (do)))))
 
       (ok result)))
 

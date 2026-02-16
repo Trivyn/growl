@@ -22,6 +22,8 @@ rdf_Graph test_cli_indexed_to_graph(slop_arena* arena, index_IndexedGraph ig);
 uint8_t test_cli_has_type(slop_arena* arena, index_IndexedGraph g, rdf_Term individual, rdf_Term class);
 uint8_t test_cli_has_same_as(slop_arena* arena, index_IndexedGraph g, rdf_Term a, rdf_Term b);
 void test_cli_print_result(slop_string name, uint8_t passed);
+rdf_Term test_cli_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset);
+int64_t test_cli_max_blank_id_in_graph(index_IndexedGraph ig);
 slop_option_types_ReasonerResult test_cli_parse_and_reason(slop_arena* arena, slop_string path);
 uint8_t test_cli_test_subclass_chain_file(slop_arena* arena);
 uint8_t test_cli_test_equivalent_class_file(slop_arena* arena);
@@ -42,6 +44,7 @@ uint8_t test_cli_test_validate_domain_reports_class(slop_arena* arena);
 uint8_t test_cli_test_validate_ns_scoping(slop_arena* arena);
 uint8_t test_cli_test_validate_ns_filters_tlo(slop_arena* arena);
 uint8_t test_cli_test_background_merge(slop_arena* arena);
+uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena);
 int main(int argc, char** _c_argv);
 
 #ifndef SLOP_OPTION_TYPES_REASONERRESULT_DEFINED

@@ -8,7 +8,8 @@
 (module test-cli
   (@doc "Integration tests for growl CLI pipeline")
 
-  (import rdf (Term Triple Graph GraphSize make-iri make-triple make-graph graph-size term-eq))
+  (import rdf (Term Triple Graph GraphSize make-iri make-blank make-triple make-graph graph-size term-eq
+               triple-subject triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-match indexed-graph-size indexed-graph-contains))
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
@@ -62,6 +63,31 @@
     (if passed
       (do (print "[PASS] ") (println name))
       (do (print "[FAIL] ") (println name))))
+
+  ;; Blank node remapping for background file merge
+  (fn remap-blank-term ((arena Arena) (t Term) (offset I64))
+    (@intent "If term is a blank node, return new blank with ID + offset; otherwise return unchanged")
+    (@spec ((Arena Term I64) -> Term))
+    (@alloc arena)
+    (match t
+      ((term-blank b) (make-blank arena (+ (. b id) offset)))
+      ((term-iri _) t)
+      ((term-literal _) t)))
+
+  (fn max-blank-id-in-graph ((ig IndexedGraph))
+    (@intent "Find the highest blank node ID across all triples in the graph")
+    (@spec ((IndexedGraph) -> I64))
+    (@pure)
+    (let ((triples (. ig triples))
+          (mut max-id 0))
+      (for-each (t triples)
+        (match (. t subject)
+          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
+          (_ (do)))
+        (match (. t object)
+          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
+          (_ (do))))
+      max-id))
 
   ;; ============================================================
   ;; Pipeline helper: parse file -> index -> reason
@@ -249,9 +275,11 @@
                     (print (int-to-string arena (- end-time start-time)))
                     (println "ms")
                     true))
-                ((reason-inconsistent report)
+                ((reason-inconsistent reports)
                   (print "  ERROR: BFO inconsistent: ")
-                  (println (. report reason))
+                  (match (list-get reports 0)
+                    ((some report) (println (. report reason)))
+                    ((none) (println "(no details)")))
                   false))))))))
 
   ;; ============================================================
@@ -288,9 +316,11 @@
       ((some result)
         (match result
           ((reason-success _) true)
-          ((reason-inconsistent report)
+          ((reason-inconsistent reports)
             (print "  ERROR: unexpected inconsistency: ")
-            (println (. report reason))
+            (match (list-get reports 0)
+              ((some report) (println (. report reason)))
+              ((none) (println "(no details)")))
             false)))))
 
   ;; ============================================================
@@ -410,9 +440,11 @@
                         (validate-ns ""))))
           (match (reason-with-config arena ig config)
             ((reason-success _) true)
-            ((reason-inconsistent report)
+            ((reason-inconsistent reports)
               (print "  ERROR: unexpected inconsistency: ")
-              (println (. report reason))
+              (match (list-get reports 0)
+                ((some report) (println (. report reason)))
+                ((none) (println "(no details)")))
               false))))))
 
   ;; ============================================================
@@ -487,9 +519,11 @@
                         (validate true)
                         (validate-ns ""))))
           (match (reason-with-config arena ig config)
-            ((reason-inconsistent report)
+            ((reason-inconsistent reports)
               ;; Check that enriched reason says "Unsatisfiable class:" not "Unsatisfiable property usage:"
-              (starts-with (. report reason) "Unsatisfiable class:"))
+              (match (list-get reports 0)
+                ((some report) (starts-with (. report reason) "Unsatisfiable class:"))
+                ((none) false)))
             ((reason-success _)
               (println "  ERROR: should have detected inconsistency")
               false))))))
@@ -521,9 +555,11 @@
                         (validate true)
                         (validate-ns "http://example.org/"))))
           (match (reason-with-config arena ig config)
-            ((reason-inconsistent report)
+            ((reason-inconsistent reports)
               ;; Should detect ex:Bad as unsatisfiable
-              (starts-with (. report reason) "Unsatisfiable class:"))
+              (match (list-get reports 0)
+                ((some report) (starts-with (. report reason) "Unsatisfiable class:"))
+                ((none) false)))
             ((reason-success _)
               (println "  ERROR: should have detected unsatisfiable ex:Bad")
               false))))))
@@ -556,9 +592,11 @@
                         (validate-ns "http://example.org/"))))
           (match (reason-with-config arena ig config)
             ((reason-success _) true)
-            ((reason-inconsistent report)
+            ((reason-inconsistent reports)
               (print "  ERROR: unexpected inconsistency: ")
-              (println (. report reason))
+              (match (list-get reports 0)
+                ((some report) (println (. report reason)))
+                ((none) (println "(no details)")))
               false))))))
 
   ;; ============================================================
@@ -581,11 +619,15 @@
             (println "  ERROR: failed to parse validate-domain-only.ttl")
             false)
           ((ok domain-graph)
-            ;; Convert domain to indexed graph
-            (let ((mut ig (graph-to-indexed arena domain-graph)))
-              ;; Merge background triples in (same pattern as CLI)
+            ;; Convert domain to indexed graph, remap bg blank nodes to avoid collision
+            (let ((mut ig (graph-to-indexed arena domain-graph))
+                  (bg-blank-offset (+ (max-blank-id-in-graph ig) 1)))
               (for-each (t (. bg-graph triples))
-                (set! ig (indexed-graph-add arena ig t)))
+                (let ((rs (remap-blank-term arena (. t subject) bg-blank-offset))
+                      (rp (. t predicate))
+                      (ro (remap-blank-term arena (. t object) bg-blank-offset))
+                      (remapped (make-triple arena rs rp ro)))
+                  (set! ig (indexed-graph-add arena ig remapped))))
               ;; Reason with validate + validate-ns
               (let ((config (record-new ReasonerConfig
                               (worker-count 4)
@@ -597,12 +639,63 @@
                               (validate true)
                               (validate-ns "http://example.org/"))))
                 (match (reason-with-config arena ig config)
-                  ((reason-inconsistent report)
+                  ((reason-inconsistent reports)
                     ;; Should detect ex:Bad as unsatisfiable
-                    (starts-with (. report reason) "Unsatisfiable class:"))
+                    (match (list-get reports 0)
+                      ((some report) (starts-with (. report reason) "Unsatisfiable class:"))
+                      ((none) false)))
                   ((reason-success _)
                     (println "  ERROR: should have detected unsatisfiable ex:Bad via background merge")
                     false)))))))))
+
+  ;; ============================================================
+  ;; Test 20: Multiple unsatisfiable classes reported in one pass
+  ;; ============================================================
+
+  (fn test-validate-multiple-unsat ((arena Arena))
+    (@intent "Validate mode finds all unsatisfiable classes, not just the first")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-multi-unsat.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-multi-unsat.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns ""))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent reports)
+              ;; Should find exactly 2 unsatisfiable classes (Triffid and Steam)
+              (let ((count (list-len reports)))
+                (if (== count 2)
+                  (do
+                    ;; Both should be "Unsatisfiable class:"
+                    (let ((mut all-class true))
+                      (for-each (r reports)
+                        (when (not (starts-with (. r reason) "Unsatisfiable class:"))
+                          (do
+                            (print "  ERROR: unexpected report: ")
+                            (println (. r reason))
+                            (set! all-class false))))
+                      all-class))
+                  (do
+                    (print "  ERROR: expected 2 reports, got ")
+                    (println (int-to-string arena count))
+                    (for-each (r reports)
+                      (print "    ")
+                      (println (. r reason)))
+                    false))))
+            ((reason-success _)
+              (println "  ERROR: should have detected unsatisfiable classes")
+              false))))))
 
   ;; ============================================================
   ;; Main Test Runner
@@ -699,6 +792,11 @@
         ;; Background merge
         (let ((r (test-background-merge arena)))
           (print-result "background merge: detects unsatisfiable class" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Multi-unsat validation
+        (let ((r (test-validate-multiple-unsat arena)))
+          (print-result "validate: multiple unsatisfiable classes" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Error handling

@@ -67,9 +67,11 @@
     (witnesses (List Triple))))
 
   ;; Final result of reasoning
+  ;; In validate mode, reason-inconsistent holds multiple reports (one per unsatisfiable entity).
+  ;; In non-validate mode, the list always has exactly 1 element.
   (type ReasonerResult (union
     (reason-success ReasonerSuccess)
-    (reason-inconsistent InconsistencyReport)))
+    (reason-inconsistent (List InconsistencyReport))))
 
   ;; ============================================================
   ;; Delta Operations
