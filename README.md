@@ -59,7 +59,9 @@ Growl is being developed as the reasoning engine for [Trivyn](https://trivyn.io)
   (max-iterations Int)    ;; Iteration limit (default: 1000)
   (verbose Bool)          ;; Print per-iteration timing (default: true)
   (fast Bool)             ;; Skip schema rules & checks (default: false)
-  (complete Bool))        ;; Enable cls-thing & prp-ap (default: false)
+  (complete Bool)         ;; Enable cls-thing & prp-ap (default: false)
+  (validate Bool)         ;; Enable TBox validation mode (default: false)
+  (validate-ns String))   ;; Only validate entities with this IRI prefix (default: "")
 ```
 
 ## CLI Usage
@@ -72,7 +74,11 @@ Options:
   -q, --quiet      Only print failures and inconsistencies
   -f, --fast       Skip schema rules and consistency checks
   -c, --complete   Enable cls-thing and prp-ap for spec completeness
+  --validate       Check TBox satisfiability via synthetic instance injection
+  --validate-ns NS Only validate entities with IRIs starting with NS
+  -b, --background FILE  Load background ontology (e.g. TLO) for reasoning context
   -o, --emit FILE  Write materialized graph to TTL file
+  -V, --version    Show version information
 ```
 
 ### Complete Mode
@@ -85,6 +91,29 @@ The `--complete` flag enables axiom rules that are skipped by default for perfor
 - **dt-type2**: Asserts `literal rdf:type datatype` for every typed literal with a supported datatype
 
 These rules are spec-correct but produce triples with zero practical inference value. Use `--complete` for conformance testing against other reasoners like owlrl.
+
+### Validate Mode
+
+The `--validate` flag enables TBox validation, which checks whether the class and property declarations in an ontology are satisfiable. Growl injects a synthetic blank node instance for each declared class and property, runs reasoning to fixpoint, then scans for inconsistencies triggered by these synthetic individuals.
+
+The following check rules detect unsatisfiable entities: `cls-nothing2`, `cax-dw`, `cax-adc`, `cls-com`, `prp-asyp`, `prp-pdw`. Validate mode reports **all** unsatisfiable entities, not just the first.
+
+Use `--validate-ns` to scope validation to a specific namespace. This is important when reasoning over a domain ontology that imports a large top-level ontology (TLO) — without namespace filtering, the TLO's classes would also be validated, which is usually not what you want.
+
+Use `--background` to load a background ontology that provides reasoning context (e.g. class hierarchy, property declarations) without being validated itself. Background triples participate in inference but are not targets for synthetic instance injection.
+
+Note: `--validate` overrides `--fast`, since schema materialization is required for validation to work correctly.
+
+```bash
+# Validate all classes/properties in an ontology
+growl --validate ontology.ttl
+
+# Validate only entities in a specific namespace
+growl --validate --validate-ns "https://example.org/" ontology.ttl
+
+# Validate a domain ontology against a background TLO
+growl --validate --validate-ns "https://example.org/" --background tlo.ttl domain.ttl
+```
 
 ### Fast Mode
 
@@ -140,7 +169,7 @@ make lib        # build static library → build/libgrowl.a
 make release    # optimized build (-O3, NDEBUG)
 make test         # build and run tests
 make benchmark    # run benchmarks
-make conformance  # per-rule + multi-rule interaction tests (91 tests)
+make conformance  # per-rule + multi-rule interaction tests (92 tests)
 make reference    # accuracy tests against OWL-RL reference reasoner
 ```
 
