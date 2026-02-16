@@ -10,8 +10,8 @@
 (module main
   (@doc "CLI interface for growl OWL 2 RL reasoner")
 
-  (import rdf (Term Triple Graph GraphSize make-graph graph-size make-iri make-blank make-triple term-eq
-               triple-subject triple-predicate triple-object))
+  (import rdf (Term Triple Graph GraphSize make-graph graph-size make-iri make-triple term-eq
+               triple-predicate triple-object))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-size))
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file TtlFileError))
@@ -19,7 +19,8 @@
   (import serialize-ttl (SerializeConfig serialize-ttl-stream))
   (import growl (reason reason-with-config ReasonerConfig ReasonerResult ReasonerSuccess InconsistencyReport
                  get-inferred-count default-config
-                 collect-annotation-properties graph-to-indexed indexed-to-graph))
+                 collect-annotation-properties graph-to-indexed indexed-to-graph
+                 remap-blank-term max-blank-id-in-graph))
 
   (ffi "string.h"
     (strlen ((s (Ptr U8))) U64))
@@ -44,34 +45,6 @@
         (print "0"))
       (print (int-to-string arena ms)))
     (print "s"))
-
-  ;; ============================================================
-  ;; Blank Node Remapping (for background file merge)
-  ;; ============================================================
-
-  (fn remap-blank-term ((arena Arena) (t Term) (offset I64))
-    (@intent "If term is a blank node, return new blank with ID + offset; otherwise return unchanged")
-    (@spec ((Arena Term I64) -> Term))
-    (@alloc arena)
-    (match t
-      ((term-blank b) (make-blank arena (+ (. b id) offset)))
-      ((term-iri _) t)
-      ((term-literal _) t)))
-
-  (fn max-blank-id-in-graph ((ig IndexedGraph))
-    (@intent "Find the highest blank node ID across all triples in the graph")
-    (@spec ((IndexedGraph) -> I64))
-    (@pure)
-    (let ((triples (. ig triples))
-          (mut max-id 0))
-      (for-each (t triples)
-        (match (. t subject)
-          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
-          (_ (do)))
-        (match (. t object)
-          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
-          (_ (do))))
-      max-id))
 
   ;; ============================================================
   ;; Argument Parsing

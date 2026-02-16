@@ -6,8 +6,6 @@ rdf_Graph test_cli_indexed_to_graph(slop_arena* arena, index_IndexedGraph ig);
 uint8_t test_cli_has_type(slop_arena* arena, index_IndexedGraph g, rdf_Term individual, rdf_Term class);
 uint8_t test_cli_has_same_as(slop_arena* arena, index_IndexedGraph g, rdf_Term a, rdf_Term b);
 void test_cli_print_result(slop_string name, uint8_t passed);
-rdf_Term test_cli_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset);
-int64_t test_cli_max_blank_id_in_graph(index_IndexedGraph ig);
 slop_option_types_ReasonerResult test_cli_parse_and_reason(slop_arena* arena, slop_string path);
 uint8_t test_cli_test_subclass_chain_file(slop_arena* arena);
 uint8_t test_cli_test_equivalent_class_file(slop_arena* arena);
@@ -73,69 +71,6 @@ void test_cli_print_result(slop_string name, uint8_t passed) {
     } else {
         printf("%s", "[FAIL] ");
         printf("%.*s\n", (int)(name).len, (name).data);
-    }
-}
-
-rdf_Term test_cli_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
-    __auto_type _mv_353 = t;
-    switch (_mv_353.tag) {
-        case rdf_Term_term_blank:
-        {
-            __auto_type b = _mv_353.data.term_blank;
-            return rdf_make_blank(arena, (b.id + offset));
-        }
-        case rdf_Term_term_iri:
-        {
-            __auto_type _ = _mv_353.data.term_iri;
-            return t;
-        }
-        case rdf_Term_term_literal:
-        {
-            __auto_type _ = _mv_353.data.term_literal;
-            return t;
-        }
-    }
-}
-
-int64_t test_cli_max_blank_id_in_graph(index_IndexedGraph ig) {
-    {
-        __auto_type triples = ig.triples;
-        int64_t max_id = 0;
-        {
-            __auto_type _coll = triples;
-            for (size_t _i = 0; _i < _coll.len; _i++) {
-                __auto_type t = _coll.data[_i];
-                __auto_type _mv_354 = t.subject;
-                switch (_mv_354.tag) {
-                    case rdf_Term_term_blank:
-                    {
-                        __auto_type b = _mv_354.data.term_blank;
-                        if ((b.id > max_id)) {
-                            max_id = b.id;
-                        }
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-                __auto_type _mv_355 = t.object;
-                switch (_mv_355.tag) {
-                    case rdf_Term_term_blank:
-                    {
-                        __auto_type b = _mv_355.data.term_blank;
-                        if ((b.id > max_id)) {
-                            max_id = b.id;
-                        }
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-            }
-        }
-        return max_id;
     }
 }
 
@@ -741,15 +676,15 @@ uint8_t test_cli_test_background_merge(slop_arena* arena) {
             __auto_type domain_graph = _mv_401.data.ok;
             {
                 __auto_type ig = test_cli_graph_to_indexed(arena, domain_graph);
-                __auto_type bg_blank_offset = (test_cli_max_blank_id_in_graph(ig) + 1);
+                __auto_type bg_blank_offset = (growl_max_blank_id_in_graph(ig) + 1);
                 {
                     __auto_type _coll = bg_graph.triples;
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         {
-                            __auto_type rs = test_cli_remap_blank_term(arena, t.subject, bg_blank_offset);
+                            __auto_type rs = growl_remap_blank_term(arena, t.subject, bg_blank_offset);
                             __auto_type rp = t.predicate;
-                            __auto_type ro = test_cli_remap_blank_term(arena, t.object, bg_blank_offset);
+                            __auto_type ro = growl_remap_blank_term(arena, t.object, bg_blank_offset);
                             __auto_type remapped = rdf_make_triple(arena, rs, rp, ro);
                             ig = rdf_indexed_graph_add(arena, ig, remapped);
                         }

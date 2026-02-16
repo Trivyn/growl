@@ -2,8 +2,6 @@
 #include "slop_main.h"
 
 void main_print_elapsed(slop_arena* arena, int64_t elapsed);
-rdf_Term main_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset);
-int64_t main_max_blank_id_in_graph(index_IndexedGraph ig);
 slop_string main_argv_to_string(uint8_t** argv, int64_t index);
 main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
 void main_print_usage(void);
@@ -23,69 +21,6 @@ void main_print_elapsed(slop_arena* arena, int64_t elapsed) {
         printf("%.*s", (int)(int_to_string(arena, ms)).len, (int_to_string(arena, ms)).data);
     }
     printf("%s", "s");
-}
-
-rdf_Term main_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
-    __auto_type _mv_353 = t;
-    switch (_mv_353.tag) {
-        case rdf_Term_term_blank:
-        {
-            __auto_type b = _mv_353.data.term_blank;
-            return rdf_make_blank(arena, (b.id + offset));
-        }
-        case rdf_Term_term_iri:
-        {
-            __auto_type _ = _mv_353.data.term_iri;
-            return t;
-        }
-        case rdf_Term_term_literal:
-        {
-            __auto_type _ = _mv_353.data.term_literal;
-            return t;
-        }
-    }
-}
-
-int64_t main_max_blank_id_in_graph(index_IndexedGraph ig) {
-    {
-        __auto_type triples = ig.triples;
-        int64_t max_id = 0;
-        {
-            __auto_type _coll = triples;
-            for (size_t _i = 0; _i < _coll.len; _i++) {
-                __auto_type t = _coll.data[_i];
-                __auto_type _mv_354 = t.subject;
-                switch (_mv_354.tag) {
-                    case rdf_Term_term_blank:
-                    {
-                        __auto_type b = _mv_354.data.term_blank;
-                        if ((b.id > max_id)) {
-                            max_id = b.id;
-                        }
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-                __auto_type _mv_355 = t.object;
-                switch (_mv_355.tag) {
-                    case rdf_Term_term_blank:
-                    {
-                        __auto_type b = _mv_355.data.term_blank;
-                        if ((b.id > max_id)) {
-                            max_id = b.id;
-                        }
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-            }
-        }
-        return max_id;
-    }
 }
 
 slop_string main_argv_to_string(uint8_t** argv, int64_t index) {
@@ -290,15 +225,15 @@ int main(int argc, char** _c_argv) {
                                                     }
                                                     {
                                                         __auto_type bg_triples = bg_ig.triples;
-                                                        __auto_type bg_blank_offset = (main_max_blank_id_in_graph(ig) + 1);
+                                                        __auto_type bg_blank_offset = (growl_max_blank_id_in_graph(ig) + 1);
                                                         {
                                                             __auto_type _coll = bg_triples;
                                                             for (size_t _i = 0; _i < _coll.len; _i++) {
                                                                 __auto_type t = _coll.data[_i];
                                                                 {
-                                                                    __auto_type rs = main_remap_blank_term(arena, t.subject, bg_blank_offset);
+                                                                    __auto_type rs = growl_remap_blank_term(arena, t.subject, bg_blank_offset);
                                                                     __auto_type rp = t.predicate;
-                                                                    __auto_type ro = main_remap_blank_term(arena, t.object, bg_blank_offset);
+                                                                    __auto_type ro = growl_remap_blank_term(arena, t.object, bg_blank_offset);
                                                                     __auto_type remapped = rdf_make_triple(arena, rs, rp, ro);
                                                                     combined_ig = rdf_indexed_graph_add(arena, combined_ig, remapped);
                                                                 }

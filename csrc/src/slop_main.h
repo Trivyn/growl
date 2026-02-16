@@ -35,8 +35,6 @@ SLOP_OPTION_DEFINE(main_CliArgs, slop_option_main_CliArgs)
 #endif
 
 void main_print_elapsed(slop_arena* arena, int64_t elapsed);
-rdf_Term main_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset);
-int64_t main_max_blank_id_in_graph(index_IndexedGraph ig);
 slop_string main_argv_to_string(uint8_t** argv, int64_t index);
 main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
 void main_print_usage(void);

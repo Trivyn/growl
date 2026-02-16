@@ -9,6 +9,7 @@
 #include "slop_vocab.h"
 #include "slop_thread.h"
 #include "slop_strlib.h"
+#include "slop_list.h"
 #include "slop_types.h"
 #include "slop_cax.h"
 #include "slop_scm.h"

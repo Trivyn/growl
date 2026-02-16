@@ -8,7 +8,7 @@
 (module growl
   (@doc "OWL 2 RL reasoner with formally verified inference rules")
 
-  (import rdf (Term Triple term-eq triple-eq make-iri make-triple))
+  (import rdf (Term Triple term-eq triple-eq make-iri make-blank make-triple))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-match indexed-graph-contains indexed-graph-size))
   (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS OWL_DIFFERENT_FROM))
@@ -34,6 +34,9 @@
     get-types
     get-same-as
     get-inferred-count
+    ;; Blank node remapping (used by CLI and tests for background file merge)
+    remap-blank-term
+    max-blank-id-in-graph
     ;; Annotation filtering (re-exported from filter)
     collect-annotation-properties
     graph-to-indexed
@@ -44,6 +47,34 @@
     delta-add
     delta-merge
     delta-is-empty)
+
+  ;; ============================================================
+  ;; Blank Node Remapping (for background file merge)
+  ;; ============================================================
+
+  (fn remap-blank-term ((arena Arena) (t Term) (offset I64))
+    (@intent "If term is a blank node, return new blank with ID + offset; otherwise return unchanged")
+    (@spec ((Arena Term I64) -> Term))
+    (@alloc arena)
+    (match t
+      ((term-blank b) (make-blank arena (+ (. b id) offset)))
+      ((term-iri _) t)
+      ((term-literal _) t)))
+
+  (fn max-blank-id-in-graph ((ig IndexedGraph))
+    (@intent "Find the highest blank node ID across all triples in the graph")
+    (@spec ((IndexedGraph) -> Int))
+    (@pure)
+    (let ((triples (. ig triples))
+          (mut max-id 0))
+      (for-each (t triples)
+        (match (. t subject)
+          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
+          (_ (do)))
+        (match (. t object)
+          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
+          (_ (do))))
+      max-id))
 
   ;; ============================================================
   ;; Configuration

@@ -102,6 +102,8 @@ struct types_InconsistencyReport {
 };
 typedef struct types_InconsistencyReport types_InconsistencyReport;
 
+typedef struct { size_t len; size_t cap; types_InconsistencyReport* data; } slop_list_types_InconsistencyReport;
+
 struct types_ReasonerConfig {
     uint8_t worker_count;
     uint16_t channel_buffer;
@@ -130,7 +132,7 @@ struct types_ReasonerResult {
     types_ReasonerResult_tag tag;
     union {
         types_ReasonerSuccess reason_success;
-        types_InconsistencyReport reason_inconsistent;
+        slop_list_types_InconsistencyReport reason_inconsistent;
     } data;
 };
 typedef struct types_ReasonerResult types_ReasonerResult;
