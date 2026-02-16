@@ -56,6 +56,14 @@
     (msg-inconsistent InconsistencyReport)
     (msg-done Unit)))
 
+  ;; Result of synthetic instance injection for --validate mode
+  ;; class-map[i] = the class assigned blank ID 10M+i
+  ;; prop-map[j] = the property assigned blank IDs 20M+j (subject) / 30M+j (object)
+  (type ValidateInjection (record
+    (graph IndexedGraph)
+    (class-map (List Term))
+    (prop-map (List Term))))
+
   ;; ============================================================
   ;; Timing Helpers
   ;; ============================================================
@@ -104,15 +112,16 @@
     (@intent "Check if a term is an IRI that starts with the given namespace prefix")
     (@spec ((Term String) -> Bool))
     (@pure)
-    (if (== (. ns len) 0)
-      true
-      (match term
-        ((term-iri iri) (starts-with (. iri value) ns))
-        (_ false))))
+    (match term
+      ((term-iri iri)
+        (if (== (. ns len) 0)
+          true
+          (starts-with (. iri value) ns)))
+      (_ false)))
 
   (fn inject-validate-instances ((arena Arena) (g IndexedGraph) (verbose Bool) (validate-ns String))
     (@intent "Inject synthetic blank node instances for each declared owl:Class and property usage")
-    (@spec ((Arena IndexedGraph Bool String) -> IndexedGraph))
+    (@spec ((Arena IndexedGraph Bool String) -> ValidateInjection))
     (@alloc arena)
     (let ((type-pred (make-iri arena RDF_TYPE))
           (class-type (make-iri arena OWL_CLASS))
@@ -120,7 +129,9 @@
           ;; Find all (?c rdf:type owl:Class) triples
           (class-triples (indexed-graph-match arena g no-term (some type-pred) (some class-type)))
           (mut result g)
-          (mut count 0))
+          (mut count 0)
+          ;; Build class-map: class-map[i] = class assigned blank ID 10M+i
+          (mut class-map (list-new arena Term)))
       ;; Phase 1: Inject synthetic class instances (_:10M+N rdf:type C)
       (for-each (t class-triples)
         (let ((cls (triple-subject t)))
@@ -129,6 +140,7 @@
               (let ((synthetic (make-blank arena (+ 10000000 count)))
                     (type-triple (make-triple arena synthetic type-pred cls)))
                 (set! result (indexed-graph-add arena result type-triple))
+                (list-push class-map cls)
                 (set! count (+ count 1)))))))
       (when verbose
         (do
@@ -137,7 +149,8 @@
           (println " synthetic class instances")))
       ;; Phase 2: Inject synthetic property usages (_:20M+N P _:30M+N)
       (let ((props (collect-declared-properties arena g))
-            (mut prop-count 0))
+            (mut prop-count 0)
+            (mut prop-map (list-new arena Term)))
         (for-each (p props)
           (when (iri-matches-ns p validate-ns)
             (do
@@ -145,131 +158,234 @@
                     (obj-blank (make-blank arena (+ 30000000 prop-count)))
                     (prop-triple (make-triple arena subj-blank p obj-blank)))
                 (set! result (indexed-graph-add arena result prop-triple))
+                (list-push prop-map p)
                 (set! prop-count (+ prop-count 1))))))
         (when verbose
           (do
             (print "[validate] injected ")
             (print (int-to-string arena prop-count))
-            (println " synthetic property usages"))))
-      result))
+            (println " synthetic property usages")))
+        (record-new ValidateInjection
+          (graph result)
+          (class-map class-map)
+          (prop-map prop-map)))))
 
   ;; ============================================================
   ;; Validate Report Enrichment
   ;; ============================================================
 
-  (fn enrich-validate-report ((arena Arena) (report InconsistencyReport) (pre-inject-graph IndexedGraph) (validate-ns String))
+  (fn resolve-blank-class ((arena Arena) (blank-id Int) (class-map (List Term)))
+    (@intent "Resolve synthetic class blank ID to class IRI name, or empty string")
+    (@spec ((Arena Int (List Term)) -> String))
+    (@alloc arena)
+    (if (and (>= blank-id 10000000) (< blank-id 20000000))
+      (let ((class-index (- blank-id 10000000)))
+        (match (list-get class-map class-index)
+          ((some cls)
+            (match cls
+              ((term-iri iri) (. iri value))
+              (_ "")))
+          ((none) "")))
+      ""))
+
+  (fn resolve-blank-prop ((arena Arena) (blank-id Int) (prop-map (List Term)))
+    (@intent "Resolve synthetic property blank ID to property IRI name, or empty string")
+    (@spec ((Arena Int (List Term)) -> String))
+    (@alloc arena)
+    (if (and (>= blank-id 20000000) (< blank-id 40000000))
+      (let ((prop-index (if (< blank-id 30000000)
+                          (- blank-id 20000000)
+                          (- blank-id 30000000))))
+        (match (list-get prop-map prop-index)
+          ((some prop)
+            (match prop
+              ((term-iri iri) (. iri value))
+              (_ "")))
+          ((none) "")))
+      ""))
+
+  (fn build-enriched-reason ((arena Arena) (class-name String) (prop-name String) (original-reason String) (detail String))
+    (@intent "Build enriched validation reason string from entity info")
+    (@spec ((Arena String String String String) -> String))
+    (@alloc arena)
+    (let ((reason-suffix (if (> (string-len detail) 0)
+                            (string-concat arena original-reason (string-concat arena ": " detail))
+                            original-reason)))
+      (if (> (string-len class-name) 0)
+        (string-concat arena
+          (string-concat arena "Unsatisfiable class: " class-name)
+          (string-concat arena " (" (string-concat arena reason-suffix ")")))
+        (if (> (string-len prop-name) 0)
+          (string-concat arena
+            (string-concat arena "Unsatisfiable property usage: " prop-name)
+            (string-concat arena " (" (string-concat arena reason-suffix ")")))
+          reason-suffix))))
+
+  (fn enrich-validate-report ((arena Arena) (report InconsistencyReport) (pre-inject-graph IndexedGraph) (validate-ns String) (class-map (List Term)) (prop-map (List Term)))
     (@intent "Enrich validate inconsistency report with unsatisfiable class or property IRI")
-    (@spec ((Arena InconsistencyReport IndexedGraph String) -> InconsistencyReport))
+    (@spec ((Arena InconsistencyReport IndexedGraph String (List Term) (List Term)) -> InconsistencyReport))
     (@alloc arena)
     (let ((witnesses (. report witnesses))
           (original-reason (. report reason)))
-      (match (list-get witnesses 0)
-        ((some first-witness)
-          (let ((subj (triple-subject first-witness)))
-            (match subj
-              ((term-blank bnode)
-                (let ((blank-id (. bnode id)))
-                  (if (and (>= blank-id 10000000) (< blank-id 20000000))
-                    ;; Class range: blank_id in [10M, 20M)
-                    ;; Build filtered class list matching same logic as inject
-                    (let ((type-pred (make-iri arena RDF_TYPE))
-                          (class-type (make-iri arena OWL_CLASS))
-                          (no-term (Option Term) (none))
-                          (all-class-triples (indexed-graph-match arena pre-inject-graph
-                                               no-term (some type-pred) (some class-type)))
-                          (class-index (- blank-id 10000000))
-                          ;; Filter to matching namespace (same as inject)
-                          (mut filtered-classes (list-new arena Term))
-                          (mut _fi 0))
-                      (for-each (ct all-class-triples)
-                        (let ((cls (triple-subject ct)))
-                          (when (iri-matches-ns cls validate-ns)
-                            (do
-                              (list-push filtered-classes cls)
-                              (set! _fi (+ _fi 1))))))
-                      (match (list-get filtered-classes class-index)
-                        ((some cls)
-                          (match cls
-                            ((term-iri iri)
-                              (let ((class-name (. iri value))
-                                    (enriched (string-concat arena
-                                                (string-concat arena "Unsatisfiable class: " class-name)
-                                                (string-concat arena " (" (string-concat arena original-reason ")")))))
-                                (record-new InconsistencyReport
-                                  (reason enriched)
-                                  (witnesses witnesses))))
-                            (_ report)))
-                        ((none) report)))
-                    (if (and (>= blank-id 20000000) (< blank-id 40000000))
-                      ;; Property range: blank_id in [20M, 40M) — subject or object blank
-                      ;; Check witness predicate: rdf:type means class-level rule (cax-dw),
-                      ;; anything else means property-level rule (prp-asyp etc.)
-                      (let ((prop-index (if (< blank-id 30000000)
-                                          (- blank-id 20000000)
-                                          (- blank-id 30000000)))
-                            ;; Filter properties by namespace (same as inject)
-                            (all-props (collect-declared-properties arena pre-inject-graph))
-                            (mut filtered-props (list-new arena Term))
-                            (mut _pi 0))
-                        (for-each (fp all-props)
-                          (when (iri-matches-ns fp validate-ns)
-                            (do
-                              (list-push filtered-props fp)
-                              (set! _pi (+ _pi 1)))))
-                        (let ((witness-pred (triple-predicate first-witness))
-                              (type-pred (make-iri arena RDF_TYPE)))
-                          (if (term-eq witness-pred type-pred)
-                            ;; Class-level rule fired via domain/range — trace back to class
-                            (match (list-get filtered-props prop-index)
-                              ((some prop)
-                                (let ((domain-or-range-pred (make-iri arena (if (< blank-id 30000000) RDFS_DOMAIN RDFS_RANGE)))
-                                      (no-term (Option Term) (none))
-                                      (class-triples (indexed-graph-match arena pre-inject-graph
-                                                       (some prop) (some domain-or-range-pred) no-term)))
-                                  (match (list-get class-triples 0)
-                                    ((some class-triple)
-                                      (let ((cls (triple-object class-triple)))
-                                        (match cls
-                                          ((term-iri iri)
-                                            (let ((class-name (. iri value))
-                                                  (enriched (string-concat arena
-                                                              (string-concat arena "Unsatisfiable class: " class-name)
-                                                              (string-concat arena " (" (string-concat arena original-reason ")")))))
-                                              (record-new InconsistencyReport
-                                                (reason enriched)
-                                                (witnesses witnesses))))
-                                          (_ report))))
-                                    ;; No domain/range found — fall back to property report
-                                    ((none)
-                                      (match prop
-                                        ((term-iri iri)
-                                          (let ((prop-name (. iri value))
-                                                (enriched (string-concat arena
-                                                            (string-concat arena "Unsatisfiable property usage: " prop-name)
-                                                            (string-concat arena " (" (string-concat arena original-reason ")")))))
-                                            (record-new InconsistencyReport
-                                              (reason enriched)
-                                              (witnesses witnesses))))
-                                        (_ report))))))
-                              ((none) report))
-                            ;; Property-level rule fired — report property
-                            (match (list-get filtered-props prop-index)
-                              ((some prop)
-                                (match prop
-                                  ((term-iri iri)
-                                    (let ((prop-name (. iri value))
-                                          (enriched (string-concat arena
-                                                      (string-concat arena "Unsatisfiable property usage: " prop-name)
-                                                      (string-concat arena " (" (string-concat arena original-reason ")")))))
+      (if (starts-with original-reason "cax-dw")
+        ;; === cax-dw: Extract disjoint classes directly from witnesses ===
+        ;; witnesses[0] = (individual rdf:type classX)
+        ;; witnesses[2] = (classA owl:disjointWith classB)
+        (match (list-get witnesses 2)
+          ((some dj-witness)
+            (let ((class-a (triple-subject dj-witness))
+                  (class-b (triple-object dj-witness)))
+              (match class-a
+                ((term-iri iri-a)
+                  (match class-b
+                    ((term-iri iri-b)
+                      (let ((detail (string-concat arena (. iri-a value)
+                                      (string-concat arena " disjointWith " (. iri-b value)))))
+                        ;; Resolve source entity from first witness subject
+                        (match (list-get witnesses 0)
+                          ((some first-witness)
+                            (let ((subj (triple-subject first-witness)))
+                              (match subj
+                                ((term-blank bnode)
+                                  (let ((class-name (resolve-blank-class arena (. bnode id) class-map))
+                                        (prop-name (resolve-blank-prop arena (. bnode id) prop-map))
+                                        (enriched (build-enriched-reason arena class-name prop-name original-reason detail)))
+                                    ;; For properties, append domain-intersection note if applicable
+                                    (if (> (string-len prop-name) 0)
+                                      (let ((blank-id (. bnode id))
+                                            (prop-index (if (< blank-id 30000000) (- blank-id 20000000) (- blank-id 30000000)))
+                                            (mut domain-count Int 0))
+                                        (match (list-get prop-map prop-index)
+                                          ((some prop-term)
+                                            (let ((domain-pred (make-iri arena RDFS_DOMAIN))
+                                                  (no-term (Option Term) (none))
+                                                  (domains (indexed-graph-match arena pre-inject-graph (some prop-term) (some domain-pred) no-term)))
+                                              (set! domain-count (list-len domains))))
+                                          ((none) (do)))
+                                        (let ((final-reason (if (> domain-count 1)
+                                                              (string-concat arena enriched
+                                                                (string-concat arena "\n  Note: "
+                                                                  (string-concat arena prop-name
+                                                                    (string-concat arena " has "
+                                                                      (string-concat arena (int-to-string arena domain-count)
+                                                                        " rdfs:domain declarations (OWL treats multiple domains as intersection, not union).\n  Consider using owl:unionOf if union semantics were intended.")))))
+                                                              enriched)))
+                                          (record-new InconsistencyReport
+                                            (reason final-reason)
+                                            (witnesses witnesses))))
                                       (record-new InconsistencyReport
                                         (reason enriched)
-                                        (witnesses witnesses))))
-                                  (_ report)))
-                              ((none) report)))))
-                      ;; Unknown range
-                      report))))
-              (_ report))))
-        ((none) report))))
+                                        (witnesses witnesses)))))
+                                (_ ;; Non-blank subject — fallback with detail only
+                                  (let ((enriched (build-enriched-reason arena "" "" original-reason detail)))
+                                    (record-new InconsistencyReport
+                                      (reason enriched)
+                                      (witnesses witnesses)))))))
+                          ((none) ;; No first witness — fallback with detail only
+                            (let ((enriched (build-enriched-reason arena "" "" original-reason detail)))
+                              (record-new InconsistencyReport
+                                (reason enriched)
+                                (witnesses witnesses)))))))
+                    (_ report)))
+                (_ report))))
+          ((none) report))
+
+        (if (starts-with original-reason "cax-adc")
+          ;; === cax-adc: Extract disjoint classes from AllDisjointClasses witnesses ===
+          ;; witnesses[0] = (individual rdf:type class-a)
+          ;; witnesses[1] = (individual rdf:type class-b)
+          ;; witnesses[2] = (adc-node rdf:type owl:AllDisjointClasses)
+          (match (list-get witnesses 0)
+            ((some w0)
+              (match (list-get witnesses 1)
+                ((some w1)
+                  (let ((class-a (triple-object w0))
+                        (class-b (triple-object w1))
+                        (subj (triple-subject w0)))
+                    (match class-a
+                      ((term-iri iri-a)
+                        (match class-b
+                          ((term-iri iri-b)
+                            (let ((detail (string-concat arena (. iri-a value)
+                                            (string-concat arena " disjointWith " (string-concat arena (. iri-b value) " (via AllDisjointClasses)")))))
+                              (match subj
+                                ((term-blank bnode)
+                                  (let ((class-name (resolve-blank-class arena (. bnode id) class-map))
+                                        (prop-name (resolve-blank-prop arena (. bnode id) prop-map))
+                                        (enriched (build-enriched-reason arena class-name prop-name original-reason detail)))
+                                    (record-new InconsistencyReport
+                                      (reason enriched)
+                                      (witnesses witnesses))))
+                                (_ (let ((enriched (build-enriched-reason arena "" "" original-reason detail)))
+                                     (record-new InconsistencyReport
+                                       (reason enriched)
+                                       (witnesses witnesses)))))))
+                          (_ report)))
+                      (_ report))))
+                ((none) report)))
+            ((none) report))
+
+          ;; === Non-cax-dw/cax-adc: blank-ID-based entity resolution ===
+          (match (list-get witnesses 0)
+            ((some first-witness)
+              (let ((subj (triple-subject first-witness)))
+                (match subj
+                  ((term-blank bnode)
+                    (let ((class-name (resolve-blank-class arena (. bnode id) class-map))
+                          (prop-name (resolve-blank-prop arena (. bnode id) prop-map)))
+                      (if (> (string-len class-name) 0)
+                        ;; Class entity — straightforward
+                        (let ((enriched (build-enriched-reason arena class-name "" original-reason "")))
+                          (record-new InconsistencyReport
+                            (reason enriched)
+                            (witnesses witnesses)))
+                        (if (> (string-len prop-name) 0)
+                          ;; Property entity — check if we should trace to class via domain/range
+                          (let ((witness-pred (triple-predicate first-witness))
+                                (type-pred (make-iri arena RDF_TYPE)))
+                            (if (term-eq witness-pred type-pred)
+                              ;; rdf:type witness → class-level rule fired via domain/range, trace back
+                              (let ((blank-id (. bnode id))
+                                    (prop-index (if (< blank-id 30000000) (- blank-id 20000000) (- blank-id 30000000))))
+                                (match (list-get prop-map prop-index)
+                                  ((some prop)
+                                    (let ((domain-or-range-pred (make-iri arena (if (< blank-id 30000000) RDFS_DOMAIN RDFS_RANGE)))
+                                          (no-term (Option Term) (none))
+                                          (class-triples (indexed-graph-match arena pre-inject-graph
+                                                           (some prop) (some domain-or-range-pred) no-term)))
+                                      (match (list-get class-triples 0)
+                                        ((some class-triple)
+                                          (let ((cls (triple-object class-triple)))
+                                            (if (iri-matches-ns cls validate-ns)
+                                              ;; Domain/range class matches namespace — report as class
+                                              (match cls
+                                                ((term-iri iri)
+                                                  (let ((enriched (build-enriched-reason arena (. iri value) "" original-reason "")))
+                                                    (record-new InconsistencyReport
+                                                      (reason enriched)
+                                                      (witnesses witnesses))))
+                                                (_ report))
+                                              ;; Doesn't match namespace — report property
+                                              (let ((enriched (build-enriched-reason arena "" prop-name original-reason "")))
+                                                (record-new InconsistencyReport
+                                                  (reason enriched)
+                                                  (witnesses witnesses))))))
+                                        ((none)
+                                          ;; No domain/range found — report property
+                                          (let ((enriched (build-enriched-reason arena "" prop-name original-reason "")))
+                                            (record-new InconsistencyReport
+                                              (reason enriched)
+                                              (witnesses witnesses)))))))
+                                  ((none) report)))
+                              ;; Non-rdf:type witness → property-level rule
+                              (let ((enriched (build-enriched-reason arena "" prop-name original-reason "")))
+                                (record-new InconsistencyReport
+                                  (reason enriched)
+                                  (witnesses witnesses)))))
+                          ;; Neither class nor property resolved
+                          report))))
+                  (_ report))))
+            ((none) report))))))
 
   ;; ============================================================
   ;; Main Engine Loop
@@ -345,10 +461,16 @@
                 cg)
               dt-graph))
           ;; Phase 2a: Inject synthetic instances for --validate mode
-          (validate-graph
+          (validate-injection
             (if (. config validate)
               (inject-validate-instances arena complete-graph (. config verbose) (. config validate-ns))
-              complete-graph))
+              (record-new ValidateInjection
+                (graph complete-graph)
+                (class-map (list-new arena Term))
+                (prop-map (list-new arena Term)))))
+          (validate-graph (. validate-injection graph))
+          (validate-class-map (. validate-injection class-map))
+          (validate-prop-map (. validate-injection prop-map))
           ;; Phase 2b: Main fixpoint uses (possibly augmented) graph
           ;; In validate mode, recreate delta from the augmented graph
           ;; so synthetic type triples are seen as "new" by the rules
@@ -396,7 +518,7 @@
         ((some report)
           (let ((final-report
                   (if (. config validate)
-                    (enrich-validate-report arena report complete-graph (. config validate-ns))
+                    (enrich-validate-report arena report complete-graph (. config validate-ns) validate-class-map validate-prop-map)
                     report)))
             (union-new ReasonerResult reason-inconsistent final-report)))
         ((none)

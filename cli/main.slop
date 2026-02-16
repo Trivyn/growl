@@ -266,6 +266,12 @@
                                      ((none) ""))))
                   (when (and (. args fast) validate-mode)
                     (println "Warning: --validate overrides --fast (schema materialization required)"))
+                  (when (and validate-mode (match (. args emit-file) ((some _) true) ((none) false)))
+                    (println "Warning: --emit is ignored in --validate mode"))
+                  (when (and validate-mode
+                             (match (. args background-file) ((some _) true) ((none) false))
+                             (== (string-len ns-filter) 0))
+                    (println "Warning: --validate with --background but no --validate-ns; all classes will be validated (slow for large TLOs)"))
 
                   ;; Run reasoner
                   (let ((reason-start (slop_now_ms))
@@ -345,7 +351,7 @@
                       (let ((reason-elapsed (- (slop_now_ms) reason-start)))
                         (if validate-mode
                           (do
-                            (println "[FAIL] Unsatisfiable class detected")
+                            (println "[FAIL] Validation failed")
                             (print "  Reason: ")
                             (println (. report reason))
                             1)

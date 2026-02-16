@@ -16,6 +16,7 @@
                  OWL_OBJECT_PROPERTY OWL_SYMMETRIC_PROPERTY OWL_ASYMMETRIC_PROPERTY))
   (import growl (reason reason-with-config get-types get-same-as get-inferred-count
                  ReasonerResult ReasonerConfig))
+  (import strlib (starts-with))
 
   ;; ============================================================
   ;; Test Utilities
@@ -469,13 +470,7 @@
       (match (reason-with-config arena g (make-validate-config))
         ((reason-inconsistent report)
           ;; The enriched reason should reference the CLASS, not the property.
-          ;; "Unsatisfiable class:" vs "Unsatisfiable property usage:"
-          ;; Byte at offset 14: 'c' (99) = class, 'p' (112) = property
-          (let ((reason (. report reason))
-                (len (string-len reason)))
-            (if (> len 20)
-              (== (cast Int (@ (. reason data) 14)) 99)
-              false)))
+          (starts-with (. report reason) "Unsatisfiable class:"))
         ((reason-success _) false))))
 
   ;; ============================================================

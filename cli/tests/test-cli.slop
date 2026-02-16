@@ -16,6 +16,7 @@
   (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS))
   (import growl (reason reason-with-config ReasonerConfig ReasonerResult ReasonerSuccess InconsistencyReport
                  get-inferred-count get-types get-same-as))
+  (import strlib (starts-with))
 
   ;; ============================================================
   ;; Helpers
@@ -488,15 +489,7 @@
           (match (reason-with-config arena ig config)
             ((reason-inconsistent report)
               ;; Check that enriched reason says "Unsatisfiable class:" not "Unsatisfiable property usage:"
-              ;; Byte at offset 14: 'c' (99) = class, 'p' (112) = property
-              (let ((reason (. report reason))
-                    (len (string-len reason)))
-                (if (> len 20)
-                  (== (cast Int (@ (. reason data) 14)) 99)
-                  (do
-                    (print "  ERROR: reason too short: ")
-                    (println reason)
-                    false))))
+              (starts-with (. report reason) "Unsatisfiable class:"))
             ((reason-success _)
               (println "  ERROR: should have detected inconsistency")
               false))))))
@@ -530,15 +523,7 @@
           (match (reason-with-config arena ig config)
             ((reason-inconsistent report)
               ;; Should detect ex:Bad as unsatisfiable
-              ;; The enriched reason should mention "Unsatisfiable class"
-              (let ((reason (. report reason))
-                    (len (string-len reason)))
-                (if (> len 20)
-                  (== (cast Int (@ (. reason data) 14)) 99)  ;; 'c' = class
-                  (do
-                    (print "  ERROR: reason too short: ")
-                    (println reason)
-                    false))))
+              (starts-with (. report reason) "Unsatisfiable class:"))
             ((reason-success _)
               (println "  ERROR: should have detected unsatisfiable ex:Bad")
               false))))))
@@ -575,6 +560,49 @@
               (print "  ERROR: unexpected inconsistency: ")
               (println (. report reason))
               false))))))
+
+  ;; ============================================================
+  ;; Test 19: --background merge pattern
+  ;; ============================================================
+
+  (fn test-background-merge ((arena Arena))
+    (@intent "Parse TLO + domain-only files, merge, verify --validate detects unsatisfiable class")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    ;; Parse background TLO file
+    (match (parse-ttl-file arena "fixtures/validate-bg-tlo.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-bg-tlo.ttl")
+        false)
+      ((ok bg-graph)
+        ;; Parse domain-only file
+        (match (parse-ttl-file arena "fixtures/validate-domain-only.ttl")
+          ((error _)
+            (println "  ERROR: failed to parse validate-domain-only.ttl")
+            false)
+          ((ok domain-graph)
+            ;; Convert domain to indexed graph
+            (let ((mut ig (graph-to-indexed arena domain-graph)))
+              ;; Merge background triples in (same pattern as CLI)
+              (for-each (t (. bg-graph triples))
+                (set! ig (indexed-graph-add arena ig t)))
+              ;; Reason with validate + validate-ns
+              (let ((config (record-new ReasonerConfig
+                              (worker-count 4)
+                              (channel-buffer 256)
+                              (max-iterations 1000)
+                              (verbose false)
+                              (fast false)
+                              (complete false)
+                              (validate true)
+                              (validate-ns "http://example.org/"))))
+                (match (reason-with-config arena ig config)
+                  ((reason-inconsistent report)
+                    ;; Should detect ex:Bad as unsatisfiable
+                    (starts-with (. report reason) "Unsatisfiable class:"))
+                  ((reason-success _)
+                    (println "  ERROR: should have detected unsatisfiable ex:Bad via background merge")
+                    false)))))))))
 
   ;; ============================================================
   ;; Main Test Runner
@@ -666,6 +694,11 @@
 
         (let ((r (test-validate-ns-filters-tlo arena)))
           (print-result "validate-ns: TLO entities filtered out" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Background merge
+        (let ((r (test-background-merge arena)))
+          (print-result "background merge: detects unsatisfiable class" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Error handling

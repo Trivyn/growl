@@ -637,7 +637,8 @@ pub fn validate_with_ns<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>, ns: &str
     match reason_with_config(arena, graph, &config) {
         ReasonerResult::Success { .. } => ValidateResult::Satisfiable,
         ReasonerResult::Inconsistent { reason, witnesses } => {
-            let entity = resolve_validate_entity(arena, graph, &witnesses, ns);
+            let entity = extract_entity_from_reason_borrowed(arena, &reason)
+                .unwrap_or_else(|| resolve_validate_entity(arena, graph, &witnesses, ns));
             ValidateResult::Unsatisfiable {
                 entity,
                 reason,
@@ -645,6 +646,35 @@ pub fn validate_with_ns<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>, ns: &str
             }
         }
     }
+}
+
+/// Extract entity IRI from the enriched reason string produced by the C engine.
+///
+/// The C engine's `enrich-validate-report` uses class-map/prop-map for O(1) lookup,
+/// producing deterministic format: "Unsatisfiable class: <IRI> (...)" or
+/// "Unsatisfiable property usage: <IRI> (...)". Prefer this over re-deriving from
+/// graph queries, which can return wrong results due to hash-map iteration order.
+fn extract_entity_from_reason(reason: &str) -> Option<OwnedTerm> {
+    let iri_str = reason
+        .strip_prefix("Unsatisfiable class: ")
+        .or_else(|| reason.strip_prefix("Unsatisfiable property usage: "))?;
+    let iri = iri_str.split(" (").next()?;
+    if iri.is_empty() {
+        return None;
+    }
+    Some(OwnedTerm::Iri(iri.to_string()))
+}
+
+/// Extract entity IRI from the enriched reason string, returning a borrowed Term.
+fn extract_entity_from_reason_borrowed<'a>(arena: &'a Arena, reason: &str) -> Option<Term<'a>> {
+    let iri_str = reason
+        .strip_prefix("Unsatisfiable class: ")
+        .or_else(|| reason.strip_prefix("Unsatisfiable property usage: "))?;
+    let iri = iri_str.split(" (").next()?;
+    if iri.is_empty() {
+        return None;
+    }
+    Some(Term::from_ffi(arena.make_iri(iri)))
 }
 
 /// Resolve the unsatisfiable entity from witness triples, applying namespace filter.
@@ -675,10 +705,10 @@ fn resolve_validate_entity<'a>(
 
 /// Filter entities by namespace prefix (empty = no filter).
 fn matches_ns(term: &Term<'_>, ns: &str) -> bool {
-    if ns.is_empty() {
-        return true;
+    match term {
+        Term::Iri(v) => ns.is_empty() || v.starts_with(ns),
+        _ => false,
     }
-    matches!(term, Term::Iri(v) if v.starts_with(ns))
 }
 
 /// Resolve synthetic blank to class, with namespace filtering.
@@ -979,6 +1009,7 @@ pub struct Reasoner {
     graph_raw: ffi::IndexedGraphFfi,
     triple_count: usize,
     filter_annotations: bool,
+    complete: bool,
 }
 
 impl Reasoner {
@@ -996,6 +1027,7 @@ impl Reasoner {
             graph_raw,
             triple_count: 0,
             filter_annotations: false,
+            complete: false,
         }
     }
 
@@ -1006,6 +1038,16 @@ impl Reasoner {
     /// This can significantly improve performance on annotation-heavy ontologies.
     pub fn filter_annotations(mut self, enable: bool) -> Self {
         self.filter_annotations = enable;
+        self
+    }
+
+    /// Enable or disable complete mode for reasoning.
+    ///
+    /// When enabled, additional OWL axioms (owl:Thing, owl:Nothing, annotation
+    /// properties, datatype assertions) are materialized before reasoning.
+    /// This setting is inherited by `validate()` and `validate_ns()`.
+    pub fn complete(mut self, enable: bool) -> Self {
+        self.complete = enable;
         self
     }
 
@@ -1122,7 +1164,7 @@ impl Reasoner {
     /// Only entities whose IRI starts with `ns` will have synthetic instances injected.
     /// Pass an empty string to validate all entities.
     pub fn validate_ns(&self, ns: &str) -> OwnedValidateResult {
-        let config = ReasonerConfig::new().verbose(false).validate(true).validate_ns(ns);
+        let config = ReasonerConfig::new().verbose(false).validate(true).validate_ns(ns).complete(self.complete);
         match self.reason_with_config(&config) {
             OwnedReasonerResult::Success { .. } => OwnedValidateResult::Satisfiable,
             OwnedReasonerResult::Inconsistent { reason, witnesses } => {
@@ -1130,7 +1172,8 @@ impl Reasoner {
                     raw: self.graph_raw,
                     arena: &self.arena,
                 };
-                let entity = owned_resolve_validate_entity(&self.arena, &ig, &witnesses, ns);
+                let entity = extract_entity_from_reason(&reason)
+                    .unwrap_or_else(|| owned_resolve_validate_entity(&self.arena, &ig, &witnesses, ns));
                 OwnedValidateResult::Unsatisfiable {
                     entity,
                     reason,
