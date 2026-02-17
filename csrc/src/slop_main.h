@@ -18,9 +18,12 @@ typedef struct main_CliArgs main_CliArgs;
 struct main_CliArgs {
     slop_option_string input_file;
     slop_option_string emit_file;
+    slop_option_string background_file;
+    slop_option_string validate_ns;
     uint8_t quiet;
     uint8_t fast;
     uint8_t complete;
+    uint8_t validate;
     uint8_t show_help;
     uint8_t show_version;
 };

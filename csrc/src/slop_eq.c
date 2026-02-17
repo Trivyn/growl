@@ -26,7 +26,7 @@ types_Delta eq_fixture_delta_empty(slop_arena* arena);
 types_Delta eq_fixture_delta_rep_p(slop_arena* arena);
 types_Delta eq_fixture_delta_rep_o(slop_arena* arena);
 types_Delta eq_fixture_delta_contradiction(slop_arena* arena);
-slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
+slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate);
 slop_list_rdf_Triple eq_eq_sym(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple eq_eq_trans(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple eq_eq_rep_s(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
@@ -230,7 +230,7 @@ types_Delta eq_fixture_delta_contradiction(slop_arena* arena) {
     }
 }
 
-slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast) {
+slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
     slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
@@ -271,7 +271,7 @@ slop_result_types_Delta_types_InconsistencyReport eq_apply_eq_rules(slop_arena* 
                 result = types_delta_add(arena, result, t);
             }
         }
-        if (!(fast)) {
+        if ((!(fast) && !(validate))) {
             __auto_type _mv_141 = eq_eq_diff1(arena, g, delta);
             if (_mv_141.has_value) {
                 __auto_type report = _mv_141.value;

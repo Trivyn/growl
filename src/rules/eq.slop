@@ -221,9 +221,9 @@
   ;; Rule Dispatcher
   ;; ============================================================
 
-  (fn apply-eq-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool))
+  (fn apply-eq-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool) (validate Bool))
     (@intent "Apply all equality rules (Table 4)")
-    (@spec ((Arena IndexedGraph Delta Bool) -> (Result Delta InconsistencyReport)))
+    (@spec ((Arena IndexedGraph Delta Bool Bool) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
@@ -246,8 +246,8 @@
       (for-each (t (eq-rep-o arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Inconsistency checks: sameAs + differentFrom (skipped in fast mode)
-      (when (not fast)
+      ;; Inconsistency checks: sameAs + differentFrom (skipped in fast mode or validate mode)
+      (when (and (not fast) (not validate))
         (do
           (match (eq-diff1 arena g delta)
             ((some report) (return (error report)))

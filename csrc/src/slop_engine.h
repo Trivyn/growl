@@ -8,6 +8,8 @@
 #include "slop_index.h"
 #include "slop_vocab.h"
 #include "slop_thread.h"
+#include "slop_strlib.h"
+#include "slop_list.h"
 #include "slop_types.h"
 #include "slop_cax.h"
 #include "slop_scm.h"
@@ -17,6 +19,7 @@
 #include "slop_dt.h"
 
 typedef struct engine_WorkerMessage engine_WorkerMessage;
+typedef struct engine_ValidateInjection engine_ValidateInjection;
 
 #ifndef SLOP_LIST_THREAD_INT_PTR_DEFINED
 #define SLOP_LIST_THREAD_INT_PTR_DEFINED
@@ -64,9 +67,29 @@ static void* slop_thread_int_entry(void* arg) {
 }
 #endif
 
+#ifndef SLOP_LIST_RDF_TERM_DEFINED
+#define SLOP_LIST_RDF_TERM_DEFINED
+SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
+#endif
+
+#ifndef SLOP_LIST_TYPES_INCONSISTENCYREPORT_DEFINED
+#define SLOP_LIST_TYPES_INCONSISTENCYREPORT_DEFINED
+SLOP_LIST_DEFINE(types_InconsistencyReport, slop_list_types_InconsistencyReport)
+#endif
+
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
 #define SLOP_LIST_RDF_TRIPLE_DEFINED
 SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
+#endif
+
+#ifndef SLOP_OPTION_RDF_TERM_DEFINED
+#define SLOP_OPTION_RDF_TERM_DEFINED
+SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
+#endif
+
+#ifndef SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
+#define SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
+SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
 #endif
 
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
@@ -93,6 +116,18 @@ typedef struct engine_WorkerMessage engine_WorkerMessage;
 #ifndef SLOP_OPTION_ENGINE_WORKERMESSAGE_DEFINED
 #define SLOP_OPTION_ENGINE_WORKERMESSAGE_DEFINED
 SLOP_OPTION_DEFINE(engine_WorkerMessage, slop_option_engine_WorkerMessage)
+#endif
+
+struct engine_ValidateInjection {
+    index_IndexedGraph graph;
+    slop_list_rdf_Term class_map;
+    slop_list_rdf_Term prop_map;
+};
+typedef struct engine_ValidateInjection engine_ValidateInjection;
+
+#ifndef SLOP_OPTION_ENGINE_VALIDATEINJECTION_DEFINED
+#define SLOP_OPTION_ENGINE_VALIDATEINJECTION_DEFINED
+SLOP_OPTION_DEFINE(engine_ValidateInjection, slop_option_engine_ValidateInjection)
 #endif
 
 
@@ -177,7 +212,6 @@ static inline bool slop_eq_rdf_Term(const void* a, const void* b) {
     }
     return false;
 }
-SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
 #endif
 
 #ifndef SLOP_RESULT_TYPES_ENGINESTATE_TYPES_INCONSISTENCYREPORT_DEFINED
@@ -273,6 +307,14 @@ static slop_result_engine_WorkerMessage_thread_ChanError thread_recv_slop_chan_e
 }
 
 void engine_print_ms(slop_arena* arena, int64_t ms);
+slop_list_rdf_Term engine_collect_declared_properties(slop_arena* arena, index_IndexedGraph g);
+uint8_t engine_iri_matches_ns(rdf_Term term, slop_string ns);
+engine_ValidateInjection engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose, slop_string validate_ns);
+slop_string engine_resolve_blank_class(slop_arena* arena, int64_t blank_id, slop_list_rdf_Term class_map);
+slop_string engine_resolve_blank_prop(slop_arena* arena, int64_t blank_id, slop_list_rdf_Term prop_map);
+slop_string engine_build_enriched_reason(slop_arena* arena, slop_string class_name, slop_string prop_name, slop_string original_reason, slop_string detail);
+types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types_InconsistencyReport report, index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_rdf_Term class_map, slop_list_rdf_Term prop_map);
+slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena, index_IndexedGraph g, index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_rdf_Term class_map, slop_list_rdf_Term prop_map);
 types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial);
 types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g);
 slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred);
@@ -282,12 +324,27 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules(slop_ar
 slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_sequential(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config);
 slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_parallel(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config);
 index_IndexedGraph engine_merge_into_graph(slop_arena* arena, index_IndexedGraph g, types_Delta d);
-slop_list_thread_int_ptr engine_spawn_rule_workers(slop_arena* arena, index_IndexedGraph g, types_Delta delta, slop_chan_engine_WorkerMessage* result_chan, slop_arena* arena_cax_infer, slop_arena* arena_cax_check, slop_arena* arena_prp_char, slop_arena* arena_prp_chain, slop_arena* arena_prp_check, slop_arena* arena_eq_infer, slop_arena* arena_eq_check, slop_arena* arena_cls_set, slop_arena* arena_cls_ind, uint8_t verbose, uint8_t fast);
+slop_list_thread_int_ptr engine_spawn_rule_workers(slop_arena* arena, index_IndexedGraph g, types_Delta delta, slop_chan_engine_WorkerMessage* result_chan, slop_arena* arena_cax_infer, slop_arena* arena_cax_check, slop_arena* arena_prp_char, slop_arena* arena_prp_chain, slop_arena* arena_prp_check, slop_arena* arena_eq_infer, slop_arena* arena_eq_check, slop_arena* arena_cls_set, slop_arena* arena_cls_ind, uint8_t verbose, uint8_t fast, uint8_t validate);
 slop_result_types_Delta_types_InconsistencyReport engine_collect_worker_results(slop_arena* arena, slop_chan_engine_WorkerMessage* result_chan, slop_list_thread_int_ptr workers, int64_t next_iter);
 
 #ifndef SLOP_OPTION_ENGINE_WORKERMESSAGE_DEFINED
 #define SLOP_OPTION_ENGINE_WORKERMESSAGE_DEFINED
 SLOP_OPTION_DEFINE(engine_WorkerMessage, slop_option_engine_WorkerMessage)
+#endif
+
+#ifndef SLOP_OPTION_RDF_TERM_DEFINED
+#define SLOP_OPTION_RDF_TERM_DEFINED
+SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
+#endif
+
+#ifndef SLOP_OPTION_ENGINE_VALIDATEINJECTION_DEFINED
+#define SLOP_OPTION_ENGINE_VALIDATEINJECTION_DEFINED
+SLOP_OPTION_DEFINE(engine_ValidateInjection, slop_option_engine_ValidateInjection)
+#endif
+
+#ifndef SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
+#define SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
+SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
 #endif
 
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED

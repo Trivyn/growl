@@ -1,8 +1,8 @@
 use std::path::Path;
 
 fn main() {
-    let csrc = Path::new("../csrc/src");
-    let runtime = Path::new("../csrc/runtime");
+    let csrc = Path::new("csrc/src");
+    let runtime = Path::new("csrc/runtime");
 
     let sources = [
         "slop_cax.c",

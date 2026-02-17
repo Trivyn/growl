@@ -1,6 +1,8 @@
 #include "../runtime/slop_runtime.h"
 #include "slop_growl.h"
 
+rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset);
+int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig);
 types_ReasonerConfig growl_default_config(void);
 types_ReasonerResult growl_reason(slop_arena* arena, index_IndexedGraph input);
 types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGraph input, types_ReasonerConfig config);
@@ -9,15 +11,79 @@ slop_list_rdf_Term growl_get_types(slop_arena* arena, index_IndexedGraph g, rdf_
 slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rdf_Term individual);
 int64_t growl_get_inferred_count(types_ReasonerResult result);
 
+rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
+    __auto_type _mv_337 = t;
+    switch (_mv_337.tag) {
+        case rdf_Term_term_blank:
+        {
+            __auto_type b = _mv_337.data.term_blank;
+            return rdf_make_blank(arena, (b.id + offset));
+        }
+        case rdf_Term_term_iri:
+        {
+            __auto_type _ = _mv_337.data.term_iri;
+            return t;
+        }
+        case rdf_Term_term_literal:
+        {
+            __auto_type _ = _mv_337.data.term_literal;
+            return t;
+        }
+    }
+}
+
+int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig) {
+    {
+        __auto_type triples = ig.triples;
+        int64_t max_id = 0;
+        {
+            __auto_type _coll = triples;
+            for (size_t _i = 0; _i < _coll.len; _i++) {
+                __auto_type t = _coll.data[_i];
+                __auto_type _mv_338 = t.subject;
+                switch (_mv_338.tag) {
+                    case rdf_Term_term_blank:
+                    {
+                        __auto_type b = _mv_338.data.term_blank;
+                        if ((b.id > max_id)) {
+                            max_id = b.id;
+                        }
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+                __auto_type _mv_339 = t.object;
+                switch (_mv_339.tag) {
+                    case rdf_Term_term_blank:
+                    {
+                        __auto_type b = _mv_339.data.term_blank;
+                        if ((b.id > max_id)) {
+                            max_id = b.id;
+                        }
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            }
+        }
+        return max_id;
+    }
+}
+
 types_ReasonerConfig growl_default_config(void) {
     types_ReasonerConfig _retval = {0};
-    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0});
+    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0, .validate = 0, .validate_ns = SLOP_STR("")});
     SLOP_POST(((_retval.worker_count == 4)), "(== (. $result worker-count) 4)");
     SLOP_POST(((_retval.channel_buffer == 256)), "(== (. $result channel-buffer) 256)");
     SLOP_POST(((_retval.max_iterations == 1000)), "(== (. $result max-iterations) 1000)");
     SLOP_POST(((_retval.verbose == 1)), "(== (. $result verbose) true)");
     SLOP_POST(((_retval.fast == 0)), "(== (. $result fast) false)");
     SLOP_POST(((_retval.complete == 0)), "(== (. $result complete) false)");
+    SLOP_POST(((_retval.validate == 0)), "(== (. $result validate) false)");
     return _retval;
 }
 
@@ -41,16 +107,16 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
 
 uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
-    __auto_type _mv_312 = growl_reason(arena, input);
-    switch (_mv_312.tag) {
+    __auto_type _mv_340 = growl_reason(arena, input);
+    switch (_mv_340.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type _ = _mv_312.data.reason_success;
+            __auto_type _ = _mv_340.data.reason_success;
             return 1;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_312.data.reason_inconsistent;
+            __auto_type _ = _mv_340.data.reason_inconsistent;
             return 0;
         }
     }
@@ -109,16 +175,16 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 
 int64_t growl_get_inferred_count(types_ReasonerResult result) {
     int64_t _retval = {0};
-    __auto_type _mv_313 = result;
-    switch (_mv_313.tag) {
+    __auto_type _mv_341 = result;
+    switch (_mv_341.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type s = _mv_313.data.reason_success;
+            __auto_type s = _mv_341.data.reason_success;
             return s.inferred_count;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_313.data.reason_inconsistent;
+            __auto_type _ = _mv_341.data.reason_inconsistent;
             return 0;
         }
     }

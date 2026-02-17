@@ -59,6 +59,8 @@ struct types_ReasonerConfig {
     uint8_t verbose;
     uint8_t fast;
     uint8_t complete;
+    uint8_t validate;
+    slop_string validate_ns;
 };
 typedef struct types_ReasonerConfig types_ReasonerConfig;
 
@@ -103,6 +105,11 @@ typedef struct types_InconsistencyReport types_InconsistencyReport;
 SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
 #endif
 
+#ifndef SLOP_LIST_TYPES_INCONSISTENCYREPORT_DEFINED
+#define SLOP_LIST_TYPES_INCONSISTENCYREPORT_DEFINED
+SLOP_LIST_DEFINE(types_InconsistencyReport, slop_list_types_InconsistencyReport)
+#endif
+
 typedef enum {
     types_ReasonerResult_reason_success,
     types_ReasonerResult_reason_inconsistent
@@ -112,7 +119,7 @@ struct types_ReasonerResult {
     types_ReasonerResult_tag tag;
     union {
         types_ReasonerSuccess reason_success;
-        types_InconsistencyReport reason_inconsistent;
+        slop_list_types_InconsistencyReport reason_inconsistent;
     } data;
 };
 typedef struct types_ReasonerResult types_ReasonerResult;

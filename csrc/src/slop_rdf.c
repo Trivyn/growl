@@ -30,7 +30,7 @@ rdf_Term rdf_make_iri(slop_arena* arena, slop_string value) {
     SLOP_PRE(((string_len(value) > 0)), "(> (string-len value) 0)");
     rdf_Term _retval = {0};
     _retval = ((rdf_Term){ .tag = rdf_Term_term_iri, .data.term_iri = ((rdf_IRI){.value = value}) });
-    SLOP_POST((({ __auto_type _mv = _retval; int64_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_iri: { __auto_type _ = _mv.data.term_iri; _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-iri _) true) (_ false))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_iri: { __auto_type _ = _mv.data.term_iri; _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-iri _) true) (_ false))");
     return _retval;
 }
 
@@ -38,7 +38,7 @@ rdf_Term rdf_make_blank(slop_arena* arena, rdf_BlankNodeId id) {
     SLOP_PRE(((id >= 0)), "(>= id 0)");
     rdf_Term _retval = {0};
     _retval = ((rdf_Term){ .tag = rdf_Term_term_blank, .data.term_blank = ((rdf_BlankNode){.id = id}) });
-    SLOP_POST((({ __auto_type _mv = _retval; int64_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_blank: { __auto_type _ = _mv.data.term_blank; _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-blank _) true) (_ false))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_blank: { __auto_type _ = _mv.data.term_blank; _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-blank _) true) (_ false))");
     return _retval;
 }
 
@@ -46,7 +46,7 @@ rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_stri
     SLOP_PRE(((string_len(value) >= 0)), "(>= (string-len value) 0)");
     rdf_Term _retval = {0};
     _retval = ((rdf_Term){ .tag = rdf_Term_term_literal, .data.term_literal = ((rdf_Literal){.value = value, .datatype = datatype, .lang = lang}) });
-    SLOP_POST((({ __auto_type _mv = _retval; int64_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_literal: { __auto_type _ = _mv.data.term_literal; _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-literal _) true) (_ false))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_literal: { __auto_type _ = _mv.data.term_literal; _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-literal _) true) (_ false))");
     return _retval;
 }
 

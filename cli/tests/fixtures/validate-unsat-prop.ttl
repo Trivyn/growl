@@ -1,0 +1,4 @@
+@prefix ex: <http://example.org/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+
+ex:hasEnemy a owl:ObjectProperty, owl:SymmetricProperty, owl:AsymmetricProperty .

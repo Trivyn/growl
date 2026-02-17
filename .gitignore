@@ -1,3 +1,5 @@
 build/
 .slop-test/
 __pycache__
+target/
+rust/csrc

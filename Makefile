@@ -19,7 +19,8 @@ ALL_SRCS    := $(wildcard $(CSRC)/*.c)
 SHARED_SRCS := $(filter-out $(CSRC)/slop_main.c $(CSRC)/slop_test_cli.c, $(ALL_SRCS))
 SHARED_OBJS := $(patsubst $(CSRC)/%.c,$(OBJ)/%.o,$(SHARED_SRCS))
 
-.PHONY: all cli lib test benchmark conformance reference clean release dist csrc slop-build
+.PHONY: all cli lib test benchmark conformance reference clean release dist csrc slop-build \
+       crate-vendor crate-build crate-test crate-publish
 
 PLATFORM ?= unknown
 
@@ -88,3 +89,21 @@ dist:
 	cp $(BIN)/libgrowl.a dist/lib/
 	cd dist && zip -r ../libgrowl-$(PLATFORM).zip include/ lib/
 	@echo "  -> libgrowl-$(PLATFORM).zip"
+
+# --- Rust crate targets ---
+
+crate-vendor:
+	@mkdir -p rust/csrc/src rust/csrc/runtime
+	cp csrc/src/*.c csrc/src/*.h rust/csrc/src/
+	cp csrc/runtime/slop_runtime.h rust/csrc/runtime/
+	cp LICENSE rust/LICENSE
+	@echo "  -> rust/csrc/ vendored"
+
+crate-build: crate-vendor
+	cd rust && cargo build
+
+crate-test: crate-vendor
+	cd rust && cargo test
+
+crate-publish: crate-vendor
+	cd rust && cargo publish --dry-run --allow-dirty

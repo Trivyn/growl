@@ -485,9 +485,9 @@
   ;; Rule Dispatcher
   ;; ============================================================
 
-  (fn apply-cls-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool))
+  (fn apply-cls-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool) (validate Bool))
     (@intent "Apply all class expression rules (Table 6)")
-    (@spec ((Arena IndexedGraph Delta Bool) -> (Result Delta InconsistencyReport)))
+    (@spec ((Arena IndexedGraph Delta Bool Bool) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
@@ -496,10 +496,11 @@
     (let ((next-iter (+ (. delta iteration) 1))
           (mut result (make-delta arena next-iter)))
 
-      ;; Check for owl:Nothing membership (always run)
-      (match (cls-nothing2 arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
+      ;; Check for owl:Nothing membership (skip in validate mode)
+      (when (not validate)
+        (match (cls-nothing2 arena g delta)
+          ((some report) (return (error report)))
+          ((none) (do))))
 
       ;; Intersection rules
       (for-each (t (cls-int1 arena g delta))
@@ -511,10 +512,11 @@
       (for-each (t (cls-uni arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Complement (inconsistency check, always run)
-      (match (cls-com arena g delta)
-        ((some report) (return (error report)))
-        ((none) (do)))
+      ;; Complement (inconsistency check, skip in validate mode)
+      (when (not validate)
+        (match (cls-com arena g delta)
+          ((some report) (return (error report)))
+          ((none) (do))))
 
       ;; Restriction rules
       (for-each (t (cls-svf2 arena g delta))
@@ -531,18 +533,22 @@
       ;; Cardinality rules (skipped in fast mode)
       (when (not fast)
         (do
-          (match (cls-maxc1 arena g delta)
-            ((some report) (return (error report)))
-            ((none) (do)))
+          (when (not validate)
+            (do
+              (match (cls-maxc1 arena g delta)
+                ((some report) (return (error report)))
+                ((none) (do)))))
           (for-each (t (cls-maxc2 arena g delta))
             (set! result (delta-add arena result t)))
-          ;; Qualified cardinality checks
-          (match (cls-maxqc1 arena g delta)
-            ((some report) (return (error report)))
-            ((none) (do)))
-          (match (cls-maxqc2 arena g delta)
-            ((some report) (return (error report)))
-            ((none) (do)))
+          ;; Qualified cardinality checks (skip in validate mode)
+          (when (not validate)
+            (do
+              (match (cls-maxqc1 arena g delta)
+                ((some report) (return (error report)))
+                ((none) (do)))
+              (match (cls-maxqc2 arena g delta)
+                ((some report) (return (error report)))
+                ((none) (do)))))
           ;; Qualified cardinality inferences
           (for-each (t (cls-maxqc3 arena g delta))
             (set! result (delta-add arena result t)))

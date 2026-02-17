@@ -14,8 +14,10 @@
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
   (import serialize-ttl (SerializeConfig serialize-ttl-string serialize-ttl-stream))
   (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS))
-  (import growl (reason ReasonerResult ReasonerSuccess InconsistencyReport
-                 get-inferred-count get-types get-same-as))
+  (import growl (reason reason-with-config ReasonerConfig ReasonerResult ReasonerSuccess InconsistencyReport
+                 get-inferred-count get-types get-same-as
+                 remap-blank-term max-blank-id-in-graph))
+  (import strlib (starts-with))
 
   ;; ============================================================
   ;; Helpers
@@ -248,9 +250,11 @@
                     (print (int-to-string arena (- end-time start-time)))
                     (println "ms")
                     true))
-                ((reason-inconsistent report)
+                ((reason-inconsistent reports)
                   (print "  ERROR: BFO inconsistent: ")
-                  (println (. report reason))
+                  (match (list-get reports 0)
+                    ((some report) (println (. report reason)))
+                    ((none) (println "(no details)")))
                   false))))))))
 
   ;; ============================================================
@@ -287,9 +291,11 @@
       ((some result)
         (match result
           ((reason-success _) true)
-          ((reason-inconsistent report)
+          ((reason-inconsistent reports)
             (print "  ERROR: unexpected inconsistency: ")
-            (println (. report reason))
+            (match (list-get reports 0)
+              ((some report) (println (. report reason)))
+              ((none) (println "(no details)")))
             false)))))
 
   ;; ============================================================
@@ -356,6 +362,317 @@
         false)))
 
   ;; ============================================================
+  ;; Test 12: --validate detects unsatisfiable TBox class
+  ;; ============================================================
+
+  (fn test-validate-unsat ((arena Arena))
+    (@intent "Parse TBox-only ontology with unsatisfiable class, verify --validate catches it")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-unsat.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-unsat.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns ""))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent _) true)
+            ((reason-success _)
+              (println "  ERROR: should have detected unsatisfiable class")
+              false))))))
+
+  ;; ============================================================
+  ;; Test 13: --validate passes clean TBox
+  ;; ============================================================
+
+  (fn test-validate-clean ((arena Arena))
+    (@intent "Parse TBox-only ontology with no issues, verify --validate passes")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-clean.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-clean.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns ""))))
+          (match (reason-with-config arena ig config)
+            ((reason-success _) true)
+            ((reason-inconsistent reports)
+              (print "  ERROR: unexpected inconsistency: ")
+              (match (list-get reports 0)
+                ((some report) (println (. report reason)))
+                ((none) (println "(no details)")))
+              false))))))
+
+  ;; ============================================================
+  ;; Test 14: Same unsatisfiable TBox passes WITHOUT --validate
+  ;; ============================================================
+
+  (fn test-no-validate-unsat-passes ((arena Arena))
+    (@intent "Same TBox-only ontology without --validate should pass (no instances)")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-and-reason arena "fixtures/validate-unsat.ttl")
+      ((none)
+        (println "  ERROR: failed to parse validate-unsat.ttl")
+        false)
+      ((some result)
+        (match result
+          ((reason-success _) true)
+          ((reason-inconsistent _)
+            (println "  ERROR: should pass without --validate (TBox only)")
+            false)))))
+
+  ;; ============================================================
+  ;; Test 15: --validate detects unsatisfiable property usage
+  ;; ============================================================
+
+  (fn test-validate-unsat-prop ((arena Arena))
+    (@intent "Parse property with both Symmetric and Asymmetric, verify --validate catches it")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-unsat-prop.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-unsat-prop.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns ""))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent _) true)
+            ((reason-success _)
+              (println "  ERROR: should have detected unsatisfiable property")
+              false))))))
+
+  ;; ============================================================
+  ;; Test 16: --validate domain-mediated reports class, not property
+  ;; ============================================================
+
+  (fn test-validate-domain-reports-class ((arena Arena))
+    (@intent "Property with unsatisfiable domain class should report class, not property")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-domain-unsat.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-domain-unsat.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns ""))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent reports)
+              ;; Check that enriched reason says "Unsatisfiable class:" not "Unsatisfiable property usage:"
+              (match (list-get reports 0)
+                ((some report) (starts-with (. report reason) "Unsatisfiable class:"))
+                ((none) false)))
+            ((reason-success _)
+              (println "  ERROR: should have detected inconsistency")
+              false))))))
+
+  ;; ============================================================
+  ;; Test 17: --validate-ns scopes to domain namespace only
+  ;; ============================================================
+
+  (fn test-validate-ns-scoping ((arena Arena))
+    (@intent "Combined ontology with TLO + domain: validate-ns limits to domain entities only")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    ;; validate-bg-domain.ttl has TLO classes (tlo:Animal, tlo:Plant) and domain class (ex:Bad)
+    ;; ex:Bad subClassOf both disjoint TLO classes → unsatisfiable
+    ;; With validate-ns=http://example.org/, only ex:Bad gets a synthetic instance
+    (match (parse-ttl-file arena "fixtures/validate-bg-domain.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-bg-domain.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns "http://example.org/"))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent reports)
+              ;; Should detect ex:Bad as unsatisfiable
+              (match (list-get reports 0)
+                ((some report) (starts-with (. report reason) "Unsatisfiable class:"))
+                ((none) false)))
+            ((reason-success _)
+              (println "  ERROR: should have detected unsatisfiable ex:Bad")
+              false))))))
+
+  ;; ============================================================
+  ;; Test 18: --validate-ns filters out TLO entities from validation
+  ;; ============================================================
+
+  (fn test-validate-ns-filters-tlo ((arena Arena))
+    (@intent "TLO-only entities are not validated when validate-ns scopes to domain prefix")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    ;; validate-bg-tlo.ttl has only TLO classes (tlo:Animal, tlo:Plant, disjoint)
+    ;; With validate-ns=http://example.org/, NO synthetic instances are created
+    ;; → should pass even though TLO has disjoint classes
+    (match (parse-ttl-file arena "fixtures/validate-bg-tlo.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-bg-tlo.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns "http://example.org/"))))
+          (match (reason-with-config arena ig config)
+            ((reason-success _) true)
+            ((reason-inconsistent reports)
+              (print "  ERROR: unexpected inconsistency: ")
+              (match (list-get reports 0)
+                ((some report) (println (. report reason)))
+                ((none) (println "(no details)")))
+              false))))))
+
+  ;; ============================================================
+  ;; Test 19: --background merge pattern
+  ;; ============================================================
+
+  (fn test-background-merge ((arena Arena))
+    (@intent "Parse TLO + domain-only files, merge, verify --validate detects unsatisfiable class")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    ;; Parse background TLO file
+    (match (parse-ttl-file arena "fixtures/validate-bg-tlo.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-bg-tlo.ttl")
+        false)
+      ((ok bg-graph)
+        ;; Parse domain-only file
+        (match (parse-ttl-file arena "fixtures/validate-domain-only.ttl")
+          ((error _)
+            (println "  ERROR: failed to parse validate-domain-only.ttl")
+            false)
+          ((ok domain-graph)
+            ;; Convert domain to indexed graph, remap bg blank nodes to avoid collision
+            (let ((mut ig (graph-to-indexed arena domain-graph))
+                  (bg-blank-offset (+ (max-blank-id-in-graph ig) 1)))
+              (for-each (t (. bg-graph triples))
+                (let ((rs (remap-blank-term arena (. t subject) bg-blank-offset))
+                      (rp (. t predicate))
+                      (ro (remap-blank-term arena (. t object) bg-blank-offset))
+                      (remapped (make-triple arena rs rp ro)))
+                  (set! ig (indexed-graph-add arena ig remapped))))
+              ;; Reason with validate + validate-ns
+              (let ((config (record-new ReasonerConfig
+                              (worker-count 4)
+                              (channel-buffer 256)
+                              (max-iterations 1000)
+                              (verbose false)
+                              (fast false)
+                              (complete false)
+                              (validate true)
+                              (validate-ns "http://example.org/"))))
+                (match (reason-with-config arena ig config)
+                  ((reason-inconsistent reports)
+                    ;; Should detect ex:Bad as unsatisfiable
+                    (match (list-get reports 0)
+                      ((some report) (starts-with (. report reason) "Unsatisfiable class:"))
+                      ((none) false)))
+                  ((reason-success _)
+                    (println "  ERROR: should have detected unsatisfiable ex:Bad via background merge")
+                    false)))))))))
+
+  ;; ============================================================
+  ;; Test 20: Multiple unsatisfiable classes reported in one pass
+  ;; ============================================================
+
+  (fn test-validate-multiple-unsat ((arena Arena))
+    (@intent "Validate mode finds all unsatisfiable classes, not just the first")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (match (parse-ttl-file arena "fixtures/validate-multi-unsat.ttl")
+      ((error _)
+        (println "  ERROR: failed to parse validate-multi-unsat.ttl")
+        false)
+      ((ok g)
+        (let ((ig (graph-to-indexed arena g))
+              (config (record-new ReasonerConfig
+                        (worker-count 4)
+                        (channel-buffer 256)
+                        (max-iterations 1000)
+                        (verbose false)
+                        (fast false)
+                        (complete false)
+                        (validate true)
+                        (validate-ns ""))))
+          (match (reason-with-config arena ig config)
+            ((reason-inconsistent reports)
+              ;; Should find exactly 2 unsatisfiable classes (Triffid and Steam)
+              (let ((count (list-len reports)))
+                (if (== count 2)
+                  (do
+                    ;; Both should be "Unsatisfiable class:"
+                    (let ((mut all-class true))
+                      (for-each (r reports)
+                        (when (not (starts-with (. r reason) "Unsatisfiable class:"))
+                          (do
+                            (print "  ERROR: unexpected report: ")
+                            (println (. r reason))
+                            (set! all-class false))))
+                      all-class))
+                  (do
+                    (print "  ERROR: expected 2 reports, got ")
+                    (println (int-to-string arena count))
+                    (for-each (r reports)
+                      (print "    ")
+                      (println (. r reason)))
+                    false))))
+            ((reason-success _)
+              (println "  ERROR: should have detected unsatisfiable classes")
+              false))))))
+
+  ;; ============================================================
   ;; Main Test Runner
   ;; ============================================================
 
@@ -415,6 +732,46 @@
         ;; Emit roundtrip
         (let ((r (test-emit-roundtrip arena)))
           (print-result "emit roundtrip (serialize + re-parse)" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Validate mode
+        (let ((r (test-validate-unsat arena)))
+          (print-result "validate: unsatisfiable class detected" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-validate-clean arena)))
+          (print-result "validate: clean TBox passes" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-no-validate-unsat-passes arena)))
+          (print-result "validate: unsat TBox passes without --validate" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-validate-unsat-prop arena)))
+          (print-result "validate: unsatisfiable property detected" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-validate-domain-reports-class arena)))
+          (print-result "validate: domain-mediated reports class" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Validate namespace scoping
+        (let ((r (test-validate-ns-scoping arena)))
+          (print-result "validate-ns: scoped to domain namespace" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        (let ((r (test-validate-ns-filters-tlo arena)))
+          (print-result "validate-ns: TLO entities filtered out" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Background merge
+        (let ((r (test-background-merge arena)))
+          (print-result "background merge: detects unsatisfiable class" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
+        ;; Multi-unsat validation
+        (let ((r (test-validate-multiple-unsat arena)))
+          (print-result "validate: multiple unsatisfiable classes" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Error handling

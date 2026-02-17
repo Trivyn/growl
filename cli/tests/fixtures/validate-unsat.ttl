@@ -1,0 +1,12 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex: <http://example.org/> .
+
+ex:Animal a owl:Class .
+ex:Plant a owl:Class .
+
+ex:Animal owl:disjointWith ex:Plant .
+
+ex:Triffid a owl:Class ;
+    rdfs:subClassOf ex:Animal ;
+    rdfs:subClassOf ex:Plant .

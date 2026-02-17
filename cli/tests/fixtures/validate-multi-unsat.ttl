@@ -1,0 +1,25 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex: <http://example.org/> .
+
+## Two disjoint class pairs
+ex:Animal a owl:Class .
+ex:Plant a owl:Class .
+ex:Animal owl:disjointWith ex:Plant .
+
+ex:Fire a owl:Class .
+ex:Water a owl:Class .
+ex:Fire owl:disjointWith ex:Water .
+
+## Two unsatisfiable classes (subclass of disjoint pairs)
+ex:Triffid a owl:Class ;
+    rdfs:subClassOf ex:Animal ;
+    rdfs:subClassOf ex:Plant .
+
+ex:Steam a owl:Class ;
+    rdfs:subClassOf ex:Fire ;
+    rdfs:subClassOf ex:Water .
+
+## One satisfiable class (should NOT appear in reports)
+ex:Dog a owl:Class ;
+    rdfs:subClassOf ex:Animal .

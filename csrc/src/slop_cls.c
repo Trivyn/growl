@@ -56,7 +56,7 @@ types_Delta cls_fixture_delta_maxc(slop_arena* arena);
 index_IndexedGraph cls_fixture_g_one_of(slop_arena* arena);
 types_Delta cls_fixture_delta_one_of(slop_arena* arena);
 uint8_t cls_term_is_int_value(rdf_Term t, slop_string expected);
-slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast);
+slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate);
 slop_list_rdf_Triple cls_cls_thing(slop_arena* arena, index_IndexedGraph g);
 slop_list_rdf_Triple cls_cls_nothing1(slop_arena* arena, index_IndexedGraph g);
 slop_option_types_InconsistencyReport cls_cls_nothing2(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
@@ -571,17 +571,19 @@ uint8_t cls_term_is_int_value(rdf_Term t, slop_string expected) {
     }
 }
 
-slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast) {
+slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
     slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
         __auto_type next_iter = (delta.iteration + 1);
         __auto_type result = types_make_delta(arena, next_iter);
-        __auto_type _mv_104 = cls_cls_nothing2(arena, g, delta);
-        if (_mv_104.has_value) {
-            __auto_type report = _mv_104.value;
-            return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-        } else if (!_mv_104.has_value) {
+        if (!(validate)) {
+            __auto_type _mv_104 = cls_cls_nothing2(arena, g, delta);
+            if (_mv_104.has_value) {
+                __auto_type report = _mv_104.value;
+                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+            } else if (!_mv_104.has_value) {
+            }
         }
         {
             __auto_type _coll = cls_cls_int1(arena, g, delta);
@@ -604,11 +606,13 @@ slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena
                 result = types_delta_add(arena, result, t);
             }
         }
-        __auto_type _mv_105 = cls_cls_com(arena, g, delta);
-        if (_mv_105.has_value) {
-            __auto_type report = _mv_105.value;
-            return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-        } else if (!_mv_105.has_value) {
+        if (!(validate)) {
+            __auto_type _mv_105 = cls_cls_com(arena, g, delta);
+            if (_mv_105.has_value) {
+                __auto_type report = _mv_105.value;
+                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+            } else if (!_mv_105.has_value) {
+            }
         }
         {
             __auto_type _coll = cls_cls_svf2(arena, g, delta);
@@ -646,11 +650,13 @@ slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena
             }
         }
         if (!(fast)) {
-            __auto_type _mv_106 = cls_cls_maxc1(arena, g, delta);
-            if (_mv_106.has_value) {
-                __auto_type report = _mv_106.value;
-                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-            } else if (!_mv_106.has_value) {
+            if (!(validate)) {
+                __auto_type _mv_106 = cls_cls_maxc1(arena, g, delta);
+                if (_mv_106.has_value) {
+                    __auto_type report = _mv_106.value;
+                    return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+                } else if (!_mv_106.has_value) {
+                }
             }
             {
                 __auto_type _coll = cls_cls_maxc2(arena, g, delta);
@@ -659,17 +665,19 @@ slop_result_types_Delta_types_InconsistencyReport cls_apply_cls_rules(slop_arena
                     result = types_delta_add(arena, result, t);
                 }
             }
-            __auto_type _mv_107 = cls_cls_maxqc1(arena, g, delta);
-            if (_mv_107.has_value) {
-                __auto_type report = _mv_107.value;
-                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-            } else if (!_mv_107.has_value) {
-            }
-            __auto_type _mv_108 = cls_cls_maxqc2(arena, g, delta);
-            if (_mv_108.has_value) {
-                __auto_type report = _mv_108.value;
-                return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
-            } else if (!_mv_108.has_value) {
+            if (!(validate)) {
+                __auto_type _mv_107 = cls_cls_maxqc1(arena, g, delta);
+                if (_mv_107.has_value) {
+                    __auto_type report = _mv_107.value;
+                    return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+                } else if (!_mv_107.has_value) {
+                }
+                __auto_type _mv_108 = cls_cls_maxqc2(arena, g, delta);
+                if (_mv_108.has_value) {
+                    __auto_type report = _mv_108.value;
+                    return ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+                } else if (!_mv_108.has_value) {
+                }
             }
             {
                 __auto_type _coll = cls_cls_maxqc3(arena, g, delta);
