@@ -4,7 +4,7 @@ Safe Rust wrapper over the [Growl](../) OWL 2 RL reasoner. Provides RAII arena m
 
 ## Prerequisites
 
-A C compiler is required. The `cc` crate handles compilation automatically — no SLOP toolchain is needed since pre-transpiled C sources are included in `csrc/`.
+A C compiler is required. The `cc` crate handles compilation automatically; no SLOP toolchain is needed since pre-transpiled C sources are included in `csrc/`.
 
 ## Installation
 
@@ -47,10 +47,12 @@ match result {
             println!("fido rdf:type {}", t);
         }
     }
-    ReasonerResult::Inconsistent { reason, witnesses } => {
-        println!("Inconsistent: {}", reason);
-        for w in &witnesses {
-            println!("  witness: {}", w);
+    ReasonerResult::Inconsistent { reports } => {
+        for r in &reports {
+            println!("Inconsistent: {}", r.reason);
+            for w in &r.witnesses {
+                println!("  witness: {}", w);
+            }
         }
     }
 }
@@ -96,13 +98,18 @@ match reasoner.reason() {
             println!("  {}", t);
         }
     }
-    OwnedReasonerResult::Inconsistent { reason, witnesses } => {
-        println!("Inconsistent: {}", reason);
-        for w in &witnesses {
-            println!("  witness: {}", w);
+    OwnedReasonerResult::Inconsistent { reports } => {
+        for r in &reports {
+            println!("Inconsistent: {}", r.reason);
+            for w in &r.witnesses {
+                println!("  witness: {}", w);
+            }
         }
     }
 }
+
+// Enable complete mode (cls-thing, prp-ap, dt-type2)
+let mut reasoner = Reasoner::new().complete(true);
 
 // Or use custom config
 let config = ReasonerConfig::new().verbose(false).fast(true);
@@ -129,9 +136,14 @@ struct OwnedTriple {
     pub object: OwnedTerm,
 }
 
+struct OwnedInconsistencyReport {
+    pub reason: String,
+    pub witnesses: Vec<OwnedTriple>,
+}
+
 enum OwnedReasonerResult {
     Success { triples: Vec<OwnedTriple>, inferred_count: i64, iterations: i64 },
-    Inconsistent { reason: String, witnesses: Vec<OwnedTriple> },
+    Inconsistent { reports: Vec<OwnedInconsistencyReport> },
 }
 ```
 
@@ -180,7 +192,7 @@ graph.subjects(predicate, object);     // Vec<Term>
 
 ### `Term`
 
-Safe, read-side view of an RDF term. Lifetime-tied to the arena's string data.
+Safe, read-side view of an RDF term. Lifetime tied to the arena's string data.
 
 ```rust
 enum Term<'a> {
@@ -213,7 +225,7 @@ println!("{}", triple);  // <s> <p> <o> .
 
 ### `ReasonerConfig`
 
-Builder-pattern configuration for the reasoner.
+Builder pattern configuration for the reasoner.
 
 ```rust
 let config = ReasonerConfig::new()
@@ -222,15 +234,22 @@ let config = ReasonerConfig::new()
     .max_iterations(1000) // iteration limit (default: 1000)
     .verbose(false)       // per-iteration timing (default: true)
     .fast(true)           // skip schema rules (default: false)
-    .complete(false);     // enable cls-thing & prp-ap (default: false)
+    .complete(false)      // enable cls-thing & prp-ap (default: false)
+    .validate(true)       // enable validation mode (default: false)
+    .validate_ns("http://example.org/");  // validate only this namespace
 ```
 
 ### `ReasonerResult`
 
 ```rust
+struct InconsistencyReport<'a> {
+    pub reason: String,
+    pub witnesses: Vec<Triple<'a>>,
+}
+
 enum ReasonerResult<'a> {
     Success { graph: IndexedGraph<'a>, inferred_count: i64, iterations: i64 },
-    Inconsistent { reason: String, witnesses: Vec<Triple<'a>> },
+    Inconsistent { reports: Vec<InconsistencyReport<'a>> },
 }
 ```
 
@@ -258,6 +277,71 @@ let result = growl::reason(&arena, &filtered);
 
 The list of 27 standard annotation properties is available as `growl::STANDARD_ANNOTATION_PROPERTIES`. User-declared `owl:AnnotationProperty` instances in the graph are also filtered.
 
+### Validation
+
+Validation mode checks TBox consistency by injecting a synthetic instance of each class and property, then running the reasoner to detect contradictions (e.g., unsatisfiable classes due to disjointness or restriction conflicts). It reports **all** unsatisfiable entities, not just the first.
+
+A namespace prefix can scope validation to only entities within that namespace, which is useful when importing external ontologies that may have known issues.
+
+**High-level (Reasoner):**
+
+```rust
+let mut reasoner = Reasoner::new().complete(true);
+// ... add triples ...
+
+// Validate all entities
+let result = reasoner.validate();
+
+// Validate only entities in a namespace
+let result = reasoner.validate_ns("http://example.org/");
+
+match result {
+    OwnedValidateResult::Satisfiable => println!("All classes satisfiable"),
+    OwnedValidateResult::Unsatisfiable { reports } => {
+        for r in &reports {
+            println!("{}: {}", r.entity, r.reason);
+            for w in &r.witnesses {
+                println!("  {}", w);
+            }
+        }
+    }
+}
+```
+
+**Low-level:**
+
+```rust
+let result = growl::validate(&arena, &graph);
+let result = growl::validate_with_ns(&arena, &graph, "http://example.org/");
+```
+
+**Types:**
+
+```rust
+struct ValidateReport<'a> {
+    pub entity: Term<'a>,
+    pub reason: String,
+    pub witnesses: Vec<Triple<'a>>,
+}
+
+enum ValidateResult<'a> {
+    Satisfiable,
+    Unsatisfiable { reports: Vec<ValidateReport<'a>> },
+}
+
+// Owned equivalents (Send + Sync)
+struct OwnedValidateReport {
+    pub entity: OwnedTerm,
+    pub reason: String,
+    pub witnesses: Vec<OwnedTriple>,
+}
+
+enum OwnedValidateResult {
+    Satisfiable,
+    Unsatisfiable { reports: Vec<OwnedValidateReport> },
+}
+```
+
 ### Free Functions
 
 ```rust
@@ -273,6 +357,10 @@ is_consistent(&arena, &graph) -> bool
 // Filter annotation triples
 filter_annotations(&arena, &graph) -> IndexedGraph
 
+// Validate TBox (check for unsatisfiable classes/properties)
+validate(&arena, &graph) -> ValidateResult
+validate_with_ns(&arena, &graph, "http://example.org/") -> ValidateResult
+
 // Query helpers
 get_types(&arena, &graph, individual) -> Vec<Term>
 get_same_as(&arena, &graph, individual) -> Vec<Term>
@@ -282,7 +370,7 @@ get_same_as(&arena, &graph, individual) -> Vec<Term>
 
 The C runtime uses a global intern pool (`slop_global_intern_pool`) that is protected by a `pthread_mutex_t` (enabled via the `SLOP_INTERN_THREADSAFE` compile flag in `build.rs`). This means multiple arenas can safely be used concurrently from different threads.
 
-The `Arena` type is still `!Send + !Sync` — individual arenas must not be shared across threads. Each thread should create its own arena.
+The `Arena` type is still `!Send + !Sync`, individual arenas must not be shared across threads. Each thread should create its own arena.
 
 ## Running Tests
 
