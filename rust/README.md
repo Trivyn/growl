@@ -111,6 +111,9 @@ match reasoner.reason() {
 // Enable complete mode (cls-thing, prp-ap, dt-type2)
 let mut reasoner = Reasoner::new().complete(true);
 
+// Enable enrich mode (property/subclass propagation only)
+let mut reasoner = Reasoner::new().enrich(true);
+
 // Or use custom config
 let config = ReasonerConfig::new().verbose(false).fast(true);
 let result = reasoner.reason_with_config(&config);
@@ -235,6 +238,7 @@ let config = ReasonerConfig::new()
     .verbose(false)       // per-iteration timing (default: true)
     .fast(true)           // skip schema rules (default: false)
     .complete(false)      // enable cls-thing & prp-ap (default: false)
+    .enrich(true)         // property/subclass enrichment only (default: false)
     .validate(true)       // enable validation mode (default: false)
     .validate_ns("http://example.org/");  // validate only this namespace
 ```

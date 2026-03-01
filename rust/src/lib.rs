@@ -436,6 +436,11 @@ impl ReasonerConfig {
         self
     }
 
+    pub fn enrich(mut self, v: bool) -> Self {
+        self.raw.enrich = v as u8;
+        self
+    }
+
     pub fn validate(mut self, v: bool) -> Self {
         self.raw.validate = v as u8;
         self
@@ -1055,6 +1060,7 @@ pub struct Reasoner {
     triple_count: usize,
     filter_annotations: bool,
     complete: bool,
+    enrich: bool,
 }
 
 impl Reasoner {
@@ -1073,6 +1079,7 @@ impl Reasoner {
             triple_count: 0,
             filter_annotations: false,
             complete: false,
+            enrich: false,
         }
     }
 
@@ -1093,6 +1100,18 @@ impl Reasoner {
     /// This setting is inherited by `validate()` and `validate_ns()`.
     pub fn complete(mut self, enable: bool) -> Self {
         self.complete = enable;
+        self
+    }
+
+    /// Enable or disable enrich mode for reasoning.
+    ///
+    /// Enrich mode materializes a targeted subset of rules — property
+    /// characteristics (domain, range, inverse, symmetry, transitivity) and
+    /// subclass/subproperty propagation — while skipping sameAs generators,
+    /// class expression rules, and schema materialization. Consistency checks
+    /// (cax-dw, prp-asyp, etc.) still run.
+    pub fn enrich(mut self, enable: bool) -> Self {
+        self.enrich = enable;
         self
     }
 
@@ -1141,8 +1160,13 @@ impl Reasoner {
     ///
     /// Returns an `OwnedReasonerResult` with all data copied out of the
     /// arena's interned pool, so it can be freely used after this call.
+    ///
+    /// Respects `complete` and `enrich` flags set on this `Reasoner`.
     pub fn reason(&self) -> OwnedReasonerResult {
-        self.reason_with_config(&ReasonerConfig::new())
+        let config = ReasonerConfig::new()
+            .complete(self.complete)
+            .enrich(self.enrich);
+        self.reason_with_config(&config)
     }
 
     /// Run OWL 2 RL reasoning with custom configuration.

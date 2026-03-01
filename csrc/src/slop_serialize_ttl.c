@@ -203,6 +203,7 @@ slop_string serialize_ttl_serialize_literal(slop_arena* arena, rdf_Literal lit) 
         }
     }
     SLOP_POST(((string_len(_retval) > 0)), "(> (string-len $result) 0)");
+    SLOP_POST(((string_len(_retval) > 0)), "(> (string-len $result) 0)");
     return _retval;
 }
 

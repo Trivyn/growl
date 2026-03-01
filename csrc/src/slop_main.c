@@ -39,6 +39,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
         uint8_t quiet = 0;
         uint8_t fast = 0;
         uint8_t complete = 0;
+        uint8_t enrich = 0;
         uint8_t validate = 0;
         uint8_t help = 0;
         uint8_t version = 0;
@@ -60,6 +61,9 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                     i = (i + 1);
                 } else if ((string_eq(arg, SLOP_STR("--complete")) || string_eq(arg, SLOP_STR("-c")))) {
                     complete = 1;
+                    i = (i + 1);
+                } else if ((string_eq(arg, SLOP_STR("--enrich")) || string_eq(arg, SLOP_STR("-e")))) {
+                    enrich = 1;
                     i = (i + 1);
                 } else if (string_eq(arg, SLOP_STR("--validate"))) {
                     validate = 1;
@@ -97,7 +101,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                 }
             }
         }
-        return ((main_CliArgs){.input_file = input, .emit_file = emit, .background_file = background, .validate_ns = validate_ns_opt, .quiet = quiet, .fast = fast, .complete = complete, .validate = validate, .show_help = help, .show_version = version});
+        return ((main_CliArgs){.input_file = input, .emit_file = emit, .background_file = background, .validate_ns = validate_ns_opt, .quiet = quiet, .fast = fast, .complete = complete, .enrich = enrich, .validate = validate, .show_help = help, .show_version = version});
     }
 }
 
@@ -112,6 +116,7 @@ void main_print_usage(void) {
     printf("%s\n", "  -o, --emit FILE  Write materialized graph to TTL file");
     printf("%s\n", "  -f, --fast       Skip schema rules and consistency checks");
     printf("%s\n", "  -c, --complete   Enable cls-thing and prp-ap for spec completeness");
+    printf("%s\n", "  -e, --enrich    Property/subclass enrichment (skip sameAs, class exprs, schema)");
     printf("%s\n", "  --validate       Check TBox satisfiability via synthetic instance injection");
     printf("%s\n", "  --validate-ns NS Only validate entities with IRIs starting with NS");
     printf("%s\n", "  -b, --background FILE  Load background ontology (e.g. TLO) for reasoning context");
@@ -251,6 +256,12 @@ int main(int argc, char** _c_argv) {
                                             if ((args.fast && validate_mode)) {
                                                 printf("%s\n", "Warning: --validate overrides --fast (schema materialization required)");
                                             }
+                                            if ((args.enrich && args.fast)) {
+                                                printf("%s\n", "Warning: --enrich overrides --fast");
+                                            }
+                                            if ((args.enrich && args.complete)) {
+                                                printf("%s\n", "Warning: --enrich and --complete are conflicting; --enrich skips most rules");
+                                            }
                                             if ((validate_mode && ({ __auto_type _mv = args.emit_file; _mv.has_value ? ({ __auto_type _ = _mv.value; 1; }) : (0); }))) {
                                                 printf("%s\n", "Warning: --emit is ignored in --validate mode");
                                             }
@@ -259,7 +270,7 @@ int main(int argc, char** _c_argv) {
                                             }
                                             {
                                                 __auto_type reason_start = slop_now_ms();
-                                                __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet), .fast = effective_fast, .complete = args.complete, .validate = validate_mode, .validate_ns = ns_filter});
+                                                __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet), .fast = effective_fast, .complete = args.complete, .enrich = args.enrich, .validate = validate_mode, .validate_ns = ns_filter});
                                                 __auto_type _mv_361 = growl_reason_with_config(arena, combined_ig, config);
                                                 switch (_mv_361.tag) {
                                                     case types_ReasonerResult_reason_success:

@@ -1,0 +1,9 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix ex: <http://example.org/> .
+
+ex:R a owl:Restriction ;
+    owl:onProperty ex:p ;
+    owl:hasValue ex:v .
+
+ex:alice rdf:type ex:R .

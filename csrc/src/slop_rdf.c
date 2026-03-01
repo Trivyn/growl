@@ -115,6 +115,7 @@ uint8_t rdf_literal_eq(rdf_Literal a, rdf_Literal b) {
 }
 
 uint8_t rdf_term_eq(rdf_Term a, rdf_Term b) {
+    uint8_t _retval = {0};
     __auto_type _mv_4 = a;
     switch (_mv_4.tag) {
         case rdf_Term_term_iri:
@@ -163,6 +164,8 @@ uint8_t rdf_term_eq(rdf_Term a, rdf_Term b) {
             }
         }
     }
+    SLOP_POST(((_retval == (a == b))), "(== $result (== a b))");
+    return _retval;
 }
 
 rdf_Triple rdf_make_triple(slop_arena* arena, rdf_Term subject, rdf_Term predicate, rdf_Term object) {

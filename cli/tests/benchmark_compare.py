@@ -101,7 +101,7 @@ def parse_growl_output(line):
     return input_count, output_count, reason_time
 
 
-def run_growl(path, fast=False, complete=False, emit=None, count_emitted=False):
+def run_growl(path, fast=False, complete=False, enrich=False, emit=None, count_emitted=False):
     """Run growl on a TTL file. Returns (input, output, median_time_s).
 
     If count_emitted is True, emits to a temp file and counts triples with
@@ -121,6 +121,8 @@ def run_growl(path, fast=False, complete=False, emit=None, count_emitted=False):
         cmd.append("--fast")
     if complete:
         cmd.append("--complete")
+    if enrich:
+        cmd.append("--enrich")
     if emit_path:
         cmd.extend(["--emit", emit_path])
     cmd.append(path)
@@ -315,6 +317,12 @@ def compare_mode(files):
         growl_fast_inferred = (growl_fast_output - growl_input) if growl_fast_output is not None else None
         print(f" done ({fmt_time(growl_fast_time)})")
 
+        # Growl (enrich)
+        print("  Running Growl --enrich...", end="", flush=True)
+        _, growl_enrich_output, growl_enrich_time = run_growl(path, enrich=True, count_emitted=True)
+        growl_enrich_inferred = (growl_enrich_output - growl_input) if growl_enrich_output is not None else None
+        print(f" done ({fmt_time(growl_enrich_time)})")
+
         # Growl (full)
         print("  Running Growl (full)...", end="", flush=True)
         _, growl_full_output, growl_full_time = run_growl(path, fast=False, count_emitted=True)
@@ -338,6 +346,7 @@ def compare_mode(files):
 
         print(f"  {'Growl (complete)':20s} {fmt_count(growl_input):>8s}  {fmt_count(growl_complete_inferred):>8s}  {fmt_count(growl_complete_output):>8s}  {fmt_time(growl_complete_time):>8s}")
         print(f"  {'Growl (full)':20s} {fmt_count(growl_input):>8s}  {fmt_count(growl_full_inferred):>8s}  {fmt_count(growl_full_output):>8s}  {fmt_time(growl_full_time):>8s}")
+        print(f"  {'Growl (enrich)':20s} {fmt_count(growl_input):>8s}  {fmt_count(growl_enrich_inferred):>8s}  {fmt_count(growl_enrich_output):>8s}  {fmt_time(growl_enrich_time):>8s}")
         print(f"  {'Growl (fast)':20s} {fmt_count(growl_input):>8s}  {fmt_count(growl_fast_inferred):>8s}  {fmt_count(growl_fast_output):>8s}  {fmt_time(growl_fast_time):>8s}")
 
         # Deltas
@@ -351,6 +360,10 @@ def compare_mode(files):
                 diff = growl_full_inferred - owlrl_inferred
                 sign = "+" if diff > 0 else ""
                 print(f"  Growl full vs OWL-RL: {sign}{diff} inferred ({sign}{diff/owlrl_inferred*100:.1f}%)")
+            if growl_enrich_inferred is not None and owlrl_inferred > 0:
+                diff = growl_enrich_inferred - owlrl_inferred
+                sign = "+" if diff > 0 else ""
+                print(f"  Growl enrich vs OWL-RL: {sign}{diff} inferred ({sign}{diff/owlrl_inferred*100:.1f}%)")
             if growl_fast_inferred is not None and owlrl_inferred > 0:
                 diff = growl_fast_inferred - owlrl_inferred
                 sign = "+" if diff > 0 else ""

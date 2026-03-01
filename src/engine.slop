@@ -584,15 +584,15 @@
              ((reason-inconsistent _) true)))
     (let ((initial-size (indexed-graph-size initial))
           (initial-delta (make-initial-delta arena initial))
-          ;; Phase 1: Schema materialization (skip in fast mode)
+          ;; Phase 1: Schema materialization (skip in fast/enrich mode)
           (materialized-graph
-            (if (. config fast)
+            (if (or (. config fast) (. config enrich))
               initial
               (schema-materialize arena initial
                 (make-initial-delta arena initial) config)))
-          ;; dt-type1: assert supported datatypes as rdfs:Datatype (skip in fast mode)
+          ;; dt-type1: assert supported datatypes as rdfs:Datatype (skip in fast/enrich mode)
           (dt-graph
-            (if (. config fast)
+            (if (or (. config fast) (. config enrich))
               materialized-graph
               (let ((mut mg materialized-graph))
                 (for-each (t (dt-type1 arena mg))
@@ -669,8 +669,8 @@
           ;; Collect dt-not-type issue for validate mode (instead of early return)
           (mut dt-report (Option InconsistencyReport) (none)))
 
-      ;; One-time datatype validation (skip in fast mode)
-      (when (not (. config fast))
+      ;; One-time datatype validation (skip in fast/enrich mode)
+      (when (and (not (. config fast)) (not (. config enrich)))
         (match (dt-not-type arena (. state graph))
           ((some report)
             (if (. config validate)
@@ -1091,7 +1091,8 @@
           ;; eq-ref: add reflexive sameAs directly to graph, not delta
           ;; These are needed for OWL 2 RL completeness but never trigger
           ;; productive inference, so keeping them out of delta avoids cascade.
-          (when (not (. (. state config) fast))
+          ;; Skip in enrich mode (no sameAs processing).
+          (when (and (not (. (. state config) fast)) (not (. (. state config) enrich)))
             (for-each (t (eq-ref arena new-graph new-delta))
               (set! new-graph (indexed-graph-add arena new-graph t))))
           (ok (record-new EngineState
@@ -1136,7 +1137,8 @@
     (let ((next-iter (+ (. delta iteration) 1))
           (mut combined (make-delta arena next-iter))
           (verbose (. config verbose))
-          (fast (. config fast)))
+          (fast (. config fast))
+          (enrich (. config enrich)))
 
       ;; Apply each rule group sequentially with optional timing
       ;; Note: scm rules are handled by schema-materialize (phased pipeline),
@@ -1156,7 +1158,7 @@
       ;; Property rules
       (let ((t0 (now-ms))
             (validate (. config validate)))
-        (match (apply-prp-rules arena g delta fast validate)
+        (match (apply-prp-rules arena g delta fast validate enrich)
           ((ok prp-delta)
             (do
               (when verbose
@@ -1164,27 +1166,29 @@
               (set! combined (delta-merge arena combined prp-delta))))
           ((error report) (return (error report)))))
 
-      ;; Equality rules
-      (let ((t0 (now-ms))
-            (validate (. config validate)))
-        (match (apply-eq-rules arena g delta fast validate)
-          ((ok eq-delta)
-            (do
-              (when verbose
-                (do (print "  eq:  ") (print-ms arena (- (now-ms) t0)) (println "")))
-              (set! combined (delta-merge arena combined eq-delta))))
-          ((error report) (return (error report)))))
+      ;; Equality rules (skip in enrich mode)
+      (when (not enrich)
+        (let ((t0 (now-ms))
+              (validate (. config validate)))
+          (match (apply-eq-rules arena g delta fast validate)
+            ((ok eq-delta)
+              (do
+                (when verbose
+                  (do (print "  eq:  ") (print-ms arena (- (now-ms) t0)) (println "")))
+                (set! combined (delta-merge arena combined eq-delta))))
+            ((error report) (return (error report))))))
 
-      ;; Class expression rules
-      (let ((t0 (now-ms))
-            (validate (. config validate)))
-        (match (apply-cls-rules arena g delta fast validate)
-          ((ok cls-delta)
-            (do
-              (when verbose
-                (do (print "  cls: ") (print-ms arena (- (now-ms) t0)) (println "")))
-              (set! combined (delta-merge arena combined cls-delta))))
-          ((error report) (return (error report)))))
+      ;; Class expression rules (skip in enrich mode)
+      (when (not enrich)
+        (let ((t0 (now-ms))
+              (validate (. config validate)))
+          (match (apply-cls-rules arena g delta fast validate)
+            ((ok cls-delta)
+              (do
+                (when verbose
+                  (do (print "  cls: ") (print-ms arena (- (now-ms) t0)) (println "")))
+                (set! combined (delta-merge arena combined cls-delta))))
+            ((error report) (return (error report))))))
 
       ;; Each rule already checks (indexed-graph-contains g inferred) before adding,
       ;; and delta-add deduplicates across rules via (set-has seen t).
@@ -1205,26 +1209,28 @@
              ((error _) true)))
     (let ((next-iter (+ (. delta iteration) 1))
           (fast (. config fast))
+          (enrich (. config enrich))
           (result-chan (chan-buffered WorkerMessage arena (. config channel-buffer)))
           ;; Allocate coordinator-owned per-worker arenas so data survives until collect
           ;; SCM arenas removed: schema rules handled by schema-materialize
+          ;; In enrich mode, eq/cls workers are skipped — use minimal arenas
           (arena-cax-infer  (arena-new 1048576))
           (arena-cax-check  (arena-new 1048576))
           (arena-prp-char   (arena-new 1048576))
           (arena-prp-chain  (arena-new 1048576))
           (arena-prp-check  (arena-new 1048576))
-          (arena-eq-infer   (arena-new 1048576))
-          (arena-eq-check   (arena-new (if fast 64 1048576)))
-          (arena-cls-set    (arena-new 1048576))
-          (arena-cls-ind    (arena-new 1048576)))
+          (arena-eq-infer   (arena-new (if enrich 64 1048576)))
+          (arena-eq-check   (arena-new (if (or fast enrich) 64 1048576)))
+          (arena-cls-set    (arena-new (if enrich 64 1048576)))
+          (arena-cls-ind    (arena-new (if enrich 64 1048576))))
 
-      ;; Spawn sub-workers (count varies with fast mode and validate mode)
+      ;; Spawn sub-workers (count varies with fast/enrich/validate mode)
       (let ((workers (spawn-rule-workers arena g delta result-chan
                                          arena-cax-infer arena-cax-check
                                          arena-prp-char arena-prp-chain arena-prp-check
                                          arena-eq-infer arena-eq-check
                                          arena-cls-set arena-cls-ind
-                                         (. config verbose) fast (. config validate))))
+                                         (. config verbose) fast (. config validate) enrich)))
 
         ;; Collect results from all workers
         (let ((result (collect-worker-results arena result-chan workers next-iter)))
@@ -1274,10 +1280,10 @@
                           (arena-prp-char Arena) (arena-prp-chain Arena) (arena-prp-check Arena)
                           (arena-eq-infer Arena) (arena-eq-check Arena)
                           (arena-cls-set Arena) (arena-cls-ind Arena)
-                          (verbose Bool) (fast Bool) (validate Bool))
+                          (verbose Bool) (fast Bool) (validate Bool) (enrich Bool))
     (@intent "Spawn sub-worker threads, each handling a semantic subset of rules")
     (@spec ((Arena IndexedGraph Delta (Ptr (Chan WorkerMessage))
-             Arena Arena Arena Arena Arena Arena Arena Arena Arena Bool Bool Bool)
+             Arena Arena Arena Arena Arena Arena Arena Arena Arena Bool Bool Bool Bool)
             -> (List (Ptr (Thread Unit)))))
     (@alloc arena)
     (let ((mut workers (list-new arena (Ptr (Thread Unit))))
@@ -1329,10 +1335,12 @@
               (set! result (delta-add arena-prp-char result t)))
             (for-each (t (prp-rng arena-prp-char g delta))
               (set! result (delta-add arena-prp-char result t)))
-            (for-each (t (prp-fp arena-prp-char g delta))
-              (set! result (delta-add arena-prp-char result t)))
-            (for-each (t (prp-ifp arena-prp-char g delta))
-              (set! result (delta-add arena-prp-char result t)))
+            (when (not enrich)
+              (do
+                (for-each (t (prp-fp arena-prp-char g delta))
+                  (set! result (delta-add arena-prp-char result t)))
+                (for-each (t (prp-ifp arena-prp-char g delta))
+                  (set! result (delta-add arena-prp-char result t)))))
             (for-each (t (prp-symp arena-prp-char g delta))
               (set! result (delta-add arena-prp-char result t)))
             (for-each (t (prp-trp arena-prp-char g delta))
@@ -1359,8 +1367,9 @@
               (set! result (delta-add arena-prp-chain result t)))
             (for-each (t (prp-inv2 arena-prp-chain g delta))
               (set! result (delta-add arena-prp-chain result t)))
-            (for-each (t (prp-key arena-prp-chain g delta))
-              (set! result (delta-add arena-prp-chain result t)))
+            (when (not enrich)
+              (for-each (t (prp-key arena-prp-chain g delta))
+                (set! result (delta-add arena-prp-chain result t))))
             (when verbose
               (do (print "  prp-chain: ") (print-ms arena-prp-chain (- (now-ms) t0)) (println "")))
             (send result-chan (union-new WorkerMessage msg-delta result))
@@ -1393,31 +1402,32 @@
                 (do (print "  prp-check: ") (print-ms arena-prp-check (- (now-ms) t0)) (println "")))
               (send result-chan (union-new WorkerMessage msg-done unit)))))))
 
-      ;; ---- EQ sub-workers ----
+      ;; ---- EQ sub-workers (skip in enrich mode) ----
 
-      ;; eq-infer: eq-sym, eq-trans, eq-rep-s, eq-rep-p, eq-rep-o (always runs)
+      ;; eq-infer: eq-sym, eq-trans, eq-rep-s, eq-rep-p, eq-rep-o
       ;; Note: eq-ref runs post-merge in engine-run-iteration (graph-only, not delta)
-      (list-push workers
-        (spawn arena (fn ()
-          (let ((t0 (now-ms))
-                (mut result (make-delta arena-eq-infer next-iter)))
-            (for-each (t (eq-sym arena-eq-infer g delta))
-              (set! result (delta-add arena-eq-infer result t)))
-            (for-each (t (eq-trans arena-eq-infer g delta))
-              (set! result (delta-add arena-eq-infer result t)))
-            (for-each (t (eq-rep-s arena-eq-infer g delta))
-              (set! result (delta-add arena-eq-infer result t)))
-            (for-each (t (eq-rep-p arena-eq-infer g delta))
-              (set! result (delta-add arena-eq-infer result t)))
-            (for-each (t (eq-rep-o arena-eq-infer g delta))
-              (set! result (delta-add arena-eq-infer result t)))
-            (when verbose
-              (do (print "  eq-infer: ") (print-ms arena-eq-infer (- (now-ms) t0)) (println "")))
-            (send result-chan (union-new WorkerMessage msg-delta result))
-            (send result-chan (union-new WorkerMessage msg-done unit))))))
+      (when (not enrich)
+        (list-push workers
+          (spawn arena (fn ()
+            (let ((t0 (now-ms))
+                  (mut result (make-delta arena-eq-infer next-iter)))
+              (for-each (t (eq-sym arena-eq-infer g delta))
+                (set! result (delta-add arena-eq-infer result t)))
+              (for-each (t (eq-trans arena-eq-infer g delta))
+                (set! result (delta-add arena-eq-infer result t)))
+              (for-each (t (eq-rep-s arena-eq-infer g delta))
+                (set! result (delta-add arena-eq-infer result t)))
+              (for-each (t (eq-rep-p arena-eq-infer g delta))
+                (set! result (delta-add arena-eq-infer result t)))
+              (for-each (t (eq-rep-o arena-eq-infer g delta))
+                (set! result (delta-add arena-eq-infer result t)))
+              (when verbose
+                (do (print "  eq-infer: ") (print-ms arena-eq-infer (- (now-ms) t0)) (println "")))
+              (send result-chan (union-new WorkerMessage msg-delta result))
+              (send result-chan (union-new WorkerMessage msg-done unit)))))))
 
-      ;; eq-check: eq-diff1, eq-diff2, eq-diff3 (skipped in fast mode or validate mode)
-      (when (and (not fast) (not validate))
+      ;; eq-check: eq-diff1, eq-diff2, eq-diff3 (skipped in fast/enrich/validate mode)
+      (when (and (not fast) (not validate) (not enrich))
         (list-push workers
           (spawn arena (fn ()
             (let ((t0 (now-ms)))
@@ -1434,33 +1444,35 @@
                 (do (print "  eq-check: ") (print-ms arena-eq-check (- (now-ms) t0)) (println "")))
               (send result-chan (union-new WorkerMessage msg-done unit)))))))
 
-      ;; ---- CLS sub-workers ----
+      ;; ---- CLS sub-workers (skip in enrich mode) ----
 
-      ;; cls-set: cls-int1, cls-int2, cls-uni, cls-svf1, cls-svf2, cls-avf (always runs)
-      (list-push workers
-        (spawn arena (fn ()
-          (let ((t0 (now-ms))
-                (mut result (make-delta arena-cls-set next-iter)))
-            (for-each (t (cls-int1 arena-cls-set g delta))
-              (set! result (delta-add arena-cls-set result t)))
-            (for-each (t (cls-int2 arena-cls-set g delta))
-              (set! result (delta-add arena-cls-set result t)))
-            (for-each (t (cls-uni arena-cls-set g delta))
-              (set! result (delta-add arena-cls-set result t)))
-            (for-each (t (cls-svf1 arena-cls-set g delta))
-              (set! result (delta-add arena-cls-set result t)))
-            (for-each (t (cls-svf2 arena-cls-set g delta))
-              (set! result (delta-add arena-cls-set result t)))
-            (for-each (t (cls-avf arena-cls-set g delta))
-              (set! result (delta-add arena-cls-set result t)))
-            (when verbose
-              (do (print "  cls-set: ") (print-ms arena-cls-set (- (now-ms) t0)) (println "")))
-            (send result-chan (union-new WorkerMessage msg-delta result))
-            (send result-chan (union-new WorkerMessage msg-done unit))))))
+      ;; cls-set: cls-int1, cls-int2, cls-uni, cls-svf1, cls-svf2, cls-avf
+      (when (not enrich)
+        (list-push workers
+          (spawn arena (fn ()
+            (let ((t0 (now-ms))
+                  (mut result (make-delta arena-cls-set next-iter)))
+              (for-each (t (cls-int1 arena-cls-set g delta))
+                (set! result (delta-add arena-cls-set result t)))
+              (for-each (t (cls-int2 arena-cls-set g delta))
+                (set! result (delta-add arena-cls-set result t)))
+              (for-each (t (cls-uni arena-cls-set g delta))
+                (set! result (delta-add arena-cls-set result t)))
+              (for-each (t (cls-svf1 arena-cls-set g delta))
+                (set! result (delta-add arena-cls-set result t)))
+              (for-each (t (cls-svf2 arena-cls-set g delta))
+                (set! result (delta-add arena-cls-set result t)))
+              (for-each (t (cls-avf arena-cls-set g delta))
+                (set! result (delta-add arena-cls-set result t)))
+              (when verbose
+                (do (print "  cls-set: ") (print-ms arena-cls-set (- (now-ms) t0)) (println "")))
+              (send result-chan (union-new WorkerMessage msg-delta result))
+              (send result-chan (union-new WorkerMessage msg-done unit)))))))
 
       ;; cls-ind: cls-hv1, cls-hv2, cls-oo + conditionally cls-maxc1/2, cls-nothing2, cls-com
-      (list-push workers
-        (spawn arena (fn ()
+      (when (not enrich)
+        (list-push workers
+          (spawn arena (fn ()
           (let ((t0 (now-ms))
                 (mut result (make-delta arena-cls-ind next-iter)))
             (for-each (t (cls-hv1 arena-cls-ind g delta))
@@ -1505,7 +1517,7 @@
             (when verbose
               (do (print "  cls-ind: ") (print-ms arena-cls-ind (- (now-ms) t0)) (println "")))
             (send result-chan (union-new WorkerMessage msg-delta result))
-            (send result-chan (union-new WorkerMessage msg-done unit))))))
+            (send result-chan (union-new WorkerMessage msg-done unit)))))))
 
       workers))
 

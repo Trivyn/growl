@@ -43,6 +43,10 @@ uint8_t test_cli_test_validate_ns_scoping(slop_arena* arena);
 uint8_t test_cli_test_validate_ns_filters_tlo(slop_arena* arena);
 uint8_t test_cli_test_background_merge(slop_arena* arena);
 uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena);
+uint8_t test_cli_test_enrich_basic(slop_arena* arena);
+uint8_t test_cli_test_enrich_skips_eq(slop_arena* arena);
+uint8_t test_cli_test_enrich_skips_cls(slop_arena* arena);
+uint8_t test_cli_test_enrich_checks_consistency(slop_arena* arena);
 int main(int argc, char** _c_argv);
 
 #ifndef SLOP_OPTION_TYPES_REASONERRESULT_DEFINED

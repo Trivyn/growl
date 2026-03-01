@@ -60,6 +60,7 @@ Growl is being developed as the reasoning engine for [Trivyn](https://trivyn.io)
   (verbose Bool)          ;; Print per-iteration timing (default: true)
   (fast Bool)             ;; Skip schema rules & checks (default: false)
   (complete Bool)         ;; Enable cls-thing & prp-ap (default: false)
+  (enrich Bool)           ;; Property/subclass enrichment only (default: false)
   (validate Bool)         ;; Enable TBox validation mode (default: false)
   (validate-ns String))   ;; Only validate entities with this IRI prefix (default: "")
 ```
@@ -74,6 +75,7 @@ Options:
   -q, --quiet      Only print failures and inconsistencies
   -f, --fast       Skip schema rules and consistency checks
   -c, --complete   Enable cls-thing and prp-ap for spec completeness
+  -e, --enrich    Property/subclass enrichment (skip sameAs, class exprs, schema)
   --validate       Check TBox satisfiability via synthetic instance injection
   --validate-ns NS Only validate entities with IRIs starting with NS
   -b, --background FILE  Load background ontology (e.g. TLO) for reasoning context
@@ -91,6 +93,36 @@ The `--complete` flag enables axiom rules that are skipped by default for perfor
 - **dt-type2**: Asserts `literal rdf:type datatype` for every typed literal with a supported datatype
 
 These rules are spec-correct but produce triples with zero practical inference value. Use `--complete` for conformance testing against other reasoners like owlrl.
+
+### Enrich Mode
+
+The `--enrich` flag materializes a targeted subset of rules — property characteristics and subclass/subproperty propagation — while skipping sameAs generators, class expressions, and schema materialization. This is useful for practical ontology enrichment without the overhead and triple explosion of full OWL reasoning.
+
+**Rules that run in enrich mode:**
+
+| Category | Rules | Effect |
+|----------|-------|--------|
+| Property propagation | prp-dom, prp-rng, prp-spo1, prp-spo2, prp-eqp1/2, prp-inv1/2, prp-symp, prp-trp | Infer types from domains/ranges, propagate through subproperties, inverse, symmetry, transitivity |
+| Subclass propagation | cax-sco, cax-eqc1/2 | Propagate `rdf:type` through subClassOf and equivalentClass |
+| Consistency checks | prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1/2, cax-dw, cax-adc | Detect disjoint/asymmetric/irreflexive violations |
+
+**Rules skipped in enrich mode:**
+
+- **sameAs generators**: prp-fp, prp-ifp, prp-key (these produce `owl:sameAs` triples which can cause combinatorial explosion)
+- **All eq-\* rules**: No sameAs symmetry, transitivity, or replacement
+- **All cls-\* rules**: No class expression reasoning (intersectionOf, unionOf, someValuesFrom, hasValue, cardinality, etc.)
+- **All scm-\* rules**: No schema materialization (subClassOf/subPropertyOf closure, domain/range propagation through hierarchies)
+- **Datatype rules**: dt-type1, dt-type2, dt-not-type
+
+Enrich mode is a good fit when your ontology already has explicit subClassOf/subPropertyOf chains (most published ontologies do) and you want fast type propagation without the quadratic blowup from sameAs or class expression reasoning.
+
+```bash
+# Enrich an ontology with property/subclass inferences
+growl --enrich ontology.ttl
+
+# Enrich and emit the materialized graph
+growl --enrich --emit enriched.ttl ontology.ttl
+```
 
 ### Validate Mode
 
@@ -201,7 +233,7 @@ Compared against [OWL-RL](https://github.com/RDFLib/OWL-RL) (Python reference im
 | Schema.org | 26,682 | +15.9% | +0.6% | -0.6% | -40.5% |
 | Brick | 39,493 | +81.9% | -0.1% | -23.9% | -69.5% |
 
-**Modes**: `--complete` enables all spec rules (cls-thing, prp-ap, dt-type2) for closest OWL-RL parity. Default Growl skips those practically inert rules. `--fast` targets the same rule coverage as Reasonable (skips schema rules, datatypes, eq-ref, cardinality), making Growl --fast vs Reasonable an apples-to-apples comparison.
+**Modes**: `--complete` enables all spec rules (cls-thing, prp-ap, dt-type2) for closest OWL-RL parity. Default Growl skips those practically inert rules. `--enrich` runs only property/subclass propagation and consistency checks (no sameAs, class expressions, or schema materialization). `--fast` targets the same rule coverage as Reasonable (skips schema rules, datatypes, eq-ref, cardinality), making Growl --fast vs Reasonable an apples-to-apples comparison.
 
 ## Verification
 
