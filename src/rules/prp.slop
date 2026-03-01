@@ -369,9 +369,9 @@
   ;; Rule Dispatcher
   ;; ============================================================
 
-  (fn apply-prp-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool) (validate Bool))
+  (fn apply-prp-rules ((arena Arena) (g IndexedGraph) (delta Delta) (fast Bool) (validate Bool) (enrich Bool))
     (@intent "Apply all property axiom rules (Table 5)")
-    (@spec ((Arena IndexedGraph Delta Bool Bool) -> (Result Delta InconsistencyReport)))
+    (@spec ((Arena IndexedGraph Delta Bool Bool Bool) -> (Result Delta InconsistencyReport)))
     (@alloc arena)
     (@pre {(indexed-graph-size g) >= 0})
     (@post (match $result
@@ -386,11 +386,13 @@
       (for-each (t (prp-rng arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Functional property rules
-      (for-each (t (prp-fp arena g delta))
-        (set! result (delta-add arena result t)))
-      (for-each (t (prp-ifp arena g delta))
-        (set! result (delta-add arena result t)))
+      ;; Functional property rules (skip in enrich mode — produces sameAs)
+      (when (not enrich)
+        (do
+          (for-each (t (prp-fp arena g delta))
+            (set! result (delta-add arena result t)))
+          (for-each (t (prp-ifp arena g delta))
+            (set! result (delta-add arena result t)))))
 
       ;; Property characteristics
       (for-each (t (prp-symp arena g delta))
@@ -434,11 +436,12 @@
       (for-each (t (prp-inv2 arena g delta))
         (set! result (delta-add arena result t)))
 
-      ;; Property chains and hasKey
+      ;; Property chains and hasKey (skip prp-key in enrich mode — produces sameAs)
       (for-each (t (prp-spo2 arena g delta))
         (set! result (delta-add arena result t)))
-      (for-each (t (prp-key arena g delta))
-        (set! result (delta-add arena result t)))
+      (when (not enrich)
+        (for-each (t (prp-key arena g delta))
+          (set! result (delta-add arena result t))))
 
       (ok result)))
 

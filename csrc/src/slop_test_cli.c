@@ -27,6 +27,10 @@ uint8_t test_cli_test_validate_ns_scoping(slop_arena* arena);
 uint8_t test_cli_test_validate_ns_filters_tlo(slop_arena* arena);
 uint8_t test_cli_test_background_merge(slop_arena* arena);
 uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena);
+uint8_t test_cli_test_enrich_basic(slop_arena* arena);
+uint8_t test_cli_test_enrich_skips_eq(slop_arena* arena);
+uint8_t test_cli_test_enrich_skips_cls(slop_arena* arena);
+uint8_t test_cli_test_enrich_checks_consistency(slop_arena* arena);
 int main(int argc, char** _c_argv);
 
 index_IndexedGraph test_cli_graph_to_indexed(slop_arena* arena, rdf_Graph g) {
@@ -445,7 +449,7 @@ uint8_t test_cli_test_validate_unsat(slop_arena* arena) {
         __auto_type g = _mv_382.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
             __auto_type _mv_383 = growl_reason_with_config(arena, ig, config);
             switch (_mv_383.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -474,7 +478,7 @@ uint8_t test_cli_test_validate_clean(slop_arena* arena) {
         __auto_type g = _mv_384.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
             __auto_type _mv_385 = growl_reason_with_config(arena, ig, config);
             switch (_mv_385.tag) {
                 case types_ReasonerResult_reason_success:
@@ -534,7 +538,7 @@ uint8_t test_cli_test_validate_unsat_prop(slop_arena* arena) {
         __auto_type g = _mv_389.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
             __auto_type _mv_390 = growl_reason_with_config(arena, ig, config);
             switch (_mv_390.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -563,7 +567,7 @@ uint8_t test_cli_test_validate_domain_reports_class(slop_arena* arena) {
         __auto_type g = _mv_391.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
             __auto_type _mv_392 = growl_reason_with_config(arena, ig, config);
             switch (_mv_392.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -598,7 +602,7 @@ uint8_t test_cli_test_validate_ns_scoping(slop_arena* arena) {
         __auto_type g = _mv_394.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/")});
             __auto_type _mv_395 = growl_reason_with_config(arena, ig, config);
             switch (_mv_395.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -633,7 +637,7 @@ uint8_t test_cli_test_validate_ns_filters_tlo(slop_arena* arena) {
         __auto_type g = _mv_397.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/")});
             __auto_type _mv_398 = growl_reason_with_config(arena, ig, config);
             switch (_mv_398.tag) {
                 case types_ReasonerResult_reason_success:
@@ -728,7 +732,7 @@ uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena) {
         __auto_type g = _mv_404.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
             __auto_type _mv_405 = growl_reason_with_config(arena, ig, config);
             switch (_mv_405.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -771,6 +775,138 @@ uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena) {
                 {
                     __auto_type _ = _mv_405.data.reason_success;
                     printf("%s\n", "  ERROR: should have detected unsatisfiable classes");
+                    return 0;
+                }
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_enrich_basic(slop_arena* arena) {
+    __auto_type _mv_406 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/subclass-chain.ttl"));
+    if (!_mv_406.is_ok) {
+        __auto_type _ = _mv_406.data.err;
+        printf("%s\n", "  ERROR: failed to parse subclass-chain.ttl");
+        return 0;
+    } else if (_mv_406.is_ok) {
+        __auto_type g = _mv_406.data.ok;
+        {
+            __auto_type ig = test_cli_graph_to_indexed(arena, g);
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR("")});
+            __auto_type _mv_407 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_407.tag) {
+                case types_ReasonerResult_reason_success:
+                {
+                    __auto_type s = _mv_407.data.reason_success;
+                    {
+                        __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
+                        __auto_type person = rdf_make_iri(arena, SLOP_STR("http://example.org/Person"));
+                        __auto_type agent = rdf_make_iri(arena, SLOP_STR("http://example.org/Agent"));
+                        __auto_type g = s.graph;
+                        return (test_cli_has_type(arena, g, alice, person) && test_cli_has_type(arena, g, alice, agent));
+                    }
+                }
+                case types_ReasonerResult_reason_inconsistent:
+                {
+                    __auto_type _ = _mv_407.data.reason_inconsistent;
+                    printf("%s\n", "  ERROR: unexpected inconsistency");
+                    return 0;
+                }
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_enrich_skips_eq(slop_arena* arena) {
+    __auto_type _mv_408 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/sameas-chain.ttl"));
+    if (!_mv_408.is_ok) {
+        __auto_type _ = _mv_408.data.err;
+        printf("%s\n", "  ERROR: failed to parse sameas-chain.ttl");
+        return 0;
+    } else if (_mv_408.is_ok) {
+        __auto_type g = _mv_408.data.ok;
+        {
+            __auto_type ig = test_cli_graph_to_indexed(arena, g);
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR("")});
+            __auto_type _mv_409 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_409.tag) {
+                case types_ReasonerResult_reason_success:
+                {
+                    __auto_type s = _mv_409.data.reason_success;
+                    {
+                        __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
+                        __auto_type charlie = rdf_make_iri(arena, SLOP_STR("http://example.org/charlie"));
+                        return !(test_cli_has_same_as(arena, s.graph, alice, charlie));
+                    }
+                }
+                case types_ReasonerResult_reason_inconsistent:
+                {
+                    __auto_type _ = _mv_409.data.reason_inconsistent;
+                    printf("%s\n", "  ERROR: unexpected inconsistency");
+                    return 0;
+                }
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_enrich_skips_cls(slop_arena* arena) {
+    __auto_type _mv_410 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/enrich-cls-test.ttl"));
+    if (!_mv_410.is_ok) {
+        __auto_type _ = _mv_410.data.err;
+        printf("%s\n", "  ERROR: failed to parse enrich-cls-test.ttl");
+        return 0;
+    } else if (_mv_410.is_ok) {
+        __auto_type g = _mv_410.data.ok;
+        {
+            __auto_type ig = test_cli_graph_to_indexed(arena, g);
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR("")});
+            __auto_type _mv_411 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_411.tag) {
+                case types_ReasonerResult_reason_success:
+                {
+                    __auto_type s = _mv_411.data.reason_success;
+                    {
+                        __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
+                        __auto_type p = rdf_make_iri(arena, SLOP_STR("http://example.org/p"));
+                        __auto_type v = rdf_make_iri(arena, SLOP_STR("http://example.org/v"));
+                        __auto_type expected = rdf_make_triple(arena, alice, p, v);
+                        return !(rdf_indexed_graph_contains(s.graph, expected));
+                    }
+                }
+                case types_ReasonerResult_reason_inconsistent:
+                {
+                    __auto_type _ = _mv_411.data.reason_inconsistent;
+                    printf("%s\n", "  ERROR: unexpected inconsistency");
+                    return 0;
+                }
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_enrich_checks_consistency(slop_arena* arena) {
+    __auto_type _mv_412 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/disjoint-violation.ttl"));
+    if (!_mv_412.is_ok) {
+        __auto_type _ = _mv_412.data.err;
+        printf("%s\n", "  ERROR: failed to parse disjoint-violation.ttl");
+        return 0;
+    } else if (_mv_412.is_ok) {
+        __auto_type g = _mv_412.data.ok;
+        {
+            __auto_type ig = test_cli_graph_to_indexed(arena, g);
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR("")});
+            __auto_type _mv_413 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_413.tag) {
+                case types_ReasonerResult_reason_inconsistent:
+                {
+                    __auto_type _ = _mv_413.data.reason_inconsistent;
+                    return 1;
+                }
+                case types_ReasonerResult_reason_success:
+                {
+                    __auto_type _ = _mv_413.data.reason_success;
+                    printf("%s\n", "  ERROR: should have detected disjoint violation in enrich mode");
                     return 0;
                 }
             }
@@ -961,6 +1097,42 @@ int main(int argc, char** _c_argv) {
             {
                 __auto_type r = test_cli_test_validate_multiple_unsat(arena);
                 test_cli_print_result(SLOP_STR("validate: multiple unsatisfiable classes"), r);
+                if (r) {
+                    passed = (passed + 1);
+                } else {
+                    failed = (failed + 1);
+                }
+            }
+            {
+                __auto_type r = test_cli_test_enrich_basic(arena);
+                test_cli_print_result(SLOP_STR("enrich: subclass types inferred"), r);
+                if (r) {
+                    passed = (passed + 1);
+                } else {
+                    failed = (failed + 1);
+                }
+            }
+            {
+                __auto_type r = test_cli_test_enrich_skips_eq(arena);
+                test_cli_print_result(SLOP_STR("enrich: sameAs transitivity skipped"), r);
+                if (r) {
+                    passed = (passed + 1);
+                } else {
+                    failed = (failed + 1);
+                }
+            }
+            {
+                __auto_type r = test_cli_test_enrich_skips_cls(arena);
+                test_cli_print_result(SLOP_STR("enrich: cls-hv1 skipped"), r);
+                if (r) {
+                    passed = (passed + 1);
+                } else {
+                    failed = (failed + 1);
+                }
+            }
+            {
+                __auto_type r = test_cli_test_enrich_checks_consistency(arena);
+                test_cli_print_result(SLOP_STR("enrich: disjoint violation still detected"), r);
                 if (r) {
                     passed = (passed + 1);
                 } else {

@@ -45,6 +45,7 @@
     (verbose Bool)
     (fast Bool)
     (complete Bool)
+    (enrich Bool)
     (validate Bool)
     (validate-ns String)))
 

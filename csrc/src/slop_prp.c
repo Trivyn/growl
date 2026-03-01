@@ -43,7 +43,7 @@ types_Delta prp_fixture_delta_subprop(slop_arena* arena);
 types_Delta prp_fixture_delta_inverse1(slop_arena* arena);
 types_Delta prp_fixture_delta_inverse2(slop_arena* arena);
 types_Delta prp_fixture_delta_pdw(slop_arena* arena);
-slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate);
+slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate, uint8_t enrich);
 slop_list_rdf_Triple prp_prp_dom(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_rng(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
 slop_list_rdf_Triple prp_prp_fp(slop_arena* arena, index_IndexedGraph g, types_Delta delta);
@@ -407,7 +407,7 @@ types_Delta prp_fixture_delta_pdw(slop_arena* arena) {
     }
 }
 
-slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate) {
+slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, uint8_t fast, uint8_t validate, uint8_t enrich) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
     slop_result_types_Delta_types_InconsistencyReport _retval = {0};
     {
@@ -427,18 +427,20 @@ slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena
                 result = types_delta_add(arena, result, t);
             }
         }
-        {
-            __auto_type _coll = prp_prp_fp(arena, g, delta);
-            for (size_t _i = 0; _i < _coll.len; _i++) {
-                __auto_type t = _coll.data[_i];
-                result = types_delta_add(arena, result, t);
+        if (!(enrich)) {
+            {
+                __auto_type _coll = prp_prp_fp(arena, g, delta);
+                for (size_t _i = 0; _i < _coll.len; _i++) {
+                    __auto_type t = _coll.data[_i];
+                    result = types_delta_add(arena, result, t);
+                }
             }
-        }
-        {
-            __auto_type _coll = prp_prp_ifp(arena, g, delta);
-            for (size_t _i = 0; _i < _coll.len; _i++) {
-                __auto_type t = _coll.data[_i];
-                result = types_delta_add(arena, result, t);
+            {
+                __auto_type _coll = prp_prp_ifp(arena, g, delta);
+                for (size_t _i = 0; _i < _coll.len; _i++) {
+                    __auto_type t = _coll.data[_i];
+                    result = types_delta_add(arena, result, t);
+                }
             }
         }
         {
@@ -535,11 +537,13 @@ slop_result_types_Delta_types_InconsistencyReport prp_apply_prp_rules(slop_arena
                 result = types_delta_add(arena, result, t);
             }
         }
-        {
-            __auto_type _coll = prp_prp_key(arena, g, delta);
-            for (size_t _i = 0; _i < _coll.len; _i++) {
-                __auto_type t = _coll.data[_i];
-                result = types_delta_add(arena, result, t);
+        if (!(enrich)) {
+            {
+                __auto_type _coll = prp_prp_key(arena, g, delta);
+                for (size_t _i = 0; _i < _coll.len; _i++) {
+                    __auto_type t = _coll.data[_i];
+                    result = types_delta_add(arena, result, t);
+                }
             }
         }
         _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = true, .data.ok = result });
