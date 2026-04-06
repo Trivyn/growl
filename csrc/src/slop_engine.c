@@ -779,16 +779,17 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
     SLOP_PRE(((rdf_indexed_graph_size(initial) >= 0)), "(>= (indexed-graph-size initial) 0)");
     types_ReasonerResult _retval = {0};
     {
+        __auto_type init_delta_arena = ({ slop_arena* _new_arena = malloc(sizeof(slop_arena)); if (!_new_arena) { fprintf(stderr, "SLOP: arena-new malloc failed\n"); abort(); } *_new_arena = slop_arena_new(4194304); _new_arena; });
         __auto_type initial_size = rdf_indexed_graph_size(initial);
-        __auto_type initial_delta = engine_make_initial_delta(arena, initial);
-        __auto_type materialized_graph = (((config.fast || config.enrich)) ? initial : engine_schema_materialize(arena, initial, engine_make_initial_delta(arena, initial), config));
+        __auto_type initial_delta = engine_make_initial_delta(init_delta_arena, initial);
+        __auto_type materialized_graph = (((config.fast || config.enrich)) ? initial : engine_schema_materialize(arena, initial, engine_make_initial_delta(init_delta_arena, initial), config));
         __auto_type dt_graph = (((config.fast || config.enrich)) ? materialized_graph : ({ __auto_type mg = materialized_graph; ({ __auto_type _coll = dt_dt_type1(arena, mg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ mg = rdf_indexed_graph_add(arena, mg, t); (void)0; }); } 0; }); mg; }));
         __auto_type complete_graph = (((!(config.fast) && config.complete)) ? ({ __auto_type cg = dt_graph; ({ __auto_type _coll = prp_prp_ap(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } 0; }); ({ __auto_type _coll = cls_cls_thing(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } 0; }); ({ __auto_type _coll = cls_cls_nothing1(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } 0; }); ({ __auto_type _coll = dt_dt_type2(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } 0; }); ({ __auto_type thing = rdf_make_iri(arena, vocab_OWL_THING); __auto_type nothing = rdf_make_iri(arena, vocab_OWL_NOTHING); __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF); __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_CLASS); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, thing, subclass_pred, thing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, thing, equiv_pred, thing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, subclass_pred, nothing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, equiv_pred, nothing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, subclass_pred, thing)); (void)0; }); }); ({ __auto_type same_as = rdf_make_iri(arena, vocab_OWL_SAME_AS); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, same_as, same_as, same_as)); (void)0; }); }); ({ __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, rdf_make_iri(arena, vocab_OWL_DIFFERENT_FROM), type_pred, rdf_make_iri(arena, vocab_OWL_SYMMETRIC_PROPERTY))); (void)0; }); }); cg; }) : dt_graph);
         __auto_type validate_injection = ((config.validate) ? engine_inject_validate_instances(arena, complete_graph, config.verbose, config.validate_ns) : ((engine_ValidateInjection){.graph = complete_graph, .class_map = ((slop_list_rdf_Term){ .data = (rdf_Term*)slop_arena_alloc(arena, 16 * sizeof(rdf_Term)), .len = 0, .cap = 16 }), .prop_map = ((slop_list_rdf_Term){ .data = (rdf_Term*)slop_arena_alloc(arena, 16 * sizeof(rdf_Term)), .len = 0, .cap = 16 })}));
         __auto_type validate_graph = validate_injection.graph;
         __auto_type validate_class_map = validate_injection.class_map;
         __auto_type validate_prop_map = validate_injection.prop_map;
-        __auto_type fixpoint_delta = ((config.validate) ? engine_make_initial_delta(arena, validate_graph) : initial_delta);
+        __auto_type fixpoint_delta = ((config.validate) ? engine_make_initial_delta(init_delta_arena, validate_graph) : initial_delta);
         __auto_type state = ((types_EngineState){.graph = validate_graph, .delta = fixpoint_delta, .iteration = 0, .config = config});
         uint8_t done = 0;
         slop_option_types_InconsistencyReport inconsistency = (slop_option_types_InconsistencyReport){.has_value = false};
@@ -800,6 +801,7 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                 if (config.validate) {
                     dt_report = (slop_option_types_InconsistencyReport){.has_value = 1, .value = report};
                 } else {
+                    ({ slop_arena_free(init_delta_arena); free(init_delta_arena); });
                     {
                         __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = (types_InconsistencyReport*)slop_arena_alloc(arena, 16 * sizeof(types_InconsistencyReport)), .len = 0, .cap = 16 });
                         ({ __auto_type _lst_p = &(reports); __auto_type _item = (report); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
@@ -815,6 +817,8 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                 printf("%.*s", (int)(int_to_string(arena, state.iteration)).len, (int_to_string(arena, state.iteration)).data);
                 printf("%s", "] graph=");
                 printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(state.graph))).len, (int_to_string(arena, rdf_indexed_graph_size(state.graph))).data);
+                printf("%s", " delta=");
+                printf("%.*s", (int)(int_to_string(arena, ((int64_t)((state.delta.triples).len)))).len, (int_to_string(arena, ((int64_t)((state.delta.triples).len)))).data);
                 printf("%s\n", "");
             }
             __auto_type _mv_270 = engine_engine_run_iteration(arena, state);
@@ -830,6 +834,7 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                 inconsistency = (slop_option_types_InconsistencyReport){.has_value = 1, .value = report};
             }
         }
+        ({ slop_arena_free(init_delta_arena); free(init_delta_arena); });
         if (config.validate) {
             __auto_type _mv_271 = inconsistency;
             if (_mv_271.has_value) {
@@ -1043,64 +1048,75 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
             }
         }
         {
-            __auto_type t0 = slop_now_ms();
-            __auto_type full_d = engine_make_initial_delta(arena, graph);
-            int64_t count = 0;
+            #ifdef SLOP_DEBUG
+            SLOP_PRE((4194304) > 0, "with-arena size must be positive");
+            #endif
+            slop_arena _arena_scratch = slop_arena_new(4194304);
+            #ifdef SLOP_DEBUG
+            SLOP_PRE(_arena_scratch.base != NULL, "arena allocation failed");
+            #endif
+            slop_arena* scratch = &_arena_scratch;
             {
-                __auto_type _coll = scm_scm_eqc1(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
+                __auto_type t0 = slop_now_ms();
+                __auto_type full_d = engine_make_initial_delta(scratch, graph);
+                int64_t count = 0;
+                {
+                    __auto_type _coll = scm_scm_eqc1(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                {
+                    __auto_type _coll = scm_scm_eqc1b(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                {
+                    __auto_type _coll = scm_scm_eqp1(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                {
+                    __auto_type _coll = scm_scm_eqp1b(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                {
+                    __auto_type _coll = scm_scm_int(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                {
+                    __auto_type _coll = scm_scm_uni(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                if (verbose) {
+                    printf("%s", "[schema] phase 2 (edges): +");
+                    printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
+                    printf("%s", " triples (");
+                    engine_print_ms(arena, (slop_now_ms() - t0));
+                    printf("%s\n", ")");
                 }
             }
-            {
-                __auto_type _coll = scm_scm_eqc1b(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            {
-                __auto_type _coll = scm_scm_eqp1(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            {
-                __auto_type _coll = scm_scm_eqp1b(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            {
-                __auto_type _coll = scm_scm_int(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            {
-                __auto_type _coll = scm_scm_uni(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            if (verbose) {
-                printf("%s", "[schema] phase 2 (edges): +");
-                printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
-                printf("%s", " triples (");
-                engine_print_ms(arena, (slop_now_ms() - t0));
-                printf("%s\n", ")");
-            }
+            slop_arena_free(scratch);
         }
         {
             __auto_type t0 = slop_now_ms();
@@ -1130,225 +1146,17 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
             }
         }
         {
-            __auto_type t0 = slop_now_ms();
-            __auto_type full_d = engine_make_initial_delta(arena, graph);
-            int64_t count = 0;
-            {
-                __auto_type _coll = scm_scm_eqc2(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            {
-                __auto_type _coll = scm_scm_eqp2(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            if (verbose) {
-                printf("%s", "[schema] phase 3b (mutual-eq): +");
-                printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
-                printf("%s", " triples (");
-                engine_print_ms(arena, (slop_now_ms() - t0));
-                printf("%s\n", ")");
-            }
-        }
-        {
-            __auto_type t0 = slop_now_ms();
-            __auto_type full_d = engine_make_initial_delta(arena, graph);
-            int64_t count = 0;
-            {
-                __auto_type _coll = scm_scm_dom1(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            {
-                __auto_type _coll = scm_scm_dom2(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            {
-                __auto_type _coll = scm_scm_rng1(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            {
-                __auto_type _coll = scm_scm_rng2(arena, graph, full_d);
-                for (size_t _i = 0; _i < _coll.len; _i++) {
-                    __auto_type t = _coll.data[_i];
-                    graph = rdf_indexed_graph_add(arena, graph, t);
-                    count = (count + 1);
-                }
-            }
-            if (verbose) {
-                printf("%s", "[schema] phase 4 (dom/rng): +");
-                printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
-                printf("%s", " triples (");
-                engine_print_ms(arena, (slop_now_ms() - t0));
-                printf("%s\n", ")");
-            }
-        }
-        {
-            uint8_t phase_done = 0;
-            int64_t phase_iter = 0;
-            __auto_type struct_delta = engine_make_initial_delta(arena, graph);
-            while ((!(phase_done) && (phase_iter < config.max_iterations))) {
-                {
-                    __auto_type t0 = slop_now_ms();
-                    int64_t count = 0;
-                    __auto_type new_delta = types_make_delta(arena, 0);
-                    {
-                        __auto_type _coll = scm_scm_svf1(arena, graph, struct_delta);
-                        for (size_t _i = 0; _i < _coll.len; _i++) {
-                            __auto_type t = _coll.data[_i];
-                            graph = rdf_indexed_graph_add(arena, graph, t);
-                            new_delta = types_delta_add(arena, new_delta, t);
-                            count = (count + 1);
-                        }
-                    }
-                    {
-                        __auto_type _coll = scm_scm_svf2(arena, graph, struct_delta);
-                        for (size_t _i = 0; _i < _coll.len; _i++) {
-                            __auto_type t = _coll.data[_i];
-                            graph = rdf_indexed_graph_add(arena, graph, t);
-                            new_delta = types_delta_add(arena, new_delta, t);
-                            count = (count + 1);
-                        }
-                    }
-                    {
-                        __auto_type _coll = scm_scm_avf1(arena, graph, struct_delta);
-                        for (size_t _i = 0; _i < _coll.len; _i++) {
-                            __auto_type t = _coll.data[_i];
-                            graph = rdf_indexed_graph_add(arena, graph, t);
-                            new_delta = types_delta_add(arena, new_delta, t);
-                            count = (count + 1);
-                        }
-                    }
-                    {
-                        __auto_type _coll = scm_scm_avf2(arena, graph, struct_delta);
-                        for (size_t _i = 0; _i < _coll.len; _i++) {
-                            __auto_type t = _coll.data[_i];
-                            graph = rdf_indexed_graph_add(arena, graph, t);
-                            new_delta = types_delta_add(arena, new_delta, t);
-                            count = (count + 1);
-                        }
-                    }
-                    {
-                        __auto_type _coll = scm_scm_hv(arena, graph, struct_delta);
-                        for (size_t _i = 0; _i < _coll.len; _i++) {
-                            __auto_type t = _coll.data[_i];
-                            graph = rdf_indexed_graph_add(arena, graph, t);
-                            new_delta = types_delta_add(arena, new_delta, t);
-                            count = (count + 1);
-                        }
-                    }
-                    if (verbose) {
-                        printf("%s", "[schema] phase 5 (structural iter ");
-                        printf("%.*s", (int)(int_to_string(arena, phase_iter)).len, (int_to_string(arena, phase_iter)).data);
-                        printf("%s", "): +");
-                        printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
-                        printf("%s", " triples (");
-                        engine_print_ms(arena, (slop_now_ms() - t0));
-                        printf("%s\n", ")");
-                    }
-                    if ((count == 0)) {
-                        phase_done = 1;
-                    } else {
-                        {
-                            __auto_type t1 = slop_now_ms();
-                            int64_t tc_count = 0;
-                            {
-                                __auto_type _coll = engine_compute_tc(arena, graph, subclass_pred);
-                                for (size_t _i = 0; _i < _coll.len; _i++) {
-                                    __auto_type t = _coll.data[_i];
-                                    graph = rdf_indexed_graph_add(arena, graph, t);
-                                    new_delta = types_delta_add(arena, new_delta, t);
-                                    tc_count = (tc_count + 1);
-                                }
-                            }
-                            {
-                                __auto_type _coll = engine_compute_tc(arena, graph, subprop_pred);
-                                for (size_t _i = 0; _i < _coll.len; _i++) {
-                                    __auto_type t = _coll.data[_i];
-                                    graph = rdf_indexed_graph_add(arena, graph, t);
-                                    new_delta = types_delta_add(arena, new_delta, t);
-                                    tc_count = (tc_count + 1);
-                                }
-                            }
-                            if (verbose) {
-                                printf("%s", "[schema] phase 6 (re-TC): +");
-                                printf("%.*s", (int)(int_to_string(arena, tc_count)).len, (int_to_string(arena, tc_count)).data);
-                                printf("%s", " triples (");
-                                engine_print_ms(arena, (slop_now_ms() - t1));
-                                printf("%s\n", ")");
-                            }
-                        }
-                        {
-                            __auto_type t2 = slop_now_ms();
-                            int64_t prop_count = 0;
-                            {
-                                __auto_type _coll = scm_scm_dom1(arena, graph, new_delta);
-                                for (size_t _i = 0; _i < _coll.len; _i++) {
-                                    __auto_type t = _coll.data[_i];
-                                    graph = rdf_indexed_graph_add(arena, graph, t);
-                                    prop_count = (prop_count + 1);
-                                }
-                            }
-                            {
-                                __auto_type _coll = scm_scm_dom2(arena, graph, new_delta);
-                                for (size_t _i = 0; _i < _coll.len; _i++) {
-                                    __auto_type t = _coll.data[_i];
-                                    graph = rdf_indexed_graph_add(arena, graph, t);
-                                    prop_count = (prop_count + 1);
-                                }
-                            }
-                            {
-                                __auto_type _coll = scm_scm_rng1(arena, graph, new_delta);
-                                for (size_t _i = 0; _i < _coll.len; _i++) {
-                                    __auto_type t = _coll.data[_i];
-                                    graph = rdf_indexed_graph_add(arena, graph, t);
-                                    prop_count = (prop_count + 1);
-                                }
-                            }
-                            {
-                                __auto_type _coll = scm_scm_rng2(arena, graph, new_delta);
-                                for (size_t _i = 0; _i < _coll.len; _i++) {
-                                    __auto_type t = _coll.data[_i];
-                                    graph = rdf_indexed_graph_add(arena, graph, t);
-                                    prop_count = (prop_count + 1);
-                                }
-                            }
-                            if (verbose) {
-                                printf("%s", "[schema] phase 6 (re-prop): +");
-                                printf("%.*s", (int)(int_to_string(arena, prop_count)).len, (int_to_string(arena, prop_count)).data);
-                                printf("%s", " triples (");
-                                engine_print_ms(arena, (slop_now_ms() - t2));
-                                printf("%s\n", ")");
-                            }
-                        }
-                        struct_delta = new_delta;
-                    }
-                }
-                phase_iter = (phase_iter + 1);
-            }
-        }
-        if (config.complete) {
+            #ifdef SLOP_DEBUG
+            SLOP_PRE((4194304) > 0, "with-arena size must be positive");
+            #endif
+            slop_arena _arena_scratch = slop_arena_new(4194304);
+            #ifdef SLOP_DEBUG
+            SLOP_PRE(_arena_scratch.base != NULL, "arena allocation failed");
+            #endif
+            slop_arena* scratch = &_arena_scratch;
             {
                 __auto_type t0 = slop_now_ms();
-                __auto_type full_d = engine_make_initial_delta(arena, graph);
+                __auto_type full_d = engine_make_initial_delta(scratch, graph);
                 int64_t count = 0;
                 {
                     __auto_type _coll = scm_scm_eqc2(arena, graph, full_d);
@@ -1367,12 +1175,264 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 if (verbose) {
-                    printf("%s", "[schema] phase 7 (mutual-eq complete): +");
+                    printf("%s", "[schema] phase 3b (mutual-eq): +");
                     printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
                     printf("%s", " triples (");
                     engine_print_ms(arena, (slop_now_ms() - t0));
                     printf("%s\n", ")");
                 }
+            }
+            slop_arena_free(scratch);
+        }
+        {
+            #ifdef SLOP_DEBUG
+            SLOP_PRE((4194304) > 0, "with-arena size must be positive");
+            #endif
+            slop_arena _arena_scratch = slop_arena_new(4194304);
+            #ifdef SLOP_DEBUG
+            SLOP_PRE(_arena_scratch.base != NULL, "arena allocation failed");
+            #endif
+            slop_arena* scratch = &_arena_scratch;
+            {
+                __auto_type t0 = slop_now_ms();
+                __auto_type full_d = engine_make_initial_delta(scratch, graph);
+                int64_t count = 0;
+                {
+                    __auto_type _coll = scm_scm_dom1(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                {
+                    __auto_type _coll = scm_scm_dom2(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                {
+                    __auto_type _coll = scm_scm_rng1(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                {
+                    __auto_type _coll = scm_scm_rng2(arena, graph, full_d);
+                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                        __auto_type t = _coll.data[_i];
+                        graph = rdf_indexed_graph_add(arena, graph, t);
+                        count = (count + 1);
+                    }
+                }
+                if (verbose) {
+                    printf("%s", "[schema] phase 4 (dom/rng): +");
+                    printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
+                    printf("%s", " triples (");
+                    engine_print_ms(arena, (slop_now_ms() - t0));
+                    printf("%s\n", ")");
+                }
+            }
+            slop_arena_free(scratch);
+        }
+        {
+            #ifdef SLOP_DEBUG
+            SLOP_PRE((4194304) > 0, "with-arena size must be positive");
+            #endif
+            slop_arena _arena_scratch = slop_arena_new(4194304);
+            #ifdef SLOP_DEBUG
+            SLOP_PRE(_arena_scratch.base != NULL, "arena allocation failed");
+            #endif
+            slop_arena* scratch = &_arena_scratch;
+            {
+                uint8_t phase_done = 0;
+                int64_t phase_iter = 0;
+                __auto_type struct_delta = engine_make_initial_delta(scratch, graph);
+                while ((!(phase_done) && (phase_iter < config.max_iterations))) {
+                    {
+                        __auto_type t0 = slop_now_ms();
+                        int64_t count = 0;
+                        __auto_type new_delta = types_make_delta(arena, 0);
+                        {
+                            __auto_type _coll = scm_scm_svf1(arena, graph, struct_delta);
+                            for (size_t _i = 0; _i < _coll.len; _i++) {
+                                __auto_type t = _coll.data[_i];
+                                graph = rdf_indexed_graph_add(arena, graph, t);
+                                new_delta = types_delta_add(arena, new_delta, t);
+                                count = (count + 1);
+                            }
+                        }
+                        {
+                            __auto_type _coll = scm_scm_svf2(arena, graph, struct_delta);
+                            for (size_t _i = 0; _i < _coll.len; _i++) {
+                                __auto_type t = _coll.data[_i];
+                                graph = rdf_indexed_graph_add(arena, graph, t);
+                                new_delta = types_delta_add(arena, new_delta, t);
+                                count = (count + 1);
+                            }
+                        }
+                        {
+                            __auto_type _coll = scm_scm_avf1(arena, graph, struct_delta);
+                            for (size_t _i = 0; _i < _coll.len; _i++) {
+                                __auto_type t = _coll.data[_i];
+                                graph = rdf_indexed_graph_add(arena, graph, t);
+                                new_delta = types_delta_add(arena, new_delta, t);
+                                count = (count + 1);
+                            }
+                        }
+                        {
+                            __auto_type _coll = scm_scm_avf2(arena, graph, struct_delta);
+                            for (size_t _i = 0; _i < _coll.len; _i++) {
+                                __auto_type t = _coll.data[_i];
+                                graph = rdf_indexed_graph_add(arena, graph, t);
+                                new_delta = types_delta_add(arena, new_delta, t);
+                                count = (count + 1);
+                            }
+                        }
+                        {
+                            __auto_type _coll = scm_scm_hv(arena, graph, struct_delta);
+                            for (size_t _i = 0; _i < _coll.len; _i++) {
+                                __auto_type t = _coll.data[_i];
+                                graph = rdf_indexed_graph_add(arena, graph, t);
+                                new_delta = types_delta_add(arena, new_delta, t);
+                                count = (count + 1);
+                            }
+                        }
+                        if (verbose) {
+                            printf("%s", "[schema] phase 5 (structural iter ");
+                            printf("%.*s", (int)(int_to_string(arena, phase_iter)).len, (int_to_string(arena, phase_iter)).data);
+                            printf("%s", "): +");
+                            printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
+                            printf("%s", " triples (");
+                            engine_print_ms(arena, (slop_now_ms() - t0));
+                            printf("%s\n", ")");
+                        }
+                        if ((count == 0)) {
+                            phase_done = 1;
+                        } else {
+                            {
+                                __auto_type t1 = slop_now_ms();
+                                int64_t tc_count = 0;
+                                {
+                                    __auto_type _coll = engine_compute_tc(arena, graph, subclass_pred);
+                                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                                        __auto_type t = _coll.data[_i];
+                                        graph = rdf_indexed_graph_add(arena, graph, t);
+                                        new_delta = types_delta_add(arena, new_delta, t);
+                                        tc_count = (tc_count + 1);
+                                    }
+                                }
+                                {
+                                    __auto_type _coll = engine_compute_tc(arena, graph, subprop_pred);
+                                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                                        __auto_type t = _coll.data[_i];
+                                        graph = rdf_indexed_graph_add(arena, graph, t);
+                                        new_delta = types_delta_add(arena, new_delta, t);
+                                        tc_count = (tc_count + 1);
+                                    }
+                                }
+                                if (verbose) {
+                                    printf("%s", "[schema] phase 6 (re-TC): +");
+                                    printf("%.*s", (int)(int_to_string(arena, tc_count)).len, (int_to_string(arena, tc_count)).data);
+                                    printf("%s", " triples (");
+                                    engine_print_ms(arena, (slop_now_ms() - t1));
+                                    printf("%s\n", ")");
+                                }
+                            }
+                            {
+                                __auto_type t2 = slop_now_ms();
+                                int64_t prop_count = 0;
+                                {
+                                    __auto_type _coll = scm_scm_dom1(arena, graph, new_delta);
+                                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                                        __auto_type t = _coll.data[_i];
+                                        graph = rdf_indexed_graph_add(arena, graph, t);
+                                        prop_count = (prop_count + 1);
+                                    }
+                                }
+                                {
+                                    __auto_type _coll = scm_scm_dom2(arena, graph, new_delta);
+                                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                                        __auto_type t = _coll.data[_i];
+                                        graph = rdf_indexed_graph_add(arena, graph, t);
+                                        prop_count = (prop_count + 1);
+                                    }
+                                }
+                                {
+                                    __auto_type _coll = scm_scm_rng1(arena, graph, new_delta);
+                                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                                        __auto_type t = _coll.data[_i];
+                                        graph = rdf_indexed_graph_add(arena, graph, t);
+                                        prop_count = (prop_count + 1);
+                                    }
+                                }
+                                {
+                                    __auto_type _coll = scm_scm_rng2(arena, graph, new_delta);
+                                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                                        __auto_type t = _coll.data[_i];
+                                        graph = rdf_indexed_graph_add(arena, graph, t);
+                                        prop_count = (prop_count + 1);
+                                    }
+                                }
+                                if (verbose) {
+                                    printf("%s", "[schema] phase 6 (re-prop): +");
+                                    printf("%.*s", (int)(int_to_string(arena, prop_count)).len, (int_to_string(arena, prop_count)).data);
+                                    printf("%s", " triples (");
+                                    engine_print_ms(arena, (slop_now_ms() - t2));
+                                    printf("%s\n", ")");
+                                }
+                            }
+                            struct_delta = new_delta;
+                        }
+                    }
+                    phase_iter = (phase_iter + 1);
+                }
+            }
+            slop_arena_free(scratch);
+        }
+        if (config.complete) {
+            {
+                #ifdef SLOP_DEBUG
+                SLOP_PRE((4194304) > 0, "with-arena size must be positive");
+                #endif
+                slop_arena _arena_scratch = slop_arena_new(4194304);
+                #ifdef SLOP_DEBUG
+                SLOP_PRE(_arena_scratch.base != NULL, "arena allocation failed");
+                #endif
+                slop_arena* scratch = &_arena_scratch;
+                {
+                    __auto_type t0 = slop_now_ms();
+                    __auto_type full_d = engine_make_initial_delta(scratch, graph);
+                    int64_t count = 0;
+                    {
+                        __auto_type _coll = scm_scm_eqc2(arena, graph, full_d);
+                        for (size_t _i = 0; _i < _coll.len; _i++) {
+                            __auto_type t = _coll.data[_i];
+                            graph = rdf_indexed_graph_add(arena, graph, t);
+                            count = (count + 1);
+                        }
+                    }
+                    {
+                        __auto_type _coll = scm_scm_eqp2(arena, graph, full_d);
+                        for (size_t _i = 0; _i < _coll.len; _i++) {
+                            __auto_type t = _coll.data[_i];
+                            graph = rdf_indexed_graph_add(arena, graph, t);
+                            count = (count + 1);
+                        }
+                    }
+                    if (verbose) {
+                        printf("%s", "[schema] phase 7 (mutual-eq complete): +");
+                        printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
+                        printf("%s", " triples (");
+                        engine_print_ms(arena, (slop_now_ms() - t0));
+                        printf("%s\n", ")");
+                    }
+                }
+                slop_arena_free(scratch);
             }
         }
         if (verbose) {
