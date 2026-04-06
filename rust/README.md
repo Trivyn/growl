@@ -106,6 +106,9 @@ match reasoner.reason() {
             }
         }
     }
+    OwnedReasonerResult::Cancelled { inferred_count, iterations, .. } => {
+        println!("Cancelled after {} iterations ({} inferred)", iterations, inferred_count);
+    }
 }
 
 // Enable complete mode (cls-thing, prp-ap, dt-type2)
@@ -147,6 +150,7 @@ struct OwnedInconsistencyReport {
 enum OwnedReasonerResult {
     Success { triples: Vec<OwnedTriple>, inferred_count: i64, iterations: i64 },
     Inconsistent { reports: Vec<OwnedInconsistencyReport> },
+    Cancelled { triples: Vec<OwnedTriple>, inferred_count: i64, iterations: i64 },
 }
 ```
 
@@ -240,7 +244,8 @@ let config = ReasonerConfig::new()
     .complete(false)      // enable cls-thing & prp-ap (default: false)
     .enrich(true)         // property/subclass enrichment only (default: false)
     .validate(true)       // enable validation mode (default: false)
-    .validate_ns("http://example.org/");  // validate only this namespace
+    .validate_ns("http://example.org/")  // validate only this namespace
+    .cancel_token(&token); // cooperative cancellation (see below)
 ```
 
 ### `ReasonerResult`
@@ -254,6 +259,7 @@ struct InconsistencyReport<'a> {
 enum ReasonerResult<'a> {
     Success { graph: IndexedGraph<'a>, inferred_count: i64, iterations: i64 },
     Inconsistent { reports: Vec<InconsistencyReport<'a>> },
+    Cancelled { graph: IndexedGraph<'a>, inferred_count: i64, iterations: i64 },
 }
 ```
 
@@ -344,6 +350,46 @@ enum OwnedValidateResult {
     Satisfiable,
     Unsatisfiable { reports: Vec<OwnedValidateReport> },
 }
+```
+
+### Cancellation
+
+Reasoning can be cancelled cooperatively using a `CancelToken`. The token is checked at the start of each fixpoint iteration; when cancelled, the reasoner returns `Cancelled` with the partial graph computed so far. All triples in the partial graph are sound (correctly inferred), but the closure may be incomplete.
+
+```rust
+use growl::{Reasoner, ReasonerConfig, CancelToken, OwnedReasonerResult};
+use std::thread;
+use std::time::Duration;
+
+let token = CancelToken::new();
+let token2 = token.clone();  // CancelToken is Clone + Send + Sync
+
+// Cancel from another thread after a timeout
+thread::spawn(move || {
+    thread::sleep(Duration::from_secs(5));
+    token2.cancel();
+});
+
+let mut reasoner = Reasoner::new();
+// ... add triples ...
+
+let config = ReasonerConfig::new()
+    .verbose(false)
+    .cancel_token(&token);
+let result = reasoner.reason_with_config(&config);
+
+match result {
+    OwnedReasonerResult::Cancelled { inferred_count, iterations, .. } => {
+        println!("Cancelled after {} iterations ({} inferred)", iterations, inferred_count);
+    }
+    OwnedReasonerResult::Success { .. } => {
+        println!("Completed before cancellation");
+    }
+    OwnedReasonerResult::Inconsistent { .. } => { /* ... */ }
+}
+
+// Tokens can be reset and reused
+token.reset();
 ```
 
 ### Free Functions
