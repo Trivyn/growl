@@ -582,14 +582,15 @@
     (@post (match $result
              ((reason-success s) {(. s iterations) <= (. config max-iterations)})
              ((reason-inconsistent _) true)))
-    (let ((initial-size (indexed-graph-size initial))
-          (initial-delta (make-initial-delta arena initial))
+    (let ((init-delta-arena (arena-new 4194304))
+          (initial-size (indexed-graph-size initial))
+          (initial-delta (make-initial-delta init-delta-arena initial))
           ;; Phase 1: Schema materialization (skip in fast/enrich mode)
           (materialized-graph
             (if (or (. config fast) (. config enrich))
               initial
               (schema-materialize arena initial
-                (make-initial-delta arena initial) config)))
+                (make-initial-delta init-delta-arena initial) config)))
           ;; dt-type1: assert supported datatypes as rdfs:Datatype (skip in fast/enrich mode)
           (dt-graph
             (if (or (. config fast) (. config enrich))
@@ -657,7 +658,7 @@
           ;; so synthetic type triples are seen as "new" by the rules
           (fixpoint-delta
             (if (. config validate)
-              (make-initial-delta arena validate-graph)
+              (make-initial-delta init-delta-arena validate-graph)
               initial-delta))
           (mut state (record-new EngineState
                        (graph validate-graph)
@@ -677,6 +678,7 @@
               ;; In validate mode, collect instead of returning
               (set! dt-report (some report))
               (do
+                (arena-free init-delta-arena)
                 (let ((mut reports (list-new arena InconsistencyReport)))
                   (list-push reports report)
                   (return (union-new ReasonerResult reason-inconsistent reports))))))
@@ -691,6 +693,8 @@
             (print (int-to-string arena (. state iteration)))
             (print "] graph=")
             (print (int-to-string arena (indexed-graph-size (. state graph))))
+            (print " delta=")
+            (print (int-to-string arena (list-len (. (. state delta) triples))))
             (println "")))
         (match (engine-run-iteration arena state)
           ((ok new-state)
@@ -701,6 +705,9 @@
             (do
               (set! done true)
               (set! inconsistency (some report))))))
+
+      ;; Free initial-delta arena (consumed by fixpoint loop)
+      (arena-free init-delta-arena)
 
       ;; Return result
       (if (. config validate)
@@ -865,34 +872,35 @@
 
       ;; Phase 2: Edge generation — scm-eqc1/1b, scm-eqp1/1b, scm-int, scm-uni
       ;; These read equivalentClass/Property, intersectionOf, unionOf (never produced by scm rules)
-      (let ((t0 (now-ms))
-            (full-d (make-initial-delta arena graph))
-            (mut count 0))
-        (for-each (t (scm-eqc1 arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-eqc1b arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-eqp1 arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-eqp1b arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-int arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-uni arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (when verbose
-          (do
-            (print "[schema] phase 2 (edges): +")
-            (print (int-to-string arena count))
-            (print " triples (")
-            (print-ms arena (- (now-ms) t0))
-            (println ")"))))
+      (with-arena :as scratch 4194304
+        (let ((t0 (now-ms))
+              (full-d (make-initial-delta scratch graph))
+              (mut count 0))
+          (for-each (t (scm-eqc1 arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-eqc1b arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-eqp1 arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-eqp1b arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-int arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-uni arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (when verbose
+            (do
+              (print "[schema] phase 2 (edges): +")
+              (print (int-to-string arena count))
+              (print " triples (")
+              (print-ms arena (- (now-ms) t0))
+              (println ")")))))
 
       ;; Phase 3: Direct transitive closure for subClassOf and subPropertyOf
       (let ((t0 (now-ms))
@@ -913,55 +921,58 @@
 
       ;; Phase 3b: Mutual equivalence — derive equivalentClass/Property from mutual sub
       ;; Must run after TC so we have the complete hierarchy
-      (let ((t0 (now-ms))
-            (full-d (make-initial-delta arena graph))
-            (mut count 0))
-        (for-each (t (scm-eqc2 arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-eqp2 arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (when verbose
-          (do
-            (print "[schema] phase 3b (mutual-eq): +")
-            (print (int-to-string arena count))
-            (print " triples (")
-            (print-ms arena (- (now-ms) t0))
-            (println ")"))))
+      (with-arena :as scratch 4194304
+        (let ((t0 (now-ms))
+              (full-d (make-initial-delta scratch graph))
+              (mut count 0))
+          (for-each (t (scm-eqc2 arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-eqp2 arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (when verbose
+            (do
+              (print "[schema] phase 3b (mutual-eq): +")
+              (print (int-to-string arena count))
+              (print " triples (")
+              (print-ms arena (- (now-ms) t0))
+              (println ")")))))
 
       ;; Phase 4: Propagation — scm-dom1/2, scm-rng1/2
       ;; These read complete hierarchies + domain/range declarations
-      (let ((t0 (now-ms))
-            (full-d (make-initial-delta arena graph))
-            (mut count 0))
-        (for-each (t (scm-dom1 arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-dom2 arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-rng1 arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (for-each (t (scm-rng2 arena graph full-d))
-          (do (set! graph (indexed-graph-add arena graph t))
-              (set! count (+ count 1))))
-        (when verbose
-          (do
-            (print "[schema] phase 4 (dom/rng): +")
-            (print (int-to-string arena count))
-            (print " triples (")
-            (print-ms arena (- (now-ms) t0))
-            (println ")"))))
+      (with-arena :as scratch 4194304
+        (let ((t0 (now-ms))
+              (full-d (make-initial-delta scratch graph))
+              (mut count 0))
+          (for-each (t (scm-dom1 arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-dom2 arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-rng1 arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (for-each (t (scm-rng2 arena graph full-d))
+            (do (set! graph (indexed-graph-add arena graph t))
+                (set! count (+ count 1))))
+          (when verbose
+            (do
+              (print "[schema] phase 4 (dom/rng): +")
+              (print (int-to-string arena count))
+              (print " triples (")
+              (print-ms arena (- (now-ms) t0))
+              (println ")")))))
 
       ;; Phase 5+6: Structural rules + fixpoint check
       ;; scm-svf1/2, scm-avf1/2, scm-hv may produce new subClassOf edges
       ;; If they do, re-run TC + propagation with incremental delta
-      (let ((mut phase-done false)
-            (mut phase-iter 0)
-            ;; First structural pass uses full-graph delta
-            (mut struct-delta (make-initial-delta arena graph)))
+      (with-arena :as scratch 4194304
+        (let ((mut phase-done false)
+              (mut phase-iter 0)
+              ;; First structural pass uses full-graph delta
+              (mut struct-delta (make-initial-delta scratch graph)))
         (while (and (not phase-done) (< phase-iter (. config max-iterations)))
           (let ((t0 (now-ms))
                 (mut count 0)
@@ -1041,28 +1052,29 @@
                       (println ")"))))
                 ;; Next structural iteration uses only new triples as delta
                 (set! struct-delta new-delta))))
-          (set! phase-iter (+ phase-iter 1))))
+          (set! phase-iter (+ phase-iter 1)))))
 
       ;; Phase 7: Re-run mutual equivalence after structural fixpoint (complete mode only)
       ;; Structural rules produce bnode subClassOf pairs that form mutual relationships;
       ;; scm-eqc2 in phase 3b ran before those existed.
       (when (. config complete)
-        (let ((t0 (now-ms))
-              (full-d (make-initial-delta arena graph))
-              (mut count 0))
-          (for-each (t (scm-eqc2 arena graph full-d))
-            (do (set! graph (indexed-graph-add arena graph t))
-                (set! count (+ count 1))))
-          (for-each (t (scm-eqp2 arena graph full-d))
-            (do (set! graph (indexed-graph-add arena graph t))
-                (set! count (+ count 1))))
-          (when verbose
-            (do
-              (print "[schema] phase 7 (mutual-eq complete): +")
-              (print (int-to-string arena count))
-              (print " triples (")
-              (print-ms arena (- (now-ms) t0))
-              (println ")")))))
+        (with-arena :as scratch 4194304
+          (let ((t0 (now-ms))
+                (full-d (make-initial-delta scratch graph))
+                (mut count 0))
+            (for-each (t (scm-eqc2 arena graph full-d))
+              (do (set! graph (indexed-graph-add arena graph t))
+                  (set! count (+ count 1))))
+            (for-each (t (scm-eqp2 arena graph full-d))
+              (do (set! graph (indexed-graph-add arena graph t))
+                  (set! count (+ count 1))))
+            (when verbose
+              (do
+                (print "[schema] phase 7 (mutual-eq complete): +")
+                (print (int-to-string arena count))
+                (print " triples (")
+                (print-ms arena (- (now-ms) t0))
+                (println ")"))))))
 
       (when verbose
         (do

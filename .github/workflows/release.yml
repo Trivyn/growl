@@ -42,7 +42,7 @@ jobs:
       - name: Build release library
         run: |
           make clean
-          make lib CC=${{ matrix.cc }} CFLAGS="-O3 -Wall -Wno-unused-function -Wno-unused-variable -Wno-return-type -Wno-pointer-sign -DNDEBUG -DSLOP_ARENA_NO_CAP"
+          make lib CC=${{ matrix.cc }} CFLAGS="-O3 -Wall -Wno-unused-function -Wno-unused-variable -Wno-return-type -Wno-pointer-sign -DNDEBUG -DSLOP_ARENA_NO_CAP -DSLOP_INTERN_THREADSAFE -DSLOP_INTERN_BUCKET_COUNT=65536"
 
       - name: Package library
         run: make dist PLATFORM=${{ matrix.platform }}
