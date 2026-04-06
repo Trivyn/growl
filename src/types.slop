@@ -47,7 +47,8 @@
     (complete Bool)
     (enrich Bool)
     (validate Bool)
-    (validate-ns String)))
+    (validate-ns String)
+    (cancel-ptr I64)))
 
   ;; Engine state during fixpoint computation
   (type EngineState (record
@@ -70,9 +71,11 @@
   ;; Final result of reasoning
   ;; In validate mode, reason-inconsistent holds multiple reports (one per unsatisfiable entity).
   ;; In non-validate mode, the list always has exactly 1 element.
+  ;; reason-cancelled is returned when a cancel token is triggered mid-reasoning.
   (type ReasonerResult (union
     (reason-success ReasonerSuccess)
-    (reason-inconsistent (List InconsistencyReport))))
+    (reason-inconsistent (List InconsistencyReport))
+    (reason-cancelled ReasonerSuccess)))
 
   ;; ============================================================
   ;; Delta Operations

@@ -150,6 +150,7 @@ pub struct ReasonerConfigFfi {
     pub enrich: u8,
     pub validate: u8,
     pub validate_ns: SlopString,
+    pub cancel_ptr: i64,
 }
 
 #[repr(C)]
@@ -157,6 +158,7 @@ pub struct ReasonerConfigFfi {
 pub enum ReasonerResultTag {
     Success = 0,
     Inconsistent = 1,
+    Cancelled = 2,
 }
 
 #[repr(C)]
@@ -188,6 +190,7 @@ pub struct SlopListInconsistencyReport {
 pub union ReasonerResultData {
     pub reason_success: ReasonerSuccessFfi,
     pub reason_inconsistent: SlopListInconsistencyReport,
+    pub reason_cancelled: ReasonerSuccessFfi,
 }
 
 #[repr(C)]

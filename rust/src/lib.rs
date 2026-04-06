@@ -25,6 +25,8 @@
 pub mod ffi;
 
 use std::os::raw::c_char;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -389,6 +391,59 @@ impl<'a> IndexedGraph<'a> {
 }
 
 // ---------------------------------------------------------------------------
+// CancelToken
+// ---------------------------------------------------------------------------
+
+/// A token for cooperative cancellation of in-progress reasoning.
+///
+/// Create a `CancelToken`, pass it to `ReasonerConfig::cancel_token()`,
+/// and call `cancel()` from another thread to stop reasoning at the next
+/// iteration boundary. The reasoner will return `ReasonerResult::Cancelled`
+/// with the partial (but sound) graph computed so far.
+///
+/// `CancelToken` is `Send + Sync` and cheap to clone.
+#[derive(Clone)]
+pub struct CancelToken {
+    flag: Arc<AtomicU32>,
+}
+
+impl CancelToken {
+    /// Create a new cancel token (not yet cancelled).
+    pub fn new() -> Self {
+        CancelToken {
+            flag: Arc::new(AtomicU32::new(0)),
+        }
+    }
+
+    /// Signal cancellation. The reasoner will stop at the next iteration boundary.
+    pub fn cancel(&self) {
+        self.flag.store(1, Ordering::Relaxed);
+    }
+
+    /// Check whether cancellation has been requested.
+    pub fn is_cancelled(&self) -> bool {
+        self.flag.load(Ordering::Relaxed) != 0
+    }
+
+    /// Reset the token so it can be reused for another reasoning call.
+    pub fn reset(&self) {
+        self.flag.store(0, Ordering::Relaxed);
+    }
+
+    /// Get the raw pointer as i64 for passing through FFI.
+    fn as_raw_ptr(&self) -> i64 {
+        let ptr: *const AtomicU32 = &*self.flag;
+        ptr as usize as i64
+    }
+}
+
+impl Default for CancelToken {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // ReasonerConfig
 // ---------------------------------------------------------------------------
 
@@ -397,13 +452,15 @@ pub struct ReasonerConfig {
     raw: ffi::ReasonerConfigFfi,
     /// Kept alive so the SlopString pointer in raw.validate_ns stays valid.
     _validate_ns: Option<ffi::SlopString>,
+    /// Kept alive so the AtomicU32 pointer in raw.cancel_ptr stays valid.
+    _cancel_token: Option<CancelToken>,
 }
 
 impl ReasonerConfig {
     /// Create a new config with default values.
     pub fn new() -> Self {
         let raw = unsafe { ffi::growl_default_config() };
-        ReasonerConfig { raw, _validate_ns: None }
+        ReasonerConfig { raw, _validate_ns: None, _cancel_token: None }
     }
 
     pub fn worker_count(mut self, n: u8) -> Self {
@@ -457,6 +514,17 @@ impl ReasonerConfig {
         self._validate_ns = Some(interned);
         self
     }
+
+    /// Set a cancel token for cooperative cancellation.
+    ///
+    /// When the token's `cancel()` method is called (typically from another
+    /// thread), the reasoner will stop at the next iteration boundary and
+    /// return `Cancelled` with partial results.
+    pub fn cancel_token(mut self, token: &CancelToken) -> Self {
+        self.raw.cancel_ptr = token.as_raw_ptr();
+        self._cancel_token = Some(token.clone());
+        self
+    }
 }
 
 impl Default for ReasonerConfig {
@@ -491,6 +559,13 @@ pub enum ReasonerResult<'a> {
     Inconsistent {
         reports: Vec<InconsistencyReport<'a>>,
     },
+    /// Reasoning was cancelled at an iteration boundary.
+    /// The graph contains all triples inferred through the last completed iteration.
+    Cancelled {
+        graph: IndexedGraph<'a>,
+        inferred_count: i64,
+        iterations: i64,
+    },
 }
 
 impl<'a> ReasonerResult<'a> {
@@ -519,6 +594,17 @@ impl<'a> ReasonerResult<'a> {
                     });
                 }
                 ReasonerResult::Inconsistent { reports }
+            }
+            ffi::ReasonerResultTag::Cancelled => {
+                let s = raw.data.reason_cancelled;
+                ReasonerResult::Cancelled {
+                    graph: IndexedGraph {
+                        raw: s.graph,
+                        arena,
+                    },
+                    inferred_count: s.inferred_count,
+                    iterations: s.iterations,
+                }
             }
         }
     }
@@ -666,7 +752,7 @@ pub fn validate<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>) -> ValidateResul
 pub fn validate_with_ns<'a>(arena: &'a Arena, graph: &IndexedGraph<'a>, ns: &str) -> ValidateResult<'a> {
     let config = ReasonerConfig::new().verbose(false).validate(true).validate_ns(ns);
     match reason_with_config(arena, graph, &config) {
-        ReasonerResult::Success { .. } => ValidateResult::Satisfiable,
+        ReasonerResult::Success { .. } | ReasonerResult::Cancelled { .. } => ValidateResult::Satisfiable,
         ReasonerResult::Inconsistent { reports } => {
             let validate_reports: Vec<ValidateReport<'a>> = reports
                 .into_iter()
@@ -1015,6 +1101,12 @@ pub enum OwnedReasonerResult {
     Inconsistent {
         reports: Vec<OwnedInconsistencyReport>,
     },
+    /// Reasoning was cancelled at an iteration boundary.
+    Cancelled {
+        triples: Vec<OwnedTriple>,
+        inferred_count: i64,
+        iterations: i64,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -1051,6 +1143,9 @@ pub enum OwnedReasonerResult {
 ///         for r in &reports {
 ///             println!("Inconsistent: {}", r.reason);
 ///         }
+///     }
+///     OwnedReasonerResult::Cancelled { .. } => {
+///         println!("Reasoning was cancelled");
 ///     }
 /// }
 /// ```
@@ -1212,6 +1307,7 @@ impl Reasoner {
                     self.convert_result(restored_result)
                 }
                 ffi::ReasonerResultTag::Inconsistent => self.convert_result(raw_result),
+                ffi::ReasonerResultTag::Cancelled => self.convert_result(raw_result),
             }
         }
     }
@@ -1235,7 +1331,7 @@ impl Reasoner {
     pub fn validate_ns(&self, ns: &str) -> OwnedValidateResult {
         let config = ReasonerConfig::new().verbose(false).validate(true).validate_ns(ns).complete(self.complete);
         match self.reason_with_config(&config) {
-            OwnedReasonerResult::Success { .. } => OwnedValidateResult::Satisfiable,
+            OwnedReasonerResult::Success { .. } | OwnedReasonerResult::Cancelled { .. } => OwnedValidateResult::Satisfiable,
             OwnedReasonerResult::Inconsistent { reports } => {
                 let ig = IndexedGraph {
                     raw: self.graph_raw,
@@ -1316,6 +1412,21 @@ impl Reasoner {
                     reports.push(OwnedInconsistencyReport { reason, witnesses });
                 }
                 OwnedReasonerResult::Inconsistent { reports }
+            }
+            ffi::ReasonerResultTag::Cancelled => {
+                let s = raw.data.reason_cancelled;
+                let triples_list = s.graph.triples;
+                let mut triples = Vec::with_capacity(triples_list.len);
+                for i in 0..triples_list.len {
+                    let raw_triple = *triples_list.data.add(i);
+                    let t = Triple::from_ffi(raw_triple);
+                    triples.push(OwnedTriple::from(t));
+                }
+                OwnedReasonerResult::Cancelled {
+                    triples,
+                    inferred_count: s.inferred_count,
+                    iterations: s.iterations,
+                }
             }
         }
     }

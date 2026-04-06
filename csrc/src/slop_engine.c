@@ -792,6 +792,7 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
         __auto_type fixpoint_delta = ((config.validate) ? engine_make_initial_delta(init_delta_arena, validate_graph) : initial_delta);
         __auto_type state = ((types_EngineState){.graph = validate_graph, .delta = fixpoint_delta, .iteration = 0, .config = config});
         uint8_t done = 0;
+        uint8_t cancelled = 0;
         slop_option_types_InconsistencyReport inconsistency = (slop_option_types_InconsistencyReport){.has_value = false};
         slop_option_types_InconsistencyReport dt_report = (slop_option_types_InconsistencyReport){.has_value = false};
         if ((!(config.fast) && !(config.enrich))) {
@@ -812,96 +813,103 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
             }
         }
         while ((!(done) && (state.iteration < config.max_iterations))) {
-            if (config.verbose) {
-                printf("%s", "[iter ");
-                printf("%.*s", (int)(int_to_string(arena, state.iteration)).len, (int_to_string(arena, state.iteration)).data);
-                printf("%s", "] graph=");
-                printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(state.graph))).len, (int_to_string(arena, rdf_indexed_graph_size(state.graph))).data);
-                printf("%s", " delta=");
-                printf("%.*s", (int)(int_to_string(arena, ((int64_t)((state.delta.triples).len)))).len, (int_to_string(arena, ((int64_t)((state.delta.triples).len)))).data);
-                printf("%s\n", "");
-            }
-            __auto_type _mv_270 = engine_engine_run_iteration(arena, state);
-            if (_mv_270.is_ok) {
-                __auto_type new_state = _mv_270.data.ok;
-                state = new_state;
-                if (types_delta_is_empty(new_state.delta)) {
-                    done = 1;
+            if (config.cancel_ptr && __atomic_load_n((uint32_t*)(uintptr_t)config.cancel_ptr, __ATOMIC_RELAXED)) { done = 1; cancelled = 1; };
+            if (!(done)) {
+                if (config.verbose) {
+                    printf("%s", "[iter ");
+                    printf("%.*s", (int)(int_to_string(arena, state.iteration)).len, (int_to_string(arena, state.iteration)).data);
+                    printf("%s", "] graph=");
+                    printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(state.graph))).len, (int_to_string(arena, rdf_indexed_graph_size(state.graph))).data);
+                    printf("%s", " delta=");
+                    printf("%.*s", (int)(int_to_string(arena, ((int64_t)((state.delta.triples).len)))).len, (int_to_string(arena, ((int64_t)((state.delta.triples).len)))).data);
+                    printf("%s\n", "");
                 }
-            } else if (!_mv_270.is_ok) {
-                __auto_type report = _mv_270.data.err;
-                done = 1;
-                inconsistency = (slop_option_types_InconsistencyReport){.has_value = 1, .value = report};
+                __auto_type _mv_270 = engine_engine_run_iteration(arena, state);
+                if (_mv_270.is_ok) {
+                    __auto_type new_state = _mv_270.data.ok;
+                    state = new_state;
+                    if (types_delta_is_empty(new_state.delta)) {
+                        done = 1;
+                    }
+                } else if (!_mv_270.is_ok) {
+                    __auto_type report = _mv_270.data.err;
+                    done = 1;
+                    inconsistency = (slop_option_types_InconsistencyReport){.has_value = 1, .value = report};
+                }
             }
         }
         ({ slop_arena_free(init_delta_arena); free(init_delta_arena); });
-        if (config.validate) {
-            __auto_type _mv_271 = inconsistency;
-            if (_mv_271.has_value) {
-                __auto_type report = _mv_271.value;
-                {
-                    __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = (types_InconsistencyReport*)slop_arena_alloc(arena, 16 * sizeof(types_InconsistencyReport)), .len = 0, .cap = 16 });
-                    __auto_type enriched = engine_enrich_validate_report(arena, report, complete_graph, config.validate_ns, validate_class_map, validate_prop_map);
-                    ({ __auto_type _lst_p = &(reports); __auto_type _item = (enriched); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                    return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
-                }
-            } else if (!_mv_271.has_value) {
-                {
-                    __auto_type all_reports = engine_validate_check_all(arena, state.graph, complete_graph, config.validate_ns, validate_class_map, validate_prop_map);
-                    __auto_type _mv_272 = dt_report;
-                    if (_mv_272.has_value) {
-                        __auto_type dt_r = _mv_272.value;
-                        {
-                            __auto_type combined = ((slop_list_types_InconsistencyReport){ .data = (types_InconsistencyReport*)slop_arena_alloc(arena, 16 * sizeof(types_InconsistencyReport)), .len = 0, .cap = 16 });
-                            ({ __auto_type _lst_p = &(combined); __auto_type _item = (dt_r); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                            {
-                                __auto_type _coll = all_reports;
-                                for (size_t _i = 0; _i < _coll.len; _i++) {
-                                    __auto_type r = _coll.data[_i];
-                                    ({ __auto_type _lst_p = &(combined); __auto_type _item = (r); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                                }
-                            }
-                            return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = combined });
-                        }
-                    } else if (!_mv_272.has_value) {
-                        if ((((int64_t)((all_reports).len)) > 0)) {
-                            return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = all_reports });
-                        } else {
-                            return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_success, .data.reason_success = ((types_ReasonerSuccess){.graph = state.graph, .inferred_count = (rdf_indexed_graph_size(state.graph) - initial_size), .iterations = state.iteration}) });
-                        }
-                    }
-                }
-            }
+        if (cancelled) {
+            _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_cancelled, .data.reason_cancelled = ((types_ReasonerSuccess){.graph = state.graph, .inferred_count = (rdf_indexed_graph_size(state.graph) - initial_size), .iterations = state.iteration}) });
         } else {
-            __auto_type _mv_273 = inconsistency;
-            if (_mv_273.has_value) {
-                __auto_type report = _mv_273.value;
-                {
-                    __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = (types_InconsistencyReport*)slop_arena_alloc(arena, 16 * sizeof(types_InconsistencyReport)), .len = 0, .cap = 16 });
-                    ({ __auto_type _lst_p = &(reports); __auto_type _item = (report); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                    return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
-                }
-            } else if (!_mv_273.has_value) {
-                {
-                    __auto_type final_graph = state.graph;
-                    if (config.complete) {
-                        {
-                            __auto_type full_delta = engine_make_initial_delta(arena, final_graph);
+            if (config.validate) {
+                __auto_type _mv_271 = inconsistency;
+                if (_mv_271.has_value) {
+                    __auto_type report = _mv_271.value;
+                    {
+                        __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = (types_InconsistencyReport*)slop_arena_alloc(arena, 16 * sizeof(types_InconsistencyReport)), .len = 0, .cap = 16 });
+                        __auto_type enriched = engine_enrich_validate_report(arena, report, complete_graph, config.validate_ns, validate_class_map, validate_prop_map);
+                        ({ __auto_type _lst_p = &(reports); __auto_type _item = (enriched); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                        return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
+                    }
+                } else if (!_mv_271.has_value) {
+                    {
+                        __auto_type all_reports = engine_validate_check_all(arena, state.graph, complete_graph, config.validate_ns, validate_class_map, validate_prop_map);
+                        __auto_type _mv_272 = dt_report;
+                        if (_mv_272.has_value) {
+                            __auto_type dt_r = _mv_272.value;
                             {
-                                __auto_type _coll = eq_eq_ref(arena, final_graph, full_delta);
-                                for (size_t _i = 0; _i < _coll.len; _i++) {
-                                    __auto_type t = _coll.data[_i];
-                                    final_graph = rdf_indexed_graph_add(arena, final_graph, t);
+                                __auto_type combined = ((slop_list_types_InconsistencyReport){ .data = (types_InconsistencyReport*)slop_arena_alloc(arena, 16 * sizeof(types_InconsistencyReport)), .len = 0, .cap = 16 });
+                                ({ __auto_type _lst_p = &(combined); __auto_type _item = (dt_r); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                {
+                                    __auto_type _coll = all_reports;
+                                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                                        __auto_type r = _coll.data[_i];
+                                        ({ __auto_type _lst_p = &(combined); __auto_type _item = (r); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                    }
                                 }
+                                return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = combined });
+                            }
+                        } else if (!_mv_272.has_value) {
+                            if ((((int64_t)((all_reports).len)) > 0)) {
+                                return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = all_reports });
+                            } else {
+                                return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_success, .data.reason_success = ((types_ReasonerSuccess){.graph = state.graph, .inferred_count = (rdf_indexed_graph_size(state.graph) - initial_size), .iterations = state.iteration}) });
                             }
                         }
                     }
-                    return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_success, .data.reason_success = ((types_ReasonerSuccess){.graph = final_graph, .inferred_count = (rdf_indexed_graph_size(final_graph) - initial_size), .iterations = state.iteration}) });
+                }
+            } else {
+                __auto_type _mv_273 = inconsistency;
+                if (_mv_273.has_value) {
+                    __auto_type report = _mv_273.value;
+                    {
+                        __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = (types_InconsistencyReport*)slop_arena_alloc(arena, 16 * sizeof(types_InconsistencyReport)), .len = 0, .cap = 16 });
+                        ({ __auto_type _lst_p = &(reports); __auto_type _item = (report); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                        return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
+                    }
+                } else if (!_mv_273.has_value) {
+                    {
+                        __auto_type final_graph = state.graph;
+                        if (config.complete) {
+                            {
+                                __auto_type full_delta = engine_make_initial_delta(arena, final_graph);
+                                {
+                                    __auto_type _coll = eq_eq_ref(arena, final_graph, full_delta);
+                                    for (size_t _i = 0; _i < _coll.len; _i++) {
+                                        __auto_type t = _coll.data[_i];
+                                        final_graph = rdf_indexed_graph_add(arena, final_graph, t);
+                                    }
+                                }
+                            }
+                        }
+                        return ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_success, .data.reason_success = ((types_ReasonerSuccess){.graph = final_graph, .inferred_count = (rdf_indexed_graph_size(final_graph) - initial_size), .iterations = state.iteration}) });
+                    }
                 }
             }
         }
     }
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; }  } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; } case types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.iterations <= config.max_iterations); break; }  } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true) ((reason-cancelled s) (<= (. s iterations) (. config max-iterations))))");
     return _retval;
 }
 

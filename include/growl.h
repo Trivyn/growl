@@ -111,14 +111,17 @@ struct types_ReasonerConfig {
     uint8_t verbose;
     uint8_t fast;
     uint8_t complete;
+    uint8_t enrich;
     uint8_t validate;
     slop_string validate_ns;
+    int64_t cancel_ptr;
 };
 typedef struct types_ReasonerConfig types_ReasonerConfig;
 
 typedef enum {
     types_ReasonerResult_reason_success,
-    types_ReasonerResult_reason_inconsistent
+    types_ReasonerResult_reason_inconsistent,
+    types_ReasonerResult_reason_cancelled
 } types_ReasonerResult_tag;
 
 struct types_ReasonerSuccess {
@@ -133,6 +136,7 @@ struct types_ReasonerResult {
     union {
         types_ReasonerSuccess reason_success;
         slop_list_types_InconsistencyReport reason_inconsistent;
+        types_ReasonerSuccess reason_cancelled;
     } data;
 };
 typedef struct types_ReasonerResult types_ReasonerResult;

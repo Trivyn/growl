@@ -2,6 +2,7 @@ use growl::{Arena, IndexedGraph, ReasonerConfig, ReasonerResult, Term, Triple};
 use growl::{get_types, is_consistent, reason, reason_with_config, validate, validate_with_ns, filter_annotations};
 use growl::{OwnedReasonerResult, OwnedTerm, Reasoner, STANDARD_ANNOTATION_PROPERTIES};
 use growl::{ValidateResult, OwnedValidateResult};
+use growl::CancelToken;
 
 const OWL: &str = "http://www.w3.org/2002/07/owl#";
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
@@ -85,6 +86,7 @@ fn subclass_inference() {
         ReasonerResult::Inconsistent { reports } => {
             panic!("expected consistent result, got inconsistency: {}", reports[0].reason);
         }
+        _ => panic!("unexpected cancellation"),
     }
 }
 
@@ -109,6 +111,7 @@ fn reason_with_custom_config() {
         ReasonerResult::Inconsistent { reports } => {
             panic!("expected consistent result: {}", reports[0].reason);
         }
+        _ => panic!("unexpected cancellation"),
     }
 }
 
@@ -138,6 +141,7 @@ fn inconsistency_detection() {
         ReasonerResult::Success { .. } => {
             panic!("expected inconsistency for disjoint class violation");
         }
+        _ => panic!("unexpected cancellation"),
     }
 }
 
@@ -275,6 +279,7 @@ fn reasoner_subclass_inference() {
         OwnedReasonerResult::Inconsistent { reports } => {
             panic!("expected consistent result, got inconsistency: {}", reports[0].reason);
         }
+        _ => panic!("unexpected cancellation"),
     }
 }
 
@@ -300,6 +305,7 @@ fn reasoner_inconsistency() {
         OwnedReasonerResult::Success { .. } => {
             panic!("expected inconsistency for disjoint class violation");
         }
+        _ => panic!("unexpected cancellation"),
     }
 }
 
@@ -458,6 +464,7 @@ fn reasoner_filter_annotations_produces_complete_results() {
         OwnedReasonerResult::Inconsistent { reports } => {
             panic!("expected consistent result, got: {}", reports[0].reason);
         }
+        _ => panic!("unexpected cancellation"),
     }
 }
 
@@ -565,6 +572,7 @@ fn unsat_tbox_passes_without_validate() {
                 reports[0].reason
             );
         }
+        _ => panic!("unexpected cancellation"),
     }
 }
 
@@ -585,6 +593,7 @@ fn validate_config_builder() {
         ReasonerResult::Success { .. } => {
             panic!("validate via config builder should detect unsatisfiable class");
         }
+        _ => panic!("unexpected cancellation"),
     }
 }
 
@@ -1001,6 +1010,192 @@ fn validate_ns_config_builder() {
         }
         ReasonerResult::Success { .. } => {
             panic!("validate_ns via config builder should detect unsatisfiable class");
+        }
+        _ => panic!("unexpected cancellation"),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CancelToken tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cancel_before_reasoning_returns_cancelled() {
+    let token = CancelToken::new();
+    token.cancel(); // cancel immediately
+
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let a = rdf_type(&arena);
+    let sub = rdfs_subclass(&arena);
+    let cls = owl_class(&arena);
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let animal = arena.make_iri(&format!("{}Animal", EX));
+    let fido = arena.make_iri(&format!("{}fido", EX));
+
+    graph.add_triple(arena.make_triple(dog, sub, animal));
+    graph.add_triple(arena.make_triple(fido, a, dog));
+    graph.add_triple(arena.make_triple(dog, a, cls));
+    graph.add_triple(arena.make_triple(animal, a, cls));
+
+    let config = ReasonerConfig::new()
+        .verbose(false)
+        .cancel_token(&token);
+    let result = reason_with_config(&arena, &graph, &config);
+    match result {
+        ReasonerResult::Cancelled { iterations, .. } => {
+            assert_eq!(iterations, 0, "should cancel before any iteration runs");
+        }
+        ReasonerResult::Success { .. } => {
+            panic!("expected Cancelled, got Success");
+        }
+        ReasonerResult::Inconsistent { .. } => {
+            panic!("expected Cancelled, got Inconsistent");
+        }
+    }
+}
+
+#[test]
+fn cancel_token_with_owned_reasoner() {
+    let token = CancelToken::new();
+    token.cancel();
+
+    let mut reasoner = Reasoner::new();
+    reasoner.add_iri_triple(
+        &format!("{}Dog", EX),
+        &format!("{}subClassOf", RDFS),
+        &format!("{}Animal", EX),
+    );
+    reasoner.add_iri_triple(
+        &format!("{}fido", EX),
+        &format!("{}type", RDF),
+        &format!("{}Dog", EX),
+    );
+
+    let config = ReasonerConfig::new()
+        .verbose(false)
+        .cancel_token(&token);
+    let result = reasoner.reason_with_config(&config);
+    assert!(
+        matches!(result, OwnedReasonerResult::Cancelled { .. }),
+        "expected Cancelled result"
+    );
+}
+
+#[test]
+fn cancel_token_reset_allows_normal_reasoning() {
+    let token = CancelToken::new();
+    token.cancel();
+    assert!(token.is_cancelled());
+
+    token.reset();
+    assert!(!token.is_cancelled());
+
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+    let a = rdf_type(&arena);
+    let sub = rdfs_subclass(&arena);
+    let cls = owl_class(&arena);
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let animal = arena.make_iri(&format!("{}Animal", EX));
+    graph.add_triple(arena.make_triple(dog, sub, animal));
+    graph.add_triple(arena.make_triple(dog, a, cls));
+    graph.add_triple(arena.make_triple(animal, a, cls));
+
+    let config = ReasonerConfig::new()
+        .verbose(false)
+        .cancel_token(&token);
+    let result = reason_with_config(&arena, &graph, &config);
+    match result {
+        ReasonerResult::Success { .. } => {}
+        _ => panic!("expected Success after token reset"),
+    }
+}
+
+#[test]
+fn no_cancel_token_is_transparent() {
+    // Default config (cancel_ptr=0) should not interfere with reasoning
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+    let a = rdf_type(&arena);
+    let sub = rdfs_subclass(&arena);
+    let cls = owl_class(&arena);
+    let dog = arena.make_iri(&format!("{}Dog", EX));
+    let animal = arena.make_iri(&format!("{}Animal", EX));
+    let fido = arena.make_iri(&format!("{}fido", EX));
+    graph.add_triple(arena.make_triple(dog, sub, animal));
+    graph.add_triple(arena.make_triple(fido, a, dog));
+    graph.add_triple(arena.make_triple(dog, a, cls));
+    graph.add_triple(arena.make_triple(animal, a, cls));
+
+    let config = ReasonerConfig::new().verbose(false);
+    let result = reason_with_config(&arena, &graph, &config);
+    match result {
+        ReasonerResult::Success { inferred_count, .. } => {
+            assert!(inferred_count > 0);
+        }
+        _ => panic!("expected Success"),
+    }
+}
+
+#[test]
+fn cancel_from_another_thread() {
+    use std::thread;
+    use std::time::Duration;
+
+    let token = CancelToken::new();
+    let token2 = token.clone();
+
+    // Build a graph with a long transitive chain to force multiple iterations
+    let mut reasoner = Reasoner::new();
+    for i in 0..200 {
+        reasoner.add_iri_triple(
+            &format!("{}C{}", EX, i),
+            &format!("{}subClassOf", RDFS),
+            &format!("{}C{}", EX, i + 1),
+        );
+        reasoner.add_iri_triple(
+            &format!("{}C{}", EX, i),
+            &format!("{}type", RDF),
+            &format!("{}Class", OWL),
+        );
+    }
+    reasoner.add_iri_triple(
+        &format!("{}C200", EX),
+        &format!("{}type", RDF),
+        &format!("{}Class", OWL),
+    );
+    // Add an instance at the bottom of the chain
+    reasoner.add_iri_triple(
+        &format!("{}x", EX),
+        &format!("{}type", RDF),
+        &format!("{}C0", EX),
+    );
+
+    // Cancel after a brief delay
+    thread::spawn(move || {
+        thread::sleep(Duration::from_millis(1));
+        token2.cancel();
+    });
+
+    let config = ReasonerConfig::new()
+        .verbose(false)
+        .cancel_token(&token);
+    let result = reasoner.reason_with_config(&config);
+
+    // We should get either Cancelled (if the token fired in time)
+    // or Success (if reasoning finished before cancellation).
+    // Both are valid — the key is no crash or hang.
+    match &result {
+        OwnedReasonerResult::Cancelled { iterations, .. } => {
+            assert!(*iterations >= 0, "iterations should be non-negative");
+        }
+        OwnedReasonerResult::Success { .. } => {
+            // Reasoning finished before cancellation — also fine
+        }
+        OwnedReasonerResult::Inconsistent { .. } => {
+            panic!("subclass chain should not be inconsistent");
         }
     }
 }

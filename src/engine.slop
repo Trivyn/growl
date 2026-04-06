@@ -581,7 +581,8 @@
     (@pre {(indexed-graph-size initial) >= 0})
     (@post (match $result
              ((reason-success s) {(. s iterations) <= (. config max-iterations)})
-             ((reason-inconsistent _) true)))
+             ((reason-inconsistent _) true)
+             ((reason-cancelled s) {(. s iterations) <= (. config max-iterations)})))
     (let ((init-delta-arena (arena-new 4194304))
           (initial-size (indexed-graph-size initial))
           (initial-delta (make-initial-delta init-delta-arena initial))
@@ -666,6 +667,7 @@
                        (iteration 0)
                        (config config)))
           (mut done false)
+          (mut cancelled false)
           (mut inconsistency (Option InconsistencyReport) (none))
           ;; Collect dt-not-type issue for validate mode (instead of early return)
           (mut dt-report (Option InconsistencyReport) (none)))
@@ -687,29 +689,40 @@
       ;; Main fixpoint loop
       (while (and (not done) (< (. state iteration) (. config max-iterations)))
         (@loop-invariant {(. state iteration) <= (. config max-iterations)})
-        (when (. config verbose)
+        ;; Check cancel token at iteration boundary
+        (c-inline "if (config.cancel_ptr && __atomic_load_n((uint32_t*)(uintptr_t)config.cancel_ptr, __ATOMIC_RELAXED)) { done = 1; cancelled = 1; }")
+        (when (not done)
           (do
-            (print "[iter ")
-            (print (int-to-string arena (. state iteration)))
-            (print "] graph=")
-            (print (int-to-string arena (indexed-graph-size (. state graph))))
-            (print " delta=")
-            (print (int-to-string arena (list-len (. (. state delta) triples))))
-            (println "")))
-        (match (engine-run-iteration arena state)
-          ((ok new-state)
-            (set! state new-state)
-            (when (delta-is-empty (. new-state delta))
-              (set! done true)))
-          ((error report)
-            (do
-              (set! done true)
-              (set! inconsistency (some report))))))
+            (when (. config verbose)
+              (do
+                (print "[iter ")
+                (print (int-to-string arena (. state iteration)))
+                (print "] graph=")
+                (print (int-to-string arena (indexed-graph-size (. state graph))))
+                (print " delta=")
+                (print (int-to-string arena (list-len (. (. state delta) triples))))
+                (println "")))
+            (match (engine-run-iteration arena state)
+              ((ok new-state)
+                (set! state new-state)
+                (when (delta-is-empty (. new-state delta))
+                  (set! done true)))
+              ((error report)
+                (do
+                  (set! done true)
+                  (set! inconsistency (some report))))))))
 
       ;; Free initial-delta arena (consumed by fixpoint loop)
       (arena-free init-delta-arena)
 
       ;; Return result
+      (if cancelled
+        ;; Cancelled: return partial results
+        (union-new ReasonerResult reason-cancelled (record-new ReasonerSuccess
+          (graph (. state graph))
+          (inferred-count (- (indexed-graph-size (. state graph)) initial-size))
+          (iterations (. state iteration))))
+
       (if (. config validate)
         ;; === Validate mode: post-fixpoint scan for all violations ===
         (match inconsistency
@@ -756,7 +769,7 @@
               (union-new ReasonerResult reason-success (record-new ReasonerSuccess
                 (graph final-graph)
                 (inferred-count (- (indexed-graph-size final-graph) initial-size))
-                (iterations (. state iteration))))))))))
+                (iterations (. state iteration)))))))))))
 
   (fn make-initial-delta ((arena Arena) (g IndexedGraph))
     (@intent "Create initial delta containing all triples in graph")
