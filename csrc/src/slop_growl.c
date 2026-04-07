@@ -76,7 +76,7 @@ int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig) {
 
 types_ReasonerConfig growl_default_config(void) {
     types_ReasonerConfig _retval = {0};
-    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0, .enrich = 0, .validate = 0, .validate_ns = SLOP_STR("")});
+    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0, .enrich = 0, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0});
     SLOP_POST(((_retval.worker_count == 4)), "(== (. $result worker-count) 4)");
     SLOP_POST(((_retval.channel_buffer == 256)), "(== (. $result channel-buffer) 256)");
     SLOP_POST(((_retval.max_iterations == 1000)), "(== (. $result max-iterations) 1000)");
@@ -92,7 +92,7 @@ types_ReasonerResult growl_reason(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
     types_ReasonerResult _retval = {0};
     _retval = growl_reason_with_config(arena, input, growl_default_config());
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.inferred_count >= 0); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; }  } _mr; })), "(match $result ((reason-success s) (>= (. s inferred-count) 0)) ((reason-inconsistent _) true))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.inferred_count >= 0); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; } case types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.inferred_count >= 0); break; }  } _mr; })), "(match $result ((reason-success s) (>= (. s inferred-count) 0)) ((reason-inconsistent _) true) ((reason-cancelled s) (>= (. s inferred-count) 0)))");
     return _retval;
 }
 
@@ -102,7 +102,7 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
     SLOP_PRE(((config.max_iterations >= 1)), "(>= (. config max-iterations) 1)");
     types_ReasonerResult _retval = {0};
     _retval = engine_engine_run(arena, config, input);
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; }  } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; } case types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.iterations <= config.max_iterations); break; }  } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true) ((reason-cancelled s) (<= (. s iterations) (. config max-iterations))))");
     return _retval;
 }
 
@@ -119,6 +119,11 @@ uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
         {
             __auto_type _ = _mv_340.data.reason_inconsistent;
             return 0;
+        }
+        case types_ReasonerResult_reason_cancelled:
+        {
+            __auto_type _ = _mv_340.data.reason_cancelled;
+            return 1;
         }
     }
 }
@@ -187,6 +192,11 @@ int64_t growl_get_inferred_count(types_ReasonerResult result) {
         {
             __auto_type _ = _mv_341.data.reason_inconsistent;
             return 0;
+        }
+        case types_ReasonerResult_reason_cancelled:
+        {
+            __auto_type s = _mv_341.data.reason_cancelled;
+            return s.inferred_count;
         }
     }
     SLOP_POST(((_retval >= 0)), "(>= $result 0)");

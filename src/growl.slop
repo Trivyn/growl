@@ -92,7 +92,7 @@
     (@post {(. $result complete) == false})
     (@post {(. $result enrich) == false})
     (@post {(. $result validate) == false})
-    (@example () -> (ReasonerConfig 4 256 1000 true false false false false ""))
+    (@example () -> (ReasonerConfig 4 256 1000 true false false false false "" 0))
     :c-name "growl_default_config"
     (record-new ReasonerConfig
       (worker-count 4)
@@ -103,7 +103,8 @@
       (complete false)
       (enrich false)
       (validate false)
-      (validate-ns "")))
+      (validate-ns "")
+      (cancel-ptr 0)))
 
   ;; ============================================================
   ;; Public API
@@ -116,7 +117,8 @@
     (@pre {(indexed-graph-size input) >= 0})
     (@post (match $result
              ((reason-success s) {(. s inferred-count) >= 0})
-             ((reason-inconsistent _) true)))
+             ((reason-inconsistent _) true)
+             ((reason-cancelled s) {(. s inferred-count) >= 0})))
     :c-name "growl_reason"
     (reason-with-config arena input (default-config)))
 
@@ -129,7 +131,8 @@
     (@pre {(. config max-iterations) >= 1})
     (@post (match $result
              ((reason-success s) {(. s iterations) <= (. config max-iterations)})
-             ((reason-inconsistent _) true)))
+             ((reason-inconsistent _) true)
+             ((reason-cancelled s) {(. s iterations) <= (. config max-iterations)})))
     :c-name "growl_reason_with_config"
     (engine-run arena config input))
 
@@ -142,7 +145,8 @@
     :c-name "growl_is_consistent"
     (match (reason arena input)
       ((reason-success _) true)
-      ((reason-inconsistent _) false)))
+      ((reason-inconsistent _) false)
+      ((reason-cancelled _) true)))
 
   (fn get-types ((arena Arena) (g IndexedGraph) (individual Term))
     (@intent "Get all rdf:type values for an individual after reasoning")
@@ -194,4 +198,5 @@
     :c-name "growl_get_inferred_count"
     (match result
       ((reason-success s) (. s inferred-count))
-      ((reason-inconsistent _) 0))))
+      ((reason-inconsistent _) 0)
+      ((reason-cancelled s) (. s inferred-count)))))

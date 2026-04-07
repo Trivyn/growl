@@ -402,4 +402,15 @@
                                 1))
                             ((none)
                               (println "[FAIL] Ontology is inconsistent (no details)")
-                              1)))))))))))))))))))))
+                              1)))))
+
+                    ((reason-cancelled s)
+                      (do
+                        (println "[CANCELLED] Reasoning was cancelled")
+                        (when (not quiet)
+                          (print "Partial result: ")
+                          (print (int-to-string arena (. s inferred-count)))
+                          (print " inferred in ")
+                          (print (int-to-string arena (. s iterations)))
+                          (println " iterations"))
+                        1))))))))))))))))))

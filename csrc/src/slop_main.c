@@ -404,6 +404,19 @@ int main(int argc, char** _c_argv) {
                                                             }
                                                         }
                                                     }
+                                                    case types_ReasonerResult_reason_cancelled:
+                                                    {
+                                                        __auto_type s = _mv_361.data.reason_cancelled;
+                                                        printf("%s\n", "[CANCELLED] Reasoning was cancelled");
+                                                        if (!(quiet)) {
+                                                            printf("%s", "Partial result: ");
+                                                            printf("%.*s", (int)(int_to_string(arena, s.inferred_count)).len, (int_to_string(arena, s.inferred_count)).data);
+                                                            printf("%s", " inferred in ");
+                                                            printf("%.*s", (int)(int_to_string(arena, s.iterations)).len, (int_to_string(arena, s.iterations)).data);
+                                                            printf("%s\n", " iterations");
+                                                        }
+                                                        return 1;
+                                                    }
                                                 }
                                             }
                                         }

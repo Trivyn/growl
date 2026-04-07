@@ -14,6 +14,7 @@ Growl is being developed as the reasoning engine for [Trivyn](https://trivyn.io)
 - **OWL 2 RL Compliant**: Implements W3C specification tables 4-9
 - **Parallel Execution**: Fork-join parallel semi-naive evaluation
 - **Inconsistency Detection**: Reports violations with witness triples
+- **Cooperative Cancellation**: Cancel in-progress reasoning via atomic flag; returns sound partial results
 
 ## Rule Coverage
 
@@ -62,7 +63,8 @@ Growl is being developed as the reasoning engine for [Trivyn](https://trivyn.io)
   (complete Bool)         ;; Enable cls-thing & prp-ap (default: false)
   (enrich Bool)           ;; Property/subclass enrichment only (default: false)
   (validate Bool)         ;; Enable TBox validation mode (default: false)
-  (validate-ns String))   ;; Only validate entities with this IRI prefix (default: "")
+  (validate-ns String)    ;; Only validate entities with this IRI prefix (default: "")
+  (cancel-ptr I64))       ;; Pointer to atomic cancel flag for cooperative cancellation (default: 0 = disabled)
 ```
 
 ## CLI Usage
@@ -178,7 +180,8 @@ Additionally, any property declared as `owl:AnnotationProperty` in the input gra
           (when (set-has annot-set (. t predicate))
             (set! out-ig (indexed-graph-add arena out-ig t))))
         (indexed-to-graph arena out-ig)))
-    ((reason-inconsistent _) ...)))
+    ((reason-inconsistent _) ...)
+    ((reason-cancelled _) ...)))
 ```
 
 ### CLI
