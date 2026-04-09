@@ -48,7 +48,8 @@
     (enrich Bool)
     (validate Bool)
     (validate-ns String)
-    (cancel-ptr I64)))
+    (cancel-ptr I64)
+    (max-triples (Int 0 ..))))
 
   ;; Engine state during fixpoint computation
   (type EngineState (record

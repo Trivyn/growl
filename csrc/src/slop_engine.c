@@ -22,10 +22,6 @@ index_IndexedGraph engine_merge_into_graph(slop_arena* arena, index_IndexedGraph
 slop_list_thread_int_ptr engine_spawn_rule_workers(slop_arena* arena, index_IndexedGraph g, types_Delta delta, slop_chan_engine_WorkerMessage* result_chan, slop_arena* arena_cax_infer, slop_arena* arena_cax_check, slop_arena* arena_prp_char, slop_arena* arena_prp_chain, slop_arena* arena_prp_check, slop_arena* arena_eq_infer, slop_arena* arena_eq_check, slop_arena* arena_cls_set, slop_arena* arena_cls_ind, uint8_t verbose, uint8_t fast, uint8_t validate, uint8_t enrich);
 slop_result_types_Delta_types_InconsistencyReport engine_collect_worker_results(slop_arena* arena, slop_chan_engine_WorkerMessage* result_chan, slop_list_thread_int_ptr workers, int64_t next_iter);
 
-typedef struct { types_Delta* d; slop_arena* arena; } engine__lambda_274_env_t;
-
-static void engine__lambda_274(engine__lambda_274_env_t* _env, rdf_Triple t) { ({ (*_env->d) = types_delta_add(_env->arena, (*_env->d), t); (void)0; }); }
-
 typedef struct { slop_arena* arena_cax_infer; int64_t next_iter; index_IndexedGraph g; types_Delta delta; uint8_t verbose; slop_chan_engine_WorkerMessage* result_chan; } engine__lambda_282_env_t;
 
 static slop_result_void_thread_ChanError engine__lambda_282(engine__lambda_282_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = types_make_delta(_env->arena_cax_infer, _env->next_iter); ({ __auto_type _coll = cax_cax_sco(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } 0; }); ({ __auto_type _coll = cax_cax_eqc1(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } 0; }); ({ __auto_type _coll = cax_cax_eqc2(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } 0; }); ((_env->verbose) ? ({ ({ printf("%s", "  cax-infer: "); engine_print_ms(_env->arena_cax_infer, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; })); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
@@ -814,6 +810,16 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
         }
         while ((!(done) && (state.iteration < config.max_iterations))) {
             if (config.cancel_ptr && __atomic_load_n((uint32_t*)(uintptr_t)config.cancel_ptr, __ATOMIC_RELAXED)) { done = 1; cancelled = 1; };
+            if (((config.max_triples > 0) && (rdf_indexed_graph_size(state.graph) > config.max_triples))) {
+                if (config.verbose) {
+                    printf("%s", "[max-triples] graph size ");
+                    printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(state.graph))).len, (int_to_string(arena, rdf_indexed_graph_size(state.graph))).data);
+                    printf("%s", " exceeds limit ");
+                    printf("%.*s\n", (int)(int_to_string(arena, config.max_triples)).len, (int_to_string(arena, config.max_triples)).data);
+                }
+                done = 1;
+                cancelled = 1;
+            }
             if (!(done)) {
                 if (config.verbose) {
                     printf("%s", "[iter ");
@@ -916,9 +922,30 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
 types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g) {
     types_Delta _retval = {0};
     {
-        __auto_type d = types_make_delta(arena, 0);
-        rdf_indexed_graph_for_each(g, ((slop_option_rdf_Term){.has_value = false}), ((slop_option_rdf_Term){.has_value = false}), ((slop_option_rdf_Term){.has_value = false}), ({ engine__lambda_274_env_t* engine__lambda_274_env = (engine__lambda_274_env_t*)slop_arena_alloc(arena, sizeof(engine__lambda_274_env_t)); *engine__lambda_274_env = (engine__lambda_274_env_t){ .d = &(d), .arena = arena }; (slop_closure_t){ (void*)engine__lambda_274, (void*)engine__lambda_274_env }; }));
-        _retval = d;
+        __auto_type triples_list = ((slop_list_rdf_Triple){ .data = (rdf_Triple*)slop_arena_alloc(arena, 16 * sizeof(rdf_Triple)), .len = 0, .cap = 16 });
+        __auto_type by_pred = slop_map_new_ptr(arena, 16, sizeof(rdf_Term), slop_hash_rdf_Term, slop_eq_rdf_Term);
+        {
+            __auto_type _coll = g.triples;
+            for (size_t _i = 0; _i < _coll.len; _i++) {
+                __auto_type t = _coll.data[_i];
+                ({ __auto_type _lst_p = &(triples_list); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                {
+                    __auto_type pred = rdf_triple_predicate(t);
+                    __auto_type _mv_274 = ({ void* _ptr = slop_map_get(by_pred, &(pred)); _ptr ? (slop_option_ptr){ .has_value = true, .value = *(void**)_ptr } : (slop_option_ptr){ .has_value = false }; });
+                    if (_mv_274.has_value) {
+                        __auto_type pred_set = _mv_274.value;
+                        ({ uint8_t _dummy = 1; slop_map_put(arena, pred_set, &(t), &_dummy); });
+                    } else if (!_mv_274.has_value) {
+                        {
+                            __auto_type new_set = slop_map_new_ptr(arena, 16, sizeof(rdf_Triple), slop_hash_rdf_Triple, slop_eq_rdf_Triple);
+                            ({ uint8_t _dummy = 1; slop_map_put(arena, new_set, &(t), &_dummy); });
+                            ({ __auto_type _val = new_set; void* _vptr = slop_arena_alloc(arena, sizeof(_val)); memcpy(_vptr, &_val, sizeof(_val)); slop_map_put(arena, by_pred, &(pred), _vptr); });
+                        }
+                    }
+                }
+            }
+        }
+        _retval = ((types_Delta){.triples = triples_list, .seen = slop_map_new_ptr(arena, 16, sizeof(rdf_Triple), slop_hash_rdf_Triple, slop_eq_rdf_Triple), .by_predicate = by_pred, .iteration = 0});
     }
     SLOP_POST(((_retval.iteration == 0)), "(== (. $result iteration) 0)");
     return _retval;
@@ -1152,6 +1179,15 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                 engine_print_ms(arena, (slop_now_ms() - t0));
                 printf("%s\n", ")");
             }
+        }
+        if (((config.max_triples > 0) && (rdf_indexed_graph_size(graph) > config.max_triples))) {
+            if (verbose) {
+                printf("%s", "[max-triples] schema phase 3: graph size ");
+                printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(graph))).len, (int_to_string(arena, rdf_indexed_graph_size(graph))).data);
+                printf("%s", " exceeds limit ");
+                printf("%.*s\n", (int)(int_to_string(arena, config.max_triples)).len, (int_to_string(arena, config.max_triples)).data);
+            }
+            return graph;
         }
         {
             #ifdef SLOP_DEBUG

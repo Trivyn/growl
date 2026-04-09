@@ -76,7 +76,7 @@ int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig) {
 
 types_ReasonerConfig growl_default_config(void) {
     types_ReasonerConfig _retval = {0};
-    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0, .enrich = 0, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0});
+    _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0, .enrich = 0, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
     SLOP_POST(((_retval.worker_count == 4)), "(== (. $result worker-count) 4)");
     SLOP_POST(((_retval.channel_buffer == 256)), "(== (. $result channel-buffer) 256)");
     SLOP_POST(((_retval.max_iterations == 1000)), "(== (. $result max-iterations) 1000)");
@@ -85,6 +85,7 @@ types_ReasonerConfig growl_default_config(void) {
     SLOP_POST(((_retval.complete == 0)), "(== (. $result complete) false)");
     SLOP_POST(((_retval.enrich == 0)), "(== (. $result enrich) false)");
     SLOP_POST(((_retval.validate == 0)), "(== (. $result validate) false)");
+    SLOP_POST(((_retval.max_triples == 0)), "(== (. $result max-triples) 0)");
     return _retval;
 }
 

@@ -92,7 +92,8 @@
     (@post {(. $result complete) == false})
     (@post {(. $result enrich) == false})
     (@post {(. $result validate) == false})
-    (@example () -> (ReasonerConfig 4 256 1000 true false false false false "" 0))
+    (@post {(. $result max-triples) == 0})
+    (@example () -> (ReasonerConfig 4 256 1000 true false false false false "" 0 0))
     :c-name "growl_default_config"
     (record-new ReasonerConfig
       (worker-count 4)
@@ -104,7 +105,8 @@
       (enrich false)
       (validate false)
       (validate-ns "")
-      (cancel-ptr 0)))
+      (cancel-ptr 0)
+      (max-triples 0)))
 
   ;; ============================================================
   ;; Public API

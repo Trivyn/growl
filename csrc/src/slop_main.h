@@ -10,6 +10,7 @@
 #include "slop_common.h"
 #include "slop_serialize_ttl.h"
 #include "slop_growl.h"
+#include "slop_strlib.h"
 #include <string.h>
 #include <slop_runtime.h>
 
@@ -27,6 +28,7 @@ struct main_CliArgs {
     uint8_t validate;
     uint8_t show_help;
     uint8_t show_version;
+    int64_t max_triples;
 };
 typedef struct main_CliArgs main_CliArgs;
 

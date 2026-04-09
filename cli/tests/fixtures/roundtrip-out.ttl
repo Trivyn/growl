@@ -38,10 +38,10 @@
 <http://www.w3.org/1999/02/22-rdf-syntax-ns#langString> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Datatype> .
 <http://www.w3.org/1999/02/22-rdf-syntax-ns#PlainLiteral> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Datatype> .
 <http://www.w3.org/2000/01/rdf-schema#Literal> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Datatype> .
-<http://example.org/alice> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person>, <http://example.org/Agent> ;
+<http://example.org/alice> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Agent>, <http://example.org/Person> ;
   <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/alice> .
 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#sameAs> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> .
-<http://example.org/Person> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/Person> .
+<http://example.org/Agent> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/Agent> .
 <http://example.org/alice> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/alice> .
 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#sameAs> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> .
-<http://example.org/Agent> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/Agent> .
+<http://example.org/Person> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/Person> .
