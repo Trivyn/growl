@@ -245,6 +245,7 @@ let config = ReasonerConfig::new()
     .enrich(true)         // property/subclass enrichment only (default: false)
     .validate(true)       // enable validation mode (default: false)
     .validate_ns("http://example.org/")  // validate only this namespace
+    .max_triples(0)       // cancel if graph exceeds N triples (default: 0 = no limit)
     .cancel_token(&token); // cooperative cancellation (see below)
 ```
 

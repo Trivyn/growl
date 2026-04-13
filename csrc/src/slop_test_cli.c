@@ -449,7 +449,7 @@ uint8_t test_cli_test_validate_unsat(slop_arena* arena) {
         __auto_type g = _mv_382.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_383 = growl_reason_with_config(arena, ig, config);
             switch (_mv_383.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -478,7 +478,7 @@ uint8_t test_cli_test_validate_clean(slop_arena* arena) {
         __auto_type g = _mv_384.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_385 = growl_reason_with_config(arena, ig, config);
             switch (_mv_385.tag) {
                 case types_ReasonerResult_reason_success:
@@ -538,7 +538,7 @@ uint8_t test_cli_test_validate_unsat_prop(slop_arena* arena) {
         __auto_type g = _mv_389.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_390 = growl_reason_with_config(arena, ig, config);
             switch (_mv_390.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -567,7 +567,7 @@ uint8_t test_cli_test_validate_domain_reports_class(slop_arena* arena) {
         __auto_type g = _mv_391.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_392 = growl_reason_with_config(arena, ig, config);
             switch (_mv_392.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -602,7 +602,7 @@ uint8_t test_cli_test_validate_ns_scoping(slop_arena* arena) {
         __auto_type g = _mv_394.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/"), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_395 = growl_reason_with_config(arena, ig, config);
             switch (_mv_395.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -637,7 +637,7 @@ uint8_t test_cli_test_validate_ns_filters_tlo(slop_arena* arena) {
         __auto_type g = _mv_397.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/"), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_398 = growl_reason_with_config(arena, ig, config);
             switch (_mv_398.tag) {
                 case types_ReasonerResult_reason_success:
@@ -695,7 +695,7 @@ uint8_t test_cli_test_background_merge(slop_arena* arena) {
                     }
                 }
                 {
-                    __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/")});
+                    __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/"), .cancel_ptr = 0, .max_triples = 0});
                     __auto_type _mv_402 = growl_reason_with_config(arena, ig, config);
                     switch (_mv_402.tag) {
                         case types_ReasonerResult_reason_inconsistent:
@@ -732,7 +732,7 @@ uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena) {
         __auto_type g = _mv_404.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_405 = growl_reason_with_config(arena, ig, config);
             switch (_mv_405.tag) {
                 case types_ReasonerResult_reason_inconsistent:
@@ -792,7 +792,7 @@ uint8_t test_cli_test_enrich_basic(slop_arena* arena) {
         __auto_type g = _mv_406.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_407 = growl_reason_with_config(arena, ig, config);
             switch (_mv_407.tag) {
                 case types_ReasonerResult_reason_success:
@@ -827,7 +827,7 @@ uint8_t test_cli_test_enrich_skips_eq(slop_arena* arena) {
         __auto_type g = _mv_408.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_409 = growl_reason_with_config(arena, ig, config);
             switch (_mv_409.tag) {
                 case types_ReasonerResult_reason_success:
@@ -860,7 +860,7 @@ uint8_t test_cli_test_enrich_skips_cls(slop_arena* arena) {
         __auto_type g = _mv_410.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_411 = growl_reason_with_config(arena, ig, config);
             switch (_mv_411.tag) {
                 case types_ReasonerResult_reason_success:
@@ -895,7 +895,7 @@ uint8_t test_cli_test_enrich_checks_consistency(slop_arena* arena) {
         __auto_type g = _mv_412.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
-            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR("")});
+            __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
             __auto_type _mv_413 = growl_reason_with_config(arena, ig, config);
             switch (_mv_413.tag) {
                 case types_ReasonerResult_reason_inconsistent:

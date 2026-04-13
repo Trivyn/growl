@@ -515,6 +515,15 @@ impl ReasonerConfig {
         self
     }
 
+    /// Set maximum total graph size (triples). 0 = no limit (default).
+    ///
+    /// When the graph exceeds this limit during reasoning, the reasoner
+    /// stops and returns `Cancelled` with partial results.
+    pub fn max_triples(mut self, n: i64) -> Self {
+        self.raw.max_triples = n;
+        self
+    }
+
     /// Set a cancel token for cooperative cancellation.
     ///
     /// When the token's `cancel()` method is called (typically from another

@@ -691,6 +691,18 @@
         (@loop-invariant {(. state iteration) <= (. config max-iterations)})
         ;; Check cancel token at iteration boundary
         (c-inline "if (config.cancel_ptr && __atomic_load_n((uint32_t*)(uintptr_t)config.cancel_ptr, __ATOMIC_RELAXED)) { done = 1; cancelled = 1; }")
+        ;; Check max-triples limit (0 = no limit)
+        (when (and (> (. config max-triples) 0)
+                   (> (indexed-graph-size (. state graph)) (. config max-triples)))
+          (do
+            (when (. config verbose)
+              (do
+                (print "[max-triples] graph size ")
+                (print (int-to-string arena (indexed-graph-size (. state graph))))
+                (print " exceeds limit ")
+                (println (int-to-string arena (. config max-triples)))))
+            (set! done true)
+            (set! cancelled true)))
         (when (not done)
           (do
             (when (. config verbose)
@@ -776,12 +788,28 @@
     (@spec ((Arena IndexedGraph) -> Delta))
     (@alloc arena)
     (@post {(. $result iteration) == 0})
-    (let ((mut d (make-delta arena 0)))
-      ;; In first iteration, all triples are "new"
-      (indexed-graph-for-each g (none) (none) (none)
-        (fn ((t Triple))
-          (set! d (delta-add arena d t))))
-      d))
+    ;; Build triples list and by-predicate index directly, skipping the seen Set.
+    ;; The initial delta is read-only (rules read from it but produce into new deltas),
+    ;; and graph triples are already deduplicated, so dedup via seen is unnecessary.
+    ;; This saves ~1.85 GB for 7.7M triples (no hash set of all triples).
+    ;; Note: uses for-each over g.triples (not indexed-graph-for-each) because
+    ;; closures can't capture arena for set-put/map-put operations.
+    (let ((mut triples-list (list-new arena Triple))
+          (mut by-pred (map-new arena Term (Set Triple))))
+      (for-each (t (. g triples))
+        (list-push triples-list t)
+        (let ((pred (triple-predicate t)))
+          (match (map-get by-pred pred)
+            ((some pred-set) (set-put pred-set t))
+            ((none)
+              (let ((new-set (set-new arena Triple)))
+                (set-put new-set t)
+                (map-put by-pred pred new-set))))))
+      (record-new Delta
+        (triples triples-list)
+        (seen (set-new arena Triple))
+        (by-predicate by-pred)
+        (iteration 0))))
 
   ;; ============================================================
   ;; Direct Transitive Closure (BFS)
@@ -931,6 +959,18 @@
             (print " triples (")
             (print-ms arena (- (now-ms) t0))
             (println ")"))))
+
+      ;; Check max-triples limit after TC (most likely blowup point)
+      (when (and (> (. config max-triples) 0)
+                 (> (indexed-graph-size graph) (. config max-triples)))
+        (do
+          (when verbose
+            (do
+              (print "[max-triples] schema phase 3: graph size ")
+              (print (int-to-string arena (indexed-graph-size graph)))
+              (print " exceeds limit ")
+              (println (int-to-string arena (. config max-triples)))))
+          (return graph)))
 
       ;; Phase 3b: Mutual equivalence — derive equivalentClass/Property from mutual sub
       ;; Must run after TC so we have the complete hierarchy

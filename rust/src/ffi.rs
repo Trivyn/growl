@@ -151,6 +151,7 @@ pub struct ReasonerConfigFfi {
     pub validate: u8,
     pub validate_ns: SlopString,
     pub cancel_ptr: i64,
+    pub max_triples: i64,
 }
 
 #[repr(C)]
