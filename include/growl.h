@@ -115,6 +115,7 @@ struct types_ReasonerConfig {
     uint8_t validate;
     slop_string validate_ns;
     int64_t cancel_ptr;
+    int64_t max_triples;
 };
 typedef struct types_ReasonerConfig types_ReasonerConfig;
 
