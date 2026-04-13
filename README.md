@@ -64,7 +64,8 @@ Growl is being developed as the reasoning engine for [Trivyn](https://trivyn.io)
   (enrich Bool)           ;; Property/subclass enrichment only (default: false)
   (validate Bool)         ;; Enable TBox validation mode (default: false)
   (validate-ns String)    ;; Only validate entities with this IRI prefix (default: "")
-  (cancel-ptr I64))       ;; Pointer to atomic cancel flag for cooperative cancellation (default: 0 = disabled)
+  (cancel-ptr I64)        ;; Pointer to atomic cancel flag for cooperative cancellation (default: 0 = disabled)
+  (max-triples Int))      ;; Cancel reasoning if graph exceeds this many triples (default: 0 = no limit)
 ```
 
 ## CLI Usage
@@ -82,6 +83,7 @@ Options:
   --validate-ns NS Only validate entities with IRIs starting with NS
   -b, --background FILE  Load background ontology (e.g. TLO) for reasoning context
   -o, --emit FILE  Write materialized graph to TTL file
+  --max-triples N  Cancel reasoning if graph exceeds N triples (0=no limit)
   -V, --version    Show version information
 ```
 
