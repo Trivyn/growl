@@ -15,7 +15,8 @@ typedef struct rdf_Graph rdf_Graph;
 typedef enum {
     rdf_TermKind_iri,
     rdf_TermKind_blank,
-    rdf_TermKind_literal
+    rdf_TermKind_literal,
+    rdf_TermKind_triple
 } rdf_TermKind;
 
 typedef int64_t rdf_BlankNodeId;
@@ -67,7 +68,8 @@ SLOP_OPTION_DEFINE(rdf_Literal, slop_option_rdf_Literal)
 typedef enum {
     rdf_Term_term_iri,
     rdf_Term_term_blank,
-    rdf_Term_term_literal
+    rdf_Term_term_literal,
+    rdf_Term_term_triple
 } rdf_Term_tag;
 
 struct rdf_Term {
@@ -76,6 +78,7 @@ struct rdf_Term {
         rdf_IRI term_iri;
         rdf_BlankNode term_blank;
         rdf_Literal term_literal;
+        rdf_Triple* term_triple;
     } data;
 };
 typedef struct rdf_Term rdf_Term;
@@ -116,6 +119,7 @@ SLOP_OPTION_DEFINE(rdf_Graph, slop_option_rdf_Graph)
 rdf_Term rdf_make_iri(slop_arena* arena, slop_string value);
 rdf_Term rdf_make_blank(slop_arena* arena, rdf_BlankNodeId id);
 rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_string datatype, slop_option_string lang);
+rdf_Term rdf_make_triple_term(slop_arena* arena, rdf_Triple t);
 rdf_TermKind rdf_term_kind(rdf_Term t);
 uint8_t rdf_iri_eq(rdf_IRI a, rdf_IRI b);
 uint8_t rdf_blank_eq(rdf_BlankNode a, rdf_BlankNode b);

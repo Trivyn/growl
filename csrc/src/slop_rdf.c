@@ -4,6 +4,7 @@
 rdf_Term rdf_make_iri(slop_arena* arena, slop_string value);
 rdf_Term rdf_make_blank(slop_arena* arena, rdf_BlankNodeId id);
 rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_string datatype, slop_option_string lang);
+rdf_Term rdf_make_triple_term(slop_arena* arena, rdf_Triple t);
 rdf_TermKind rdf_term_kind(rdf_Term t);
 uint8_t rdf_iri_eq(rdf_IRI a, rdf_IRI b);
 uint8_t rdf_blank_eq(rdf_BlankNode a, rdf_BlankNode b);
@@ -50,6 +51,19 @@ rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_stri
     return _retval;
 }
 
+rdf_Term rdf_make_triple_term(slop_arena* arena, rdf_Triple t) {
+    rdf_Term _retval = {0};
+    {
+        __auto_type p = ((rdf_Triple*)(({ __auto_type _alloc = (rdf_Triple*)slop_arena_alloc(arena, sizeof(rdf_Triple)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; })));
+        p->subject = t.subject;
+        p->predicate = t.predicate;
+        p->object = t.object;
+        _retval = ((rdf_Term){ .tag = rdf_Term_term_triple, .data.term_triple = p });
+    }
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_triple: { __auto_type _ = _mv.data.term_triple; _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-triple _) true) (_ false))");
+    return _retval;
+}
+
 rdf_TermKind rdf_term_kind(rdf_Term t) {
     __auto_type _mv_0 = t;
     switch (_mv_0.tag) {
@@ -67,6 +81,11 @@ rdf_TermKind rdf_term_kind(rdf_Term t) {
         {
             __auto_type _ = _mv_0.data.term_literal;
             return rdf_TermKind_literal;
+        }
+        case rdf_Term_term_triple:
+        {
+            __auto_type _ = _mv_0.data.term_triple;
+            return rdf_TermKind_triple;
         }
     }
 }
@@ -157,6 +176,21 @@ uint8_t rdf_term_eq(rdf_Term a, rdf_Term b) {
                 {
                     __auto_type b_lit = _mv_7.data.term_literal;
                     return rdf_literal_eq(a_lit, b_lit);
+                }
+                default: {
+                    return 0;
+                }
+            }
+        }
+        case rdf_Term_term_triple:
+        {
+            __auto_type a_tt = _mv_4.data.term_triple;
+            __auto_type _mv_8 = b;
+            switch (_mv_8.tag) {
+                case rdf_Term_term_triple:
+                {
+                    __auto_type b_tt = _mv_8.data.term_triple;
+                    return rdf_triple_eq((*a_tt), (*b_tt));
                 }
                 default: {
                     return 0;
@@ -287,7 +321,7 @@ rdf_Graph rdf_graph_match(slop_arena* arena, rdf_Graph g, slop_option_rdf_Term s
                         __auto_type p_match = ({ __auto_type _mv = predicate; _mv.has_value ? ({ __auto_type p = _mv.value; rdf_term_eq(p, triple.predicate); }) : (1); });
                         {
                             __auto_type o_match = ({ __auto_type _mv = object; _mv.has_value ? ({ __auto_type o = _mv.value; rdf_term_eq(o, triple.object); }) : (1); });
-                            if ((s_match && (p_match && o_match))) {
+                            if (s_match && (p_match && o_match)) {
                                 result = rdf_graph_add(arena, result, triple);
                             }
                         }
@@ -303,21 +337,26 @@ rdf_Graph rdf_graph_match(slop_arena* arena, rdf_Graph g, slop_option_rdf_Term s
 
 void rdf_term_free(rdf_Term* t) {
     SLOP_PRE(((t != NULL)), "(!= t nil)");
-    __auto_type _mv_8 = (*t);
-    switch (_mv_8.tag) {
+    __auto_type _mv_9 = (*t);
+    switch (_mv_9.tag) {
         case rdf_Term_term_iri:
         {
-            __auto_type _ = _mv_8.data.term_iri;
+            __auto_type _ = _mv_9.data.term_iri;
             break;
         }
         case rdf_Term_term_blank:
         {
-            __auto_type _ = _mv_8.data.term_blank;
+            __auto_type _ = _mv_9.data.term_blank;
             break;
         }
         case rdf_Term_term_literal:
         {
-            __auto_type _ = _mv_8.data.term_literal;
+            __auto_type _ = _mv_9.data.term_literal;
+            break;
+        }
+        case rdf_Term_term_triple:
+        {
+            __auto_type _ = _mv_9.data.term_triple;
             break;
         }
     }

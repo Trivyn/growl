@@ -68,8 +68,8 @@ slop_result_void_thread_ChanError thread_send(slop_chan_int* ch, int64_t value) 
         pthread_mutex_unlock(((void*)((&ch->mutex))));
         return ((slop_result_void_thread_ChanError){ .is_ok = false, .data.err = thread_ChanError_send_on_closed });
     } else {
-        if ((ch->capacity == 0)) {
-            while (((ch->count > 0) && !(ch->closed))) {
+        if (ch->capacity == 0) {
+            while ((ch->count > 0) && !(ch->closed)) {
                 pthread_cond_wait(((void*)((&ch->not_full))), ((void*)((&ch->mutex))));
             }
             if (ch->closed) {
@@ -79,14 +79,14 @@ slop_result_void_thread_ChanError thread_send(slop_chan_int* ch, int64_t value) 
                 ch->buffer = ((int64_t*)(((uint64_t)(value))));
                 ch->count = 1;
                 pthread_cond_signal(((void*)((&ch->not_empty))));
-                while (((ch->count > 0) && !(ch->closed))) {
+                while ((ch->count > 0) && !(ch->closed)) {
                     pthread_cond_wait(((void*)((&ch->not_full))), ((void*)((&ch->mutex))));
                 }
                 pthread_mutex_unlock(((void*)((&ch->mutex))));
                 return ((slop_result_void_thread_ChanError){ .is_ok = true, .data.ok = 0 });
             }
         } else {
-            while (((ch->count >= ch->capacity) && !(ch->closed))) {
+            while ((ch->count >= ch->capacity) && !(ch->closed)) {
                 pthread_cond_wait(((void*)((&ch->not_full))), ((void*)((&ch->mutex))));
             }
             if (ch->closed) {
@@ -107,14 +107,14 @@ slop_result_void_thread_ChanError thread_send(slop_chan_int* ch, int64_t value) 
 slop_result_int_thread_ChanError thread_recv(slop_chan_int* ch) {
     SLOP_PRE(((ch != NULL)), "(!= ch nil)");
     pthread_mutex_lock(((void*)((&ch->mutex))));
-    while (((ch->count == 0) && !(ch->closed))) {
+    while ((ch->count == 0) && !(ch->closed)) {
         pthread_cond_wait(((void*)((&ch->not_empty))), ((void*)((&ch->mutex))));
     }
-    if (((ch->count == 0) && ch->closed)) {
+    if ((ch->count == 0) && ch->closed) {
         pthread_mutex_unlock(((void*)((&ch->mutex))));
         return ((slop_result_int_thread_ChanError){ .is_ok = false, .data.err = thread_ChanError_closed });
     } else {
-        if ((ch->capacity == 0)) {
+        if (ch->capacity == 0) {
             {
                 __auto_type value = ((int64_t)(((uint64_t)(ch->buffer))));
                 ch->count = 0;
@@ -138,7 +138,7 @@ slop_result_int_thread_ChanError thread_recv(slop_chan_int* ch) {
 slop_result_int_thread_ChanError thread_try_recv(slop_chan_int* ch) {
     SLOP_PRE(((ch != NULL)), "(!= ch nil)");
     pthread_mutex_lock(((void*)((&ch->mutex))));
-    if ((ch->count == 0)) {
+    if (ch->count == 0) {
         pthread_mutex_unlock(((void*)((&ch->mutex))));
         if (ch->closed) {
             return ((slop_result_int_thread_ChanError){ .is_ok = false, .data.err = thread_ChanError_closed });
@@ -146,7 +146,7 @@ slop_result_int_thread_ChanError thread_try_recv(slop_chan_int* ch) {
             return ((slop_result_int_thread_ChanError){ .is_ok = false, .data.err = thread_ChanError_would_block });
         }
     } else {
-        if ((ch->capacity == 0)) {
+        if (ch->capacity == 0) {
             {
                 __auto_type value = ((int64_t)(((uint64_t)(ch->buffer))));
                 ch->count = 0;

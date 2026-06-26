@@ -114,6 +114,7 @@ slop_string serialize_ttl_serialize_iri(slop_arena* arena, rdf_IRI iri, ttl_Pref
 slop_string serialize_ttl_serialize_literal(slop_arena* arena, rdf_Literal lit);
 slop_string serialize_ttl_serialize_blank(slop_arena* arena, rdf_BlankNode node);
 slop_string serialize_ttl_serialize_term(slop_arena* arena, rdf_Term t, ttl_PrefixMap prefixes);
+slop_string serialize_ttl_serialize_triple_term(slop_arena* arena, rdf_Triple* tt, ttl_PrefixMap prefixes);
 slop_string serialize_ttl_serialize_prefixes(slop_arena* arena, ttl_PrefixMap prefixes);
 slop_string serialize_ttl_serialize_base(slop_arena* arena, slop_option_string base);
 slop_string serialize_ttl_make_indent(slop_arena* arena, int64_t width);

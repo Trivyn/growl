@@ -213,6 +213,11 @@ typedef struct { bool is_ok; union { ttl_StringResult ok; common_ParseError err;
 typedef struct { bool is_ok; union { ttl_EscapeResult ok; common_ParseError err; } data; } slop_result_ttl_EscapeResult_common_ParseError;
 #endif
 
+#ifndef SLOP_RESULT_COMMON_PARSESTATE_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_COMMON_PARSESTATE_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { common_ParseState ok; common_ParseError err; } data; } slop_result_common_ParseState_common_ParseError;
+#endif
+
 #ifndef SLOP_RESULT_TTL_TTLPARSECONTEXT_COMMON_PARSEERROR_DEFINED
 #define SLOP_RESULT_TTL_TTLPARSECONTEXT_COMMON_PARSEERROR_DEFINED
 typedef struct { bool is_ok; union { ttl_TtlParseContext ok; common_ParseError err; } data; } slop_result_ttl_TtlParseContext_common_ParseError;
@@ -244,6 +249,10 @@ slop_option_string ttl_prefix_map_lookup(ttl_PrefixMap pm, slop_string prefix);
 slop_option_int ttl_blank_label_lookup(slop_list_ttl_BlankLabelBinding labels, slop_string label);
 ttl_TtlParseContext ttl_make_ttl_context(slop_arena* arena, slop_string input);
 ttl_GenBlankResult ttl_context_gen_blank_id(slop_arena* arena, ttl_TtlParseContext ctx);
+ttl_TtlParseContext ttl_ctx_with_state(ttl_TtlParseContext ctx, common_ParseState state);
+slop_string ttl_iri_string(rdf_Term t);
+slop_list_rdf_Triple ttl_list_push_triples(slop_arena* arena, slop_list_rdf_Triple dst, slop_list_rdf_Triple src);
+rdf_Graph ttl_graph_add_all(slop_arena* arena, rdf_Graph g, slop_list_rdf_Triple src);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_iri_ref(slop_arena* arena, ttl_TtlParseContext ctx);
 common_ParseWhileResult ttl_parse_pn_local(slop_arena* arena, common_ParseState state);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_prefixed_name(slop_arena* arena, ttl_TtlParseContext ctx);
@@ -256,11 +265,14 @@ slop_result_ttl_TermResult_common_ParseError ttl_parse_numeric_literal(slop_aren
 slop_result_ttl_TermResult_common_ParseError ttl_parse_boolean_literal(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_term(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TermTriplesResult_common_ParseError ttl_parse_collection(slop_arena* arena, ttl_TtlParseContext ctx);
+slop_result_common_ParseState_common_ParseError ttl_expect_triple_term_close(slop_arena* arena, common_ParseState state);
+slop_result_ttl_TermTriplesResult_common_ParseError ttl_parse_triple_term(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TermTriplesResult_common_ParseError ttl_parse_term_extended(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TtlParseContext_common_ParseError ttl_parse_directive(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TtlParseContext_common_ParseError ttl_parse_sparql_prefix(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TripleResult_common_ParseError ttl_parse_triple(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TriplesResult_common_ParseError ttl_parse_predicate_object_list(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Term subject);
+slop_result_ttl_TriplesResult_common_ParseError ttl_parse_annotation(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Triple base_triple);
 slop_result_ttl_TriplesResult_common_ParseError ttl_parse_object_list(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Term subject, rdf_Term predicate);
 slop_result_rdf_Graph_common_ParseError ttl_parse_ttl_string(slop_arena* arena, slop_string input);
 slop_result_rdf_Graph_ttl_TtlFileError ttl_parse_ttl_file(slop_arena* arena, slop_string path);

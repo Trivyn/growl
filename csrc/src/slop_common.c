@@ -42,7 +42,7 @@ uint8_t common_state_peek(common_ParseState state) {
 }
 
 uint8_t common_state_peek_n(common_ParseState state, int64_t n) {
-    if (((state.offset + n) >= string_len(state.input))) {
+    if ((state.offset + n) >= string_len(state.input)) {
         return 0;
     } else {
         return strlib_char_at(state.input, (state.offset + n));
@@ -54,7 +54,7 @@ common_ParseState common_state_advance(slop_arena* arena, common_ParseState stat
     common_ParseState _retval = {0};
     {
         __auto_type c = common_state_peek(state);
-        if ((c == 10)) {
+        if (c == 10) {
             _retval = ((common_ParseState){.input = state.input, .offset = (state.offset + 1), .line = (state.line + 1), .column = 1});
         } else {
             _retval = ((common_ParseState){.input = state.input, .offset = (state.offset + 1), .line = state.line, .column = (state.column + 1)});
@@ -68,8 +68,8 @@ common_ParseState common_skip_whitespace(slop_arena* arena, common_ParseState st
     common_ParseState _retval = {0};
     {
         __auto_type s = state;
-        while ((!(common_state_at_end(s)) && (strlib_is_space(common_state_peek(s)) || (common_state_peek(s) == 35)))) {
-            if ((common_state_peek(s) == 35)) {
+        while (!(common_state_at_end(s)) && (strlib_is_space(common_state_peek(s)) || (common_state_peek(s) == 35))) {
+            if (common_state_peek(s) == 35) {
                 s = common_skip_line(arena, s);
             } else {
                 s = common_state_advance(arena, s);
@@ -84,7 +84,7 @@ common_ParseState common_skip_whitespace(slop_arena* arena, common_ParseState st
 common_ParseState common_skip_line(slop_arena* arena, common_ParseState state) {
     {
         __auto_type s = state;
-        while ((!(common_state_at_end(s)) && (common_state_peek(s) != 10))) {
+        while (!(common_state_at_end(s)) && (common_state_peek(s) != 10)) {
             s = common_state_advance(arena, s);
         }
         if (!(common_state_at_end(s))) {
@@ -99,7 +99,7 @@ slop_result_common_ParseState_common_ParseError common_expect_char(slop_arena* a
     if (common_state_at_end(state)) {
         return ((slop_result_common_ParseState_common_ParseError){ .is_ok = false, .data.err = common_make_parse_error(arena, common_ParseErrorKind_unexpected_eof, SLOP_STR("Unexpected end of input"), ((common_Position){.line = state.line, .column = state.column, .offset = state.offset})) });
     } else {
-        if ((common_state_peek(state) == expected)) {
+        if (common_state_peek(state) == expected) {
             return ((slop_result_common_ParseState_common_ParseError){ .is_ok = true, .data.ok = common_state_advance(arena, state) });
         } else {
             return ((slop_result_common_ParseState_common_ParseError){ .is_ok = false, .data.err = common_make_parse_error(arena, common_ParseErrorKind_unexpected_char, SLOP_STR("Unexpected character"), ((common_Position){.line = state.line, .column = state.column, .offset = state.offset})) });
@@ -111,7 +111,7 @@ common_ParseWhileResult common_parse_while(slop_arena* arena, common_ParseState 
     {
         __auto_type start = state.offset;
         __auto_type s = state;
-        while ((!(common_state_at_end(s)) && ((uint8_t(*)(void*, int64_t))predicate.fn)(predicate.env, common_state_peek(s)))) {
+        while (!(common_state_at_end(s)) && ((uint8_t(*)(void*, int64_t))predicate.fn)(predicate.env, common_state_peek(s))) {
             s = common_state_advance(arena, s);
         }
         return ((common_ParseWhileResult){.result = strlib_substring(arena, state.input, start, (s.offset - start)), .state = s});
@@ -122,7 +122,7 @@ slop_result_common_ParseWhileResult_common_ParseError common_parse_until(slop_ar
     {
         __auto_type start = state.offset;
         __auto_type s = state;
-        while ((!(common_state_at_end(s)) && (common_state_peek(s) != terminator))) {
+        while (!(common_state_at_end(s)) && (common_state_peek(s) != terminator)) {
             s = common_state_advance(arena, s);
         }
         if (common_state_at_end(s)) {

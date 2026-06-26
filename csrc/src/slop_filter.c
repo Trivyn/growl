@@ -58,7 +58,7 @@ slop_map* growl_collect_annotation_properties(slop_arena* arena, rdf_Graph g) {
                         __auto_type pred = t.predicate;
                         __auto_type obj = t.object;
                         __auto_type subj = t.subject;
-                        if ((rdf_term_eq(pred, type_term) && rdf_term_eq(obj, annot_class))) {
+                        if (rdf_term_eq(pred, type_term) && rdf_term_eq(obj, annot_class)) {
                             ({ uint8_t _dummy = 1; slop_map_put(arena, annot_set, &(subj), &_dummy); });
                         }
                     }

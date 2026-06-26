@@ -122,6 +122,8 @@ static inline uint64_t slop_hash_rdf_Term(const void* key) {
             return slop_hash_rdf_BlankNode(&_k->data.term_blank);
         case rdf_Term_term_literal:
             return slop_hash_rdf_Literal(&_k->data.term_literal);
+        case rdf_Term_term_triple:
+            return slop_hash_ptr(&_k->data.term_triple);
     }
     return 0;
 }
@@ -136,6 +138,8 @@ static inline bool slop_eq_rdf_Term(const void* a, const void* b) {
             return slop_eq_rdf_BlankNode(&_a->data.term_blank, &_b->data.term_blank);
         case rdf_Term_term_literal:
             return slop_eq_rdf_Literal(&_a->data.term_literal, &_b->data.term_literal);
+        case rdf_Term_term_triple:
+            return _a->data.term_triple == _b->data.term_triple;
     }
     return false;
 }
