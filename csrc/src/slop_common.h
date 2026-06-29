@@ -92,6 +92,7 @@ uint8_t common_state_at_end(common_ParseState state);
 uint8_t common_state_peek(common_ParseState state);
 uint8_t common_state_peek_n(common_ParseState state, int64_t n);
 common_ParseState common_state_advance(slop_arena* arena, common_ParseState state);
+common_ParseState common_state_with_position(common_ParseState state, int64_t offset, int64_t line, int64_t column);
 common_ParseState common_skip_whitespace(slop_arena* arena, common_ParseState state);
 common_ParseState common_skip_line(slop_arena* arena, common_ParseState state);
 slop_result_common_ParseState_common_ParseError common_expect_char(slop_arena* arena, common_ParseState state, uint8_t expected);
