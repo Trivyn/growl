@@ -70,6 +70,7 @@ def run_reasonable(path):
     g = rdflib.Graph()
     g.parse(path, format="turtle")
     input_count = len(g)
+    base = set(g)
 
     times = []
     output_count = None
@@ -79,7 +80,10 @@ def run_reasonable(path):
         t0 = time.perf_counter()
         triples = r.reason()
         elapsed = time.perf_counter() - t0
-        output_count = input_count + len(triples)
+        # reason() returns the FULL materialized closure (base + inferred), not
+        # just new triples — so count only triples not already in the input.
+        # (input_count + len(triples) would double-count the echoed base.)
+        output_count = input_count + len(set(triples) - base)
         times.append(elapsed)
 
     return input_count, output_count, median(times)

@@ -12,21 +12,21 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 int64_t growl_get_inferred_count(types_ReasonerResult result);
 
 rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
-    __auto_type _mv_314 = t;
-    switch (_mv_314.tag) {
+    __auto_type _mv_317 = t;
+    switch (_mv_317.tag) {
         case rdf_Term_term_blank:
         {
-            __auto_type b = _mv_314.data.term_blank;
+            __auto_type b = _mv_317.data.term_blank;
             return rdf_make_blank(arena, (b.id + offset));
         }
         case rdf_Term_term_iri:
         {
-            __auto_type _ = _mv_314.data.term_iri;
+            __auto_type _ = _mv_317.data.term_iri;
             return t;
         }
         case rdf_Term_term_literal:
         {
-            __auto_type _ = _mv_314.data.term_literal;
+            __auto_type _ = _mv_317.data.term_literal;
             return t;
         }
     }
@@ -40,11 +40,11 @@ int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig) {
             __auto_type _coll = triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
-                __auto_type _mv_315 = t.subject;
-                switch (_mv_315.tag) {
+                __auto_type _mv_318 = t.subject;
+                switch (_mv_318.tag) {
                     case rdf_Term_term_blank:
                     {
-                        __auto_type b = _mv_315.data.term_blank;
+                        __auto_type b = _mv_318.data.term_blank;
                         if (b.id > max_id) {
                             max_id = b.id;
                         }
@@ -54,11 +54,11 @@ int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig) {
                         break;
                     }
                 }
-                __auto_type _mv_316 = t.object;
-                switch (_mv_316.tag) {
+                __auto_type _mv_319 = t.object;
+                switch (_mv_319.tag) {
                     case rdf_Term_term_blank:
                     {
-                        __auto_type b = _mv_316.data.term_blank;
+                        __auto_type b = _mv_319.data.term_blank;
                         if (b.id > max_id) {
                             max_id = b.id;
                         }
@@ -109,21 +109,21 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
 
 uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
-    __auto_type _mv_317 = growl_reason(arena, input);
-    switch (_mv_317.tag) {
+    __auto_type _mv_320 = growl_reason(arena, input);
+    switch (_mv_320.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type _ = _mv_317.data.reason_success;
+            __auto_type _ = _mv_320.data.reason_success;
             return 1;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_317.data.reason_inconsistent;
+            __auto_type _ = _mv_320.data.reason_inconsistent;
             return 0;
         }
         case types_ReasonerResult_reason_cancelled:
         {
-            __auto_type _ = _mv_317.data.reason_cancelled;
+            __auto_type _ = _mv_320.data.reason_cancelled;
             return 1;
         }
     }
@@ -182,21 +182,21 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 
 int64_t growl_get_inferred_count(types_ReasonerResult result) {
     int64_t _retval = {0};
-    __auto_type _mv_318 = result;
-    switch (_mv_318.tag) {
+    __auto_type _mv_321 = result;
+    switch (_mv_321.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type s = _mv_318.data.reason_success;
+            __auto_type s = _mv_321.data.reason_success;
             return s.inferred_count;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_318.data.reason_inconsistent;
+            __auto_type _ = _mv_321.data.reason_inconsistent;
             return 0;
         }
         case types_ReasonerResult_reason_cancelled:
         {
-            __auto_type s = _mv_318.data.reason_cancelled;
+            __auto_type s = _mv_321.data.reason_cancelled;
             return s.inferred_count;
         }
     }

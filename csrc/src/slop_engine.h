@@ -598,6 +598,7 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
 types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial);
 types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g);
 slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred);
+index_IndexedGraph engine_schema_materialize_fast(slop_arena* arena, index_IndexedGraph g);
 index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config);
 slop_result_types_EngineState_types_InconsistencyReport engine_engine_run_iteration(slop_arena* arena, types_EngineState state);
 slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config);

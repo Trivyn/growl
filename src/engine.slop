@@ -586,12 +586,17 @@
     (let ((init-delta-arena (arena-new 4194304))
           (initial-size (indexed-graph-size initial))
           (initial-delta (make-initial-delta init-delta-arena initial))
-          ;; Phase 1: Schema materialization (skip in fast/enrich mode)
+          ;; Phase 1: Schema materialization.
+          ;;   enrich -> skip entirely
+          ;;   fast   -> reduced pass (scm-eqc1 + scm-sco) to match reasonable
+          ;;   else   -> full phased pipeline
           (materialized-graph
-            (if (or (. config fast) (. config enrich))
+            (if (. config enrich)
               initial
-              (schema-materialize arena initial
-                (make-initial-delta init-delta-arena initial) config)))
+              (if (. config fast)
+                (schema-materialize-fast arena initial)
+                (schema-materialize arena initial
+                  (make-initial-delta init-delta-arena initial) config))))
           ;; dt-type1: assert supported datatypes as rdfs:Datatype (skip in fast/enrich mode)
           (dt-graph
             (if (or (. config fast) (. config enrich))
@@ -877,6 +882,25 @@
   ;; ============================================================
   ;; Schema Materialization Phase
   ;; ============================================================
+
+  (fn schema-materialize-fast ((arena Arena) (g IndexedGraph))
+    (@intent "Reduced schema closure matching the reasonable reasoner's coverage: scm-eqc1/1b (equivalentClass -> subClassOf) then scm-sco (subClassOf transitive closure). Used by --fast so it lines up with reasonable's ruleset. Deliberately omits the full scm-* pipeline (op/dp/eqp/int/uni/dom/rng/svf/avf/hv) and the owl:Thing/cls-thing bookkeeping, which reasonable also does not apply the same way.")
+    (@spec ((Arena IndexedGraph) -> IndexedGraph))
+    (@alloc arena)
+    (let ((mut graph g)
+          (subclass-pred (make-iri arena RDFS_SUBCLASS_OF)))
+      ;; Edge generation: equivalentClass -> subClassOf (both directions).
+      (with-arena :as scratch 4194304
+        (let ((full-d (make-initial-delta scratch graph)))
+          (for-each (t (scm-eqc1 arena graph full-d))
+            (set! graph (indexed-graph-add arena graph t)))
+          (for-each (t (scm-eqc1b arena graph full-d))
+            (set! graph (indexed-graph-add arena graph t)))))
+      ;; Transitive closure of subClassOf (covers equivalentClass cycles, which
+      ;; yields the reflexive C subClassOf C edges reasonable also emits).
+      (for-each (t (compute-tc arena graph subclass-pred))
+        (set! graph (indexed-graph-add arena graph t)))
+      graph))
 
   (fn schema-materialize ((arena Arena) (g IndexedGraph) (delta Delta) (config ReasonerConfig))
     (@intent "Run schema rules via phased pipeline with direct transitive closure")

@@ -153,7 +153,7 @@ growl --validate --validate-ns "https://example.org/" --background tlo.ttl domai
 
 ### Fast Mode
 
-The `--fast` flag skips schema vocabulary rules (scm-\*), datatype rules (dt-type1, dt-not-type), equality-difference checks (eq-diff1/2/3), eq-ref, and cardinality rules (cls-maxc1/2, cls-maxqc1-4). Consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1/2, cls-nothing2, cls-com) still run in fast mode, matching the coverage of reasoners like [reasonable](https://github.com/gtfierro/reasonable). Most published ontologies already include explicit subClassOf/subPropertyOf chains, making schema closure unnecessary for practical use.
+The `--fast` flag is tuned to mirror the rule coverage of the [reasonable](https://github.com/gtfierro/reasonable) reasoner, so it exists mainly for that benchmark comparison rather than everyday use (use the default mode for real work). It runs the property and class rules plus scm-sco (subClassOf transitive closure) and scm-eqc1 (equivalentClass → subClassOf), and skips the remaining schema vocabulary rules (scm-op/dp/eqp/int/uni/dom/rng/svf/avf/hv), datatype rules (dt-type1, dt-not-type), equality-difference checks (eq-diff1/2/3), eq-ref, and cardinality rules (cls-maxc1/2, cls-maxqc1-4). Consistency checks (cax-dw, cax-adc, prp-asyp, prp-irp, prp-pdw, prp-adp, prp-npa1/2, cls-nothing2, cls-com) still run. It deliberately does **not** replicate Reasonable's non-standard typing of every entity as `owl:Thing`.
 
 ## Annotation Filtering
 
@@ -224,25 +224,27 @@ All three reasoners are run in a single pass on the same machine, so the relativ
 
 | Ontology | Input | OWL-RL | Reasonable | Growl --complete | Growl | Growl --fast |
 |---|---|---|---|---|---|---|
-| BFO | 1,014 | 343ms | 4ms | 14ms | 7ms | 1ms |
-| Pizza | 1,944 | 1.3s | 6ms | 58ms | 33ms | 4ms |
-| CCO | 13,649 | 11.3s | 87ms | 462ms | 277ms | 59ms |
-| Schema.org | 17,823 | 5.2s | 88ms | 199ms | 138ms | 53ms |
-| Brick | 53,960 | 22.2s | 204ms | 492ms | 304ms | 98ms |
+| BFO | 1,014 | 360ms | 4ms | 14ms | 7ms | 2ms |
+| Pizza | 1,944 | 1.3s | 6ms | 55ms | 32ms | 5ms |
+| CCO | 13,649 | 10.9s | 85ms | 399ms | 255ms | 87ms |
+| Schema.org | 17,823 | 5.0s | 103ms | 188ms | 133ms | 59ms |
+| Brick | 53,960 | 24.0s | 190ms | 518ms | 314ms | 150ms |
 
-At equivalent rule coverage, Growl `--fast` is faster than Reasonable on all five ontologies (e.g. Brick 98ms vs 204ms).
+Growl `--fast` now applies Reasonable's schema rules (scm-sco, scm-eqc1) and stays comparable in speed — faster on four of five ontologies (e.g. Brick 150ms vs 190ms) and within noise on CCO.
 
 ### Accuracy (inferred triples vs OWL-RL reference)
 
 | Ontology | OWL-RL (ref) | Reasonable | Growl --complete | Growl | Growl --fast |
 |---|---|---|---|---|---|
-| BFO | 2,186 | -34.3% | -0.6% | -17.1% | -83.7% |
-| Pizza | 8,005 | -64.0% | -1.8% | -30.6% | -95.2% |
-| CCO | 52,363 | -34.8% | +2.7% | -1.8% | -76.0% |
-| Schema.org | 26,682 | +28.7% | +0.7% | -0.6% | -40.5% |
-| Brick | 39,493 | +104.2% | -0.1% | -23.9% | -69.5% |
+| BFO | 2,186 | -75.6% | -0.6% | -17.1% | -76.6% |
+| Pizza | 8,005 | -88.3% | -1.8% | -30.6% | -91.2% |
+| CCO | 52,363 | -59.9% | +2.7% | -1.8% | -51.5% |
+| Schema.org | 26,682 | -15.8% | +0.7% | -0.6% | -27.7% |
+| Brick | 39,493 | -29.9% | -0.1% | -23.9% | -47.2% |
 
-**Modes**: `--complete` enables all spec rules (cls-thing, prp-ap, dt-type2) for closest OWL-RL parity. Default Growl skips those practically inert rules. `--enrich` runs only property/subclass propagation and consistency checks (no sameAs, class expressions, or schema materialization). `--fast` targets the same rule coverage as Reasonable (skips schema rules, datatypes, eq-ref, cardinality), making Growl --fast vs Reasonable an apples-to-apples comparison.
+Reasonable's `reason()` returns the full materialized closure, so its inferred count is closure-minus-input (counting `input + len(reason())` would double-count the echoed base). With that corrected and `--fast` carrying Reasonable's schema rules, the two now track closely (Growl `--fast` vs Reasonable: BFO −22, Pizza −231, CCO +4,372, Schema.org −3,175, Brick −6,824). The residual is mostly Reasonable's non-standard typing of every entity as `owl:Thing`, which `--fast` does not emit.
+
+**Modes**: `--complete` enables all spec rules (cls-thing, prp-ap, dt-type2) for closest OWL-RL parity. Default Growl skips those practically inert rules. `--enrich` runs only property/subclass propagation and consistency checks (no sameAs, class expressions, or schema materialization). `--fast` matches Reasonable's rule coverage — property/class rules plus scm-sco (subClassOf transitivity) and scm-eqc1, skipping the rest of the schema rules, datatypes, eq-ref, and cardinality — so Growl --fast vs Reasonable is an apples-to-apples comparison.
 
 ## Verification
 
