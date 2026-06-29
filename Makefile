@@ -2,7 +2,8 @@
 # Build from transpiled C sources — no SLOP toolchain required.
 
 CC      ?= cc
-GROWL_VERSION ?= 0.1.0
+# Version is sourced from slop.toml [project]; override with `make GROWL_VERSION=x.y.z`
+GROWL_VERSION ?= $(shell sed -n 's/^version = "\(.*\)"/\1/p' slop.toml | head -1)
 CFLAGS  ?= -O2 -Wall -Wno-unused-function -Wno-unused-variable \
            -Wno-return-type -Wno-pointer-sign \
            -DSLOP_ARENA_NO_CAP \
