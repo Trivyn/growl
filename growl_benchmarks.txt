@@ -4,20 +4,20 @@
 
 --- bfo-core.ttl ---
   Running OWL-RL... done (0.3s)
-  Running Reasonable... done (3ms)
-  Running Growl --fast... done (3ms)
-  Running Growl --enrich... done (2ms)
-  Running Growl (full)... done (10ms)
-  Running Growl (complete)... done (15ms)
+  Running Reasonable... done (4ms)
+  Running Growl --fast... done (1ms)
+  Running Growl --enrich... done (1ms)
+  Running Growl (full)... done (7ms)
+  Running Growl (complete)... done (14ms)
 
                           Input  Inferred     Total      Time
                           -----  --------     -----      ----
-  OWL-RL (ref)             1014      2186      3200     322ms
-  Reasonable               1014      1436      2450       3ms
-  Growl (complete)          657      2173      2830      15ms
-  Growl (full)              657      1812      2469      10ms
-  Growl (enrich)            657       357      1014       2ms
-  Growl (fast)              657       357      1014       3ms
+  OWL-RL (ref)             1014      2186      3200     343ms
+  Reasonable               1014      1436      2450       4ms
+  Growl (complete)          657      2173      2830      14ms
+  Growl (full)              657      1812      2469       7ms
+  Growl (enrich)            657       357      1014       1ms
+  Growl (fast)              657       357      1014       1ms
 
   Growl complete vs OWL-RL: -13 inferred (-0.6%)
   Growl full vs OWL-RL: -374 inferred (-17.1%)
@@ -28,19 +28,19 @@
 --- pizza.ttl ---
   Running OWL-RL... done (1.3s)
   Running Reasonable... done (6ms)
-  Running Growl --fast... done (49ms)
-  Running Growl --enrich... done (33ms)
-  Running Growl (full)... done (108ms)
-  Running Growl (complete)... done (134ms)
+  Running Growl --fast... done (4ms)
+  Running Growl --enrich... done (2ms)
+  Running Growl (full)... done (33ms)
+  Running Growl (complete)... done (58ms)
 
                           Input  Inferred     Total      Time
                           -----  --------     -----      ----
-  OWL-RL (ref)             1944      8005      9949    1257ms
+  OWL-RL (ref)             1944      8005      9949    1334ms
   Reasonable               1944      2878      4822       6ms
-  Growl (complete)         1574      7857      9431     134ms
-  Growl (full)             1574      5558      7132     108ms
-  Growl (enrich)           1574       375      1949      33ms
-  Growl (fast)             1574       385      1959      49ms
+  Growl (complete)         1574      7857      9431      58ms
+  Growl (full)             1574      5558      7132      33ms
+  Growl (enrich)           1574       375      1949       2ms
+  Growl (fast)             1574       385      1959       4ms
 
   Growl complete vs OWL-RL: -148 inferred (-1.8%)
   Growl full vs OWL-RL: -2447 inferred (-30.6%)
@@ -49,21 +49,21 @@
   Growl fast vs Reasonable: -2493 inferred
 
 --- CommonCoreOntologiesMerged.ttl ---
-  Running OWL-RL... done (10.9s)
-  Running Reasonable... done (84ms)
-  Running Growl --fast... done (208ms)
-  Running Growl --enrich... done (178ms)
-  Running Growl (full)... done (1188ms)
-  Running Growl (complete)... done (1350ms)
+  Running OWL-RL... done (11.3s)
+  Running Reasonable... done (87ms)
+  Running Growl --fast... done (59ms)
+  Running Growl --enrich... done (18ms)
+  Running Growl (full)... done (277ms)
+  Running Growl (complete)... done (462ms)
 
                           Input  Inferred     Total      Time
                           -----  --------     -----      ----
-  OWL-RL (ref)            13649     52363     66012   10902ms
-  Reasonable              13649     34120     47769      84ms
-  Growl (complete)         5962     53772     59734    1350ms
-  Growl (full)             5962     51418     57380    1188ms
-  Growl (enrich)           5962     10687     16649     178ms
-  Growl (fast)             5962     12545     18507     208ms
+  OWL-RL (ref)            13649     52363     66012   11300ms
+  Reasonable              13649     34120     47769      87ms
+  Growl (complete)         5962     53772     59734     462ms
+  Growl (full)             5962     51418     57380     277ms
+  Growl (enrich)           5962     10687     16649      18ms
+  Growl (fast)             5962     12545     18507      59ms
 
   Growl complete vs OWL-RL: +1409 inferred (+2.7%)
   Growl full vs OWL-RL: -945 inferred (-1.8%)
@@ -72,21 +72,21 @@
   Growl fast vs Reasonable: -21575 inferred
 
 --- schemaorg.ttl ---
-  Running OWL-RL... done (5.0s)
-  Running Reasonable... done (85ms)
-  Running Growl --fast... done (147ms)
-  Running Growl --enrich... done (142ms)
-  Running Growl (full)... done (246ms)
-  Running Growl (complete)... done (302ms)
+  Running OWL-RL... done (5.2s)
+  Running Reasonable... done (88ms)
+  Running Growl --fast... done (53ms)
+  Running Growl --enrich... done (46ms)
+  Running Growl (full)... done (138ms)
+  Running Growl (complete)... done (199ms)
 
                           Input  Inferred     Total      Time
                           -----  --------     -----      ----
-  OWL-RL (ref)            17823     26682     44505    4950ms
-  Reasonable              17823     34350     52173      85ms
-  Growl (complete)        11881     26857     38738     302ms
-  Growl (full)            11881     26534     38415     246ms
-  Growl (enrich)          11881     15867     27748     142ms
-  Growl (fast)            11881     15867     27748     147ms
+  OWL-RL (ref)            17823     26682     44505    5162ms
+  Reasonable              17823     34350     52173      88ms
+  Growl (complete)        11881     26857     38738     199ms
+  Growl (full)            11881     26534     38415     138ms
+  Growl (enrich)          11881     15867     27748      46ms
+  Growl (fast)            11881     15867     27748      53ms
 
   Growl complete vs OWL-RL: +175 inferred (+0.7%)
   Growl full vs OWL-RL: -148 inferred (-0.6%)
@@ -95,21 +95,21 @@
   Growl fast vs Reasonable: -18483 inferred
 
 --- Brick.ttl ---
-  Running OWL-RL... done (20.8s)
-  Running Reasonable... done (198ms)
-  Running Growl --fast... done (1042ms)
-  Running Growl --enrich... done (1027ms)
-  Running Growl (full)... done (1720ms)
-  Running Growl (complete)... done (1933ms)
+  Running OWL-RL... done (22.2s)
+  Running Reasonable... done (204ms)
+  Running Growl --fast... done (98ms)
+  Running Growl --enrich... done (80ms)
+  Running Growl (full)... done (304ms)
+  Running Growl (complete)... done (492ms)
 
                           Input  Inferred     Total      Time
                           -----  --------     -----      ----
-  OWL-RL (ref)            53960     39493     93453   20756ms
-  Reasonable              53960     80653    134613     198ms
-  Growl (complete)        49718     39444     89162    1933ms
-  Growl (full)            49718     30065     79783    1720ms
-  Growl (enrich)          49718     11946     61664    1027ms
-  Growl (fast)            49718     12026     61744    1042ms
+  OWL-RL (ref)            53960     39493     93453   22168ms
+  Reasonable              53960     80653    134613     204ms
+  Growl (complete)        49718     39444     89162     492ms
+  Growl (full)            49718     30065     79783     304ms
+  Growl (enrich)          49718     11946     61664      80ms
+  Growl (fast)            49718     12026     61744      98ms
 
   Growl complete vs OWL-RL: -49 inferred (-0.1%)
   Growl full vs OWL-RL: -9428 inferred (-23.9%)

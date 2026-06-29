@@ -224,11 +224,13 @@ All three reasoners are run in a single pass on the same machine, so the relativ
 
 | Ontology | Input | OWL-RL | Reasonable | Growl --complete | Growl | Growl --fast |
 |---|---|---|---|---|---|---|
-| BFO | 1,014 | 322ms | 3ms | 15ms | 10ms | 3ms |
-| Pizza | 1,944 | 1.3s | 6ms | 134ms | 108ms | 49ms |
-| CCO | 13,649 | 10.9s | 84ms | 1.4s | 1.2s | 208ms |
-| Schema.org | 17,823 | 5.0s | 85ms | 302ms | 246ms | 147ms |
-| Brick | 53,960 | 20.8s | 198ms | 1.9s | 1.7s | 1.0s |
+| BFO | 1,014 | 343ms | 4ms | 14ms | 7ms | 1ms |
+| Pizza | 1,944 | 1.3s | 6ms | 58ms | 33ms | 4ms |
+| CCO | 13,649 | 11.3s | 87ms | 462ms | 277ms | 59ms |
+| Schema.org | 17,823 | 5.2s | 88ms | 199ms | 138ms | 53ms |
+| Brick | 53,960 | 22.2s | 204ms | 492ms | 304ms | 98ms |
+
+At equivalent rule coverage, Growl `--fast` is faster than Reasonable on all five ontologies (e.g. Brick 98ms vs 204ms).
 
 ### Accuracy (inferred triples vs OWL-RL reference)
 
