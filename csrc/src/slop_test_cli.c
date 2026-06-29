@@ -79,12 +79,12 @@ void test_cli_print_result(slop_string name, uint8_t passed) {
 }
 
 slop_option_types_ReasonerResult test_cli_parse_and_reason(slop_arena* arena, slop_string path) {
-    __auto_type _mv_327 = ttl_parse_ttl_file(arena, path);
-    if (!_mv_327.is_ok) {
-        __auto_type _ = _mv_327.data.err;
+    __auto_type _mv_333 = ttl_parse_ttl_file(arena, path);
+    if (!_mv_333.is_ok) {
+        __auto_type _ = _mv_333.data.err;
         return (slop_option_types_ReasonerResult){.has_value = false};
-    } else if (_mv_327.is_ok) {
-        __auto_type g = _mv_327.data.ok;
+    } else if (_mv_333.is_ok) {
+        __auto_type g = _mv_333.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             return (slop_option_types_ReasonerResult){.has_value = 1, .value = growl_reason(arena, ig)};
@@ -93,17 +93,17 @@ slop_option_types_ReasonerResult test_cli_parse_and_reason(slop_arena* arena, sl
 }
 
 uint8_t test_cli_test_subclass_chain_file(slop_arena* arena) {
-    __auto_type _mv_328 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/subclass-chain.ttl"));
-    if (!_mv_328.has_value) {
+    __auto_type _mv_334 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/subclass-chain.ttl"));
+    if (!_mv_334.has_value) {
         printf("%s\n", "  ERROR: failed to parse subclass-chain.ttl");
         return 0;
-    } else if (_mv_328.has_value) {
-        __auto_type result = _mv_328.value;
-        __auto_type _mv_329 = result;
-        switch (_mv_329.tag) {
+    } else if (_mv_334.has_value) {
+        __auto_type result = _mv_334.value;
+        __auto_type _mv_335 = result;
+        switch (_mv_335.tag) {
             case types_ReasonerResult_reason_success:
             {
-                __auto_type s = _mv_329.data.reason_success;
+                __auto_type s = _mv_335.data.reason_success;
                 {
                     __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
                     __auto_type person = rdf_make_iri(arena, SLOP_STR("http://example.org/Person"));
@@ -119,7 +119,7 @@ uint8_t test_cli_test_subclass_chain_file(slop_arena* arena) {
             }
             case types_ReasonerResult_reason_inconsistent:
             {
-                __auto_type _ = _mv_329.data.reason_inconsistent;
+                __auto_type _ = _mv_335.data.reason_inconsistent;
                 printf("%s\n", "  ERROR: unexpected inconsistency");
                 return 0;
             }
@@ -128,88 +128,9 @@ uint8_t test_cli_test_subclass_chain_file(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_equivalent_class_file(slop_arena* arena) {
-    __auto_type _mv_330 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/equivalent-class.ttl"));
-    if (!_mv_330.has_value) {
-        printf("%s\n", "  ERROR: failed to parse equivalent-class.ttl");
-        return 0;
-    } else if (_mv_330.has_value) {
-        __auto_type result = _mv_330.value;
-        __auto_type _mv_331 = result;
-        switch (_mv_331.tag) {
-            case types_ReasonerResult_reason_success:
-            {
-                __auto_type s = _mv_331.data.reason_success;
-                {
-                    __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
-                    __auto_type bob = rdf_make_iri(arena, SLOP_STR("http://example.org/bob"));
-                    __auto_type human = rdf_make_iri(arena, SLOP_STR("http://example.org/Human"));
-                    __auto_type person = rdf_make_iri(arena, SLOP_STR("http://example.org/Person"));
-                    __auto_type g = s.graph;
-                    return (test_cli_has_type(arena, g, alice, person) && test_cli_has_type(arena, g, bob, human));
-                }
-            }
-            case types_ReasonerResult_reason_inconsistent:
-            {
-                __auto_type _ = _mv_331.data.reason_inconsistent;
-                printf("%s\n", "  ERROR: unexpected inconsistency");
-                return 0;
-            }
-        }
-    }
-}
-
-uint8_t test_cli_test_disjoint_violation_file(slop_arena* arena) {
-    __auto_type _mv_332 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/disjoint-violation.ttl"));
-    if (!_mv_332.has_value) {
-        printf("%s\n", "  ERROR: failed to parse disjoint-violation.ttl");
-        return 0;
-    } else if (_mv_332.has_value) {
-        __auto_type result = _mv_332.value;
-        __auto_type _mv_333 = result;
-        switch (_mv_333.tag) {
-            case types_ReasonerResult_reason_success:
-            {
-                __auto_type _ = _mv_333.data.reason_success;
-                printf("%s\n", "  ERROR: should have detected inconsistency");
-                return 0;
-            }
-            case types_ReasonerResult_reason_inconsistent:
-            {
-                __auto_type _ = _mv_333.data.reason_inconsistent;
-                return 1;
-            }
-        }
-    }
-}
-
-uint8_t test_cli_test_sameas_differentfrom_file(slop_arena* arena) {
-    __auto_type _mv_334 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/sameas-differentfrom.ttl"));
-    if (!_mv_334.has_value) {
-        printf("%s\n", "  ERROR: failed to parse sameas-differentfrom.ttl");
-        return 0;
-    } else if (_mv_334.has_value) {
-        __auto_type result = _mv_334.value;
-        __auto_type _mv_335 = result;
-        switch (_mv_335.tag) {
-            case types_ReasonerResult_reason_success:
-            {
-                __auto_type _ = _mv_335.data.reason_success;
-                printf("%s\n", "  ERROR: should have detected inconsistency");
-                return 0;
-            }
-            case types_ReasonerResult_reason_inconsistent:
-            {
-                __auto_type _ = _mv_335.data.reason_inconsistent;
-                return 1;
-            }
-        }
-    }
-}
-
-uint8_t test_cli_test_sameas_chain_file(slop_arena* arena) {
-    __auto_type _mv_336 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/sameas-chain.ttl"));
+    __auto_type _mv_336 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/equivalent-class.ttl"));
     if (!_mv_336.has_value) {
-        printf("%s\n", "  ERROR: failed to parse sameas-chain.ttl");
+        printf("%s\n", "  ERROR: failed to parse equivalent-class.ttl");
         return 0;
     } else if (_mv_336.has_value) {
         __auto_type result = _mv_336.value;
@@ -220,8 +141,11 @@ uint8_t test_cli_test_sameas_chain_file(slop_arena* arena) {
                 __auto_type s = _mv_337.data.reason_success;
                 {
                     __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
-                    __auto_type charlie = rdf_make_iri(arena, SLOP_STR("http://example.org/charlie"));
-                    return test_cli_has_same_as(arena, s.graph, alice, charlie);
+                    __auto_type bob = rdf_make_iri(arena, SLOP_STR("http://example.org/bob"));
+                    __auto_type human = rdf_make_iri(arena, SLOP_STR("http://example.org/Human"));
+                    __auto_type person = rdf_make_iri(arena, SLOP_STR("http://example.org/Person"));
+                    __auto_type g = s.graph;
+                    return (test_cli_has_type(arena, g, alice, person) && test_cli_has_type(arena, g, bob, human));
                 }
             }
             case types_ReasonerResult_reason_inconsistent:
@@ -234,10 +158,10 @@ uint8_t test_cli_test_sameas_chain_file(slop_arena* arena) {
     }
 }
 
-uint8_t test_cli_test_empty_file(slop_arena* arena) {
-    __auto_type _mv_338 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/empty.ttl"));
+uint8_t test_cli_test_disjoint_violation_file(slop_arena* arena) {
+    __auto_type _mv_338 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/disjoint-violation.ttl"));
     if (!_mv_338.has_value) {
-        printf("%s\n", "  ERROR: failed to parse empty.ttl");
+        printf("%s\n", "  ERROR: failed to parse disjoint-violation.ttl");
         return 0;
     } else if (_mv_338.has_value) {
         __auto_type result = _mv_338.value;
@@ -245,12 +169,88 @@ uint8_t test_cli_test_empty_file(slop_arena* arena) {
         switch (_mv_339.tag) {
             case types_ReasonerResult_reason_success:
             {
-                __auto_type s = _mv_339.data.reason_success;
-                return (s.inferred_count <= 36);
+                __auto_type _ = _mv_339.data.reason_success;
+                printf("%s\n", "  ERROR: should have detected inconsistency");
+                return 0;
             }
             case types_ReasonerResult_reason_inconsistent:
             {
                 __auto_type _ = _mv_339.data.reason_inconsistent;
+                return 1;
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_sameas_differentfrom_file(slop_arena* arena) {
+    __auto_type _mv_340 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/sameas-differentfrom.ttl"));
+    if (!_mv_340.has_value) {
+        printf("%s\n", "  ERROR: failed to parse sameas-differentfrom.ttl");
+        return 0;
+    } else if (_mv_340.has_value) {
+        __auto_type result = _mv_340.value;
+        __auto_type _mv_341 = result;
+        switch (_mv_341.tag) {
+            case types_ReasonerResult_reason_success:
+            {
+                __auto_type _ = _mv_341.data.reason_success;
+                printf("%s\n", "  ERROR: should have detected inconsistency");
+                return 0;
+            }
+            case types_ReasonerResult_reason_inconsistent:
+            {
+                __auto_type _ = _mv_341.data.reason_inconsistent;
+                return 1;
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_sameas_chain_file(slop_arena* arena) {
+    __auto_type _mv_342 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/sameas-chain.ttl"));
+    if (!_mv_342.has_value) {
+        printf("%s\n", "  ERROR: failed to parse sameas-chain.ttl");
+        return 0;
+    } else if (_mv_342.has_value) {
+        __auto_type result = _mv_342.value;
+        __auto_type _mv_343 = result;
+        switch (_mv_343.tag) {
+            case types_ReasonerResult_reason_success:
+            {
+                __auto_type s = _mv_343.data.reason_success;
+                {
+                    __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
+                    __auto_type charlie = rdf_make_iri(arena, SLOP_STR("http://example.org/charlie"));
+                    return test_cli_has_same_as(arena, s.graph, alice, charlie);
+                }
+            }
+            case types_ReasonerResult_reason_inconsistent:
+            {
+                __auto_type _ = _mv_343.data.reason_inconsistent;
+                printf("%s\n", "  ERROR: unexpected inconsistency");
+                return 0;
+            }
+        }
+    }
+}
+
+uint8_t test_cli_test_empty_file(slop_arena* arena) {
+    __auto_type _mv_344 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/empty.ttl"));
+    if (!_mv_344.has_value) {
+        printf("%s\n", "  ERROR: failed to parse empty.ttl");
+        return 0;
+    } else if (_mv_344.has_value) {
+        __auto_type result = _mv_344.value;
+        __auto_type _mv_345 = result;
+        switch (_mv_345.tag) {
+            case types_ReasonerResult_reason_success:
+            {
+                __auto_type s = _mv_345.data.reason_success;
+                return (s.inferred_count <= 36);
+            }
+            case types_ReasonerResult_reason_inconsistent:
+            {
+                __auto_type _ = _mv_345.data.reason_inconsistent;
                 printf("%s\n", "  ERROR: unexpected inconsistency on empty graph");
                 return 0;
             }
@@ -262,13 +262,13 @@ uint8_t test_cli_test_bfo_consistent(slop_arena* arena) {
     {
         __auto_type start_time = slop_now_ms();
         printf("%s\n", "  BFO: parsing...");
-        __auto_type _mv_340 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/bfo-core.ttl"));
-        if (!_mv_340.is_ok) {
-            __auto_type _ = _mv_340.data.err;
+        __auto_type _mv_346 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/bfo-core.ttl"));
+        if (!_mv_346.is_ok) {
+            __auto_type _ = _mv_346.data.err;
             printf("%s\n", "  ERROR: failed to parse bfo-core.ttl");
             return 0;
-        } else if (_mv_340.is_ok) {
-            __auto_type g = _mv_340.data.ok;
+        } else if (_mv_346.is_ok) {
+            __auto_type g = _mv_346.data.ok;
             printf("%s", "  BFO: parsed ");
             printf("%.*s", (int)(int_to_string(arena, rdf_graph_size(g))).len, (int_to_string(arena, rdf_graph_size(g))).data);
             printf("%s\n", " triples, indexing...");
@@ -279,11 +279,11 @@ uint8_t test_cli_test_bfo_consistent(slop_arena* arena) {
                 printf("%s\n", " triples, reasoning...");
                 {
                     __auto_type reason_start = slop_now_ms();
-                    __auto_type _mv_341 = growl_reason(arena, ig);
-                    switch (_mv_341.tag) {
+                    __auto_type _mv_347 = growl_reason(arena, ig);
+                    switch (_mv_347.tag) {
                         case types_ReasonerResult_reason_success:
                         {
-                            __auto_type s = _mv_341.data.reason_success;
+                            __auto_type s = _mv_347.data.reason_success;
                             {
                                 __auto_type end_time = slop_now_ms();
                                 printf("%s", "  BFO: ");
@@ -301,13 +301,13 @@ uint8_t test_cli_test_bfo_consistent(slop_arena* arena) {
                         }
                         case types_ReasonerResult_reason_inconsistent:
                         {
-                            __auto_type reports = _mv_341.data.reason_inconsistent;
+                            __auto_type reports = _mv_347.data.reason_inconsistent;
                             printf("%s", "  ERROR: BFO inconsistent: ");
-                            __auto_type _mv_342 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                            if (_mv_342.has_value) {
-                                __auto_type report = _mv_342.value;
+                            __auto_type _mv_348 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                            if (_mv_348.has_value) {
+                                __auto_type report = _mv_348.value;
                                 printf("%.*s\n", (int)(report.reason).len, (report.reason).data);
-                            } else if (!_mv_342.has_value) {
+                            } else if (!_mv_348.has_value) {
                                 printf("%s\n", "(no details)");
                             }
                             return 0;
@@ -320,23 +320,23 @@ uint8_t test_cli_test_bfo_consistent(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_invalid_literal_file(slop_arena* arena) {
-    __auto_type _mv_343 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/invalid-literal.ttl"));
-    if (!_mv_343.has_value) {
+    __auto_type _mv_349 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/invalid-literal.ttl"));
+    if (!_mv_349.has_value) {
         printf("%s\n", "  ERROR: failed to parse invalid-literal.ttl");
         return 0;
-    } else if (_mv_343.has_value) {
-        __auto_type result = _mv_343.value;
-        __auto_type _mv_344 = result;
-        switch (_mv_344.tag) {
+    } else if (_mv_349.has_value) {
+        __auto_type result = _mv_349.value;
+        __auto_type _mv_350 = result;
+        switch (_mv_350.tag) {
             case types_ReasonerResult_reason_success:
             {
-                __auto_type _ = _mv_344.data.reason_success;
+                __auto_type _ = _mv_350.data.reason_success;
                 printf("%s\n", "  ERROR: should have detected invalid literal");
                 return 0;
             }
             case types_ReasonerResult_reason_inconsistent:
             {
-                __auto_type _ = _mv_344.data.reason_inconsistent;
+                __auto_type _ = _mv_350.data.reason_inconsistent;
                 return 1;
             }
         }
@@ -344,28 +344,28 @@ uint8_t test_cli_test_invalid_literal_file(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_valid_literals_file(slop_arena* arena) {
-    __auto_type _mv_345 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/valid-literals.ttl"));
-    if (!_mv_345.has_value) {
+    __auto_type _mv_351 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/valid-literals.ttl"));
+    if (!_mv_351.has_value) {
         printf("%s\n", "  ERROR: failed to parse valid-literals.ttl");
         return 0;
-    } else if (_mv_345.has_value) {
-        __auto_type result = _mv_345.value;
-        __auto_type _mv_346 = result;
-        switch (_mv_346.tag) {
+    } else if (_mv_351.has_value) {
+        __auto_type result = _mv_351.value;
+        __auto_type _mv_352 = result;
+        switch (_mv_352.tag) {
             case types_ReasonerResult_reason_success:
             {
-                __auto_type _ = _mv_346.data.reason_success;
+                __auto_type _ = _mv_352.data.reason_success;
                 return 1;
             }
             case types_ReasonerResult_reason_inconsistent:
             {
-                __auto_type reports = _mv_346.data.reason_inconsistent;
+                __auto_type reports = _mv_352.data.reason_inconsistent;
                 printf("%s", "  ERROR: unexpected inconsistency: ");
-                __auto_type _mv_347 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                if (_mv_347.has_value) {
-                    __auto_type report = _mv_347.value;
+                __auto_type _mv_353 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                if (_mv_353.has_value) {
+                    __auto_type report = _mv_353.value;
                     printf("%.*s\n", (int)(report.reason).len, (report.reason).data);
-                } else if (!_mv_347.has_value) {
+                } else if (!_mv_353.has_value) {
                     printf("%s\n", "(no details)");
                 }
                 return 0;
@@ -375,36 +375,36 @@ uint8_t test_cli_test_valid_literals_file(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_emit_roundtrip(slop_arena* arena) {
-    __auto_type _mv_348 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/subclass-chain.ttl"));
-    if (!_mv_348.has_value) {
+    __auto_type _mv_354 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/subclass-chain.ttl"));
+    if (!_mv_354.has_value) {
         printf("%s\n", "  ERROR: failed to parse for roundtrip");
         return 0;
-    } else if (_mv_348.has_value) {
-        __auto_type result = _mv_348.value;
-        __auto_type _mv_349 = result;
-        switch (_mv_349.tag) {
+    } else if (_mv_354.has_value) {
+        __auto_type result = _mv_354.value;
+        __auto_type _mv_355 = result;
+        switch (_mv_355.tag) {
             case types_ReasonerResult_reason_success:
             {
-                __auto_type s = _mv_349.data.reason_success;
+                __auto_type s = _mv_355.data.reason_success;
                 {
                     __auto_type out_graph = test_cli_indexed_to_graph(arena, s.graph);
                     slop_option_string no_base = (slop_option_string){.has_value = false};
                     __auto_type config = ((serialize_ttl_SerializeConfig){.prefixes = ttl_make_prefix_map(arena), .base_iri = no_base, .indent_width = 2});
                     __auto_type emit_path = SLOP_STR("fixtures/roundtrip-out.ttl");
-                    __auto_type _mv_350 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
-                    if (!_mv_350.is_ok) {
-                        __auto_type _ = _mv_350.data.err;
+                    __auto_type _mv_356 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
+                    if (!_mv_356.is_ok) {
+                        __auto_type _ = _mv_356.data.err;
                         printf("%s\n", "  ERROR: failed to write roundtrip file");
                         return 0;
-                    } else if (_mv_350.is_ok) {
-                        __auto_type _ = _mv_350.data.ok;
-                        __auto_type _mv_351 = ttl_parse_ttl_file(arena, emit_path);
-                        if (!_mv_351.is_ok) {
-                            __auto_type _ = _mv_351.data.err;
+                    } else if (_mv_356.is_ok) {
+                        __auto_type _ = _mv_356.data.ok;
+                        __auto_type _mv_357 = ttl_parse_ttl_file(arena, emit_path);
+                        if (!_mv_357.is_ok) {
+                            __auto_type _ = _mv_357.data.err;
                             printf("%s\n", "  ERROR: failed to re-parse emitted file");
                             return 0;
-                        } else if (_mv_351.is_ok) {
-                            __auto_type g2 = _mv_351.data.ok;
+                        } else if (_mv_357.is_ok) {
+                            __auto_type g2 = _mv_357.data.ok;
                             {
                                 __auto_type original_size = rdf_indexed_graph_size(s.graph);
                                 __auto_type reparsed_size = rdf_graph_size(g2);
@@ -420,7 +420,7 @@ uint8_t test_cli_test_emit_roundtrip(slop_arena* arena) {
             }
             case types_ReasonerResult_reason_inconsistent:
             {
-                __auto_type _ = _mv_349.data.reason_inconsistent;
+                __auto_type _ = _mv_355.data.reason_inconsistent;
                 printf("%s\n", "  ERROR: unexpected inconsistency in roundtrip");
                 return 0;
             }
@@ -429,37 +429,37 @@ uint8_t test_cli_test_emit_roundtrip(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_missing_file(slop_arena* arena) {
-    __auto_type _mv_352 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/does-not-exist.ttl"));
-    if (!_mv_352.has_value) {
+    __auto_type _mv_358 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/does-not-exist.ttl"));
+    if (!_mv_358.has_value) {
         return 1;
-    } else if (_mv_352.has_value) {
-        __auto_type _ = _mv_352.value;
+    } else if (_mv_358.has_value) {
+        __auto_type _ = _mv_358.value;
         printf("%s\n", "  ERROR: should have failed on missing file");
         return 0;
     }
 }
 
 uint8_t test_cli_test_validate_unsat(slop_arena* arena) {
-    __auto_type _mv_353 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-unsat.ttl"));
-    if (!_mv_353.is_ok) {
-        __auto_type _ = _mv_353.data.err;
+    __auto_type _mv_359 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-unsat.ttl"));
+    if (!_mv_359.is_ok) {
+        __auto_type _ = _mv_359.data.err;
         printf("%s\n", "  ERROR: failed to parse validate-unsat.ttl");
         return 0;
-    } else if (_mv_353.is_ok) {
-        __auto_type g = _mv_353.data.ok;
+    } else if (_mv_359.is_ok) {
+        __auto_type g = _mv_359.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_354 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_354.tag) {
+            __auto_type _mv_360 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_360.tag) {
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type _ = _mv_354.data.reason_inconsistent;
+                    __auto_type _ = _mv_360.data.reason_inconsistent;
                     return 1;
                 }
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type _ = _mv_354.data.reason_success;
+                    __auto_type _ = _mv_360.data.reason_success;
                     printf("%s\n", "  ERROR: should have detected unsatisfiable class");
                     return 0;
                 }
@@ -469,32 +469,32 @@ uint8_t test_cli_test_validate_unsat(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_validate_clean(slop_arena* arena) {
-    __auto_type _mv_355 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-clean.ttl"));
-    if (!_mv_355.is_ok) {
-        __auto_type _ = _mv_355.data.err;
+    __auto_type _mv_361 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-clean.ttl"));
+    if (!_mv_361.is_ok) {
+        __auto_type _ = _mv_361.data.err;
         printf("%s\n", "  ERROR: failed to parse validate-clean.ttl");
         return 0;
-    } else if (_mv_355.is_ok) {
-        __auto_type g = _mv_355.data.ok;
+    } else if (_mv_361.is_ok) {
+        __auto_type g = _mv_361.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_356 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_356.tag) {
+            __auto_type _mv_362 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_362.tag) {
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type _ = _mv_356.data.reason_success;
+                    __auto_type _ = _mv_362.data.reason_success;
                     return 1;
                 }
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type reports = _mv_356.data.reason_inconsistent;
+                    __auto_type reports = _mv_362.data.reason_inconsistent;
                     printf("%s", "  ERROR: unexpected inconsistency: ");
-                    __auto_type _mv_357 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                    if (_mv_357.has_value) {
-                        __auto_type report = _mv_357.value;
+                    __auto_type _mv_363 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    if (_mv_363.has_value) {
+                        __auto_type report = _mv_363.value;
                         printf("%.*s\n", (int)(report.reason).len, (report.reason).data);
-                    } else if (!_mv_357.has_value) {
+                    } else if (!_mv_363.has_value) {
                         printf("%s\n", "(no details)");
                     }
                     return 0;
@@ -505,22 +505,22 @@ uint8_t test_cli_test_validate_clean(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_no_validate_unsat_passes(slop_arena* arena) {
-    __auto_type _mv_358 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/validate-unsat.ttl"));
-    if (!_mv_358.has_value) {
+    __auto_type _mv_364 = test_cli_parse_and_reason(arena, SLOP_STR("fixtures/validate-unsat.ttl"));
+    if (!_mv_364.has_value) {
         printf("%s\n", "  ERROR: failed to parse validate-unsat.ttl");
         return 0;
-    } else if (_mv_358.has_value) {
-        __auto_type result = _mv_358.value;
-        __auto_type _mv_359 = result;
-        switch (_mv_359.tag) {
+    } else if (_mv_364.has_value) {
+        __auto_type result = _mv_364.value;
+        __auto_type _mv_365 = result;
+        switch (_mv_365.tag) {
             case types_ReasonerResult_reason_success:
             {
-                __auto_type _ = _mv_359.data.reason_success;
+                __auto_type _ = _mv_365.data.reason_success;
                 return 1;
             }
             case types_ReasonerResult_reason_inconsistent:
             {
-                __auto_type _ = _mv_359.data.reason_inconsistent;
+                __auto_type _ = _mv_365.data.reason_inconsistent;
                 printf("%s\n", "  ERROR: should pass without --validate (TBox only)");
                 return 0;
             }
@@ -529,26 +529,26 @@ uint8_t test_cli_test_no_validate_unsat_passes(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_validate_unsat_prop(slop_arena* arena) {
-    __auto_type _mv_360 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-unsat-prop.ttl"));
-    if (!_mv_360.is_ok) {
-        __auto_type _ = _mv_360.data.err;
+    __auto_type _mv_366 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-unsat-prop.ttl"));
+    if (!_mv_366.is_ok) {
+        __auto_type _ = _mv_366.data.err;
         printf("%s\n", "  ERROR: failed to parse validate-unsat-prop.ttl");
         return 0;
-    } else if (_mv_360.is_ok) {
-        __auto_type g = _mv_360.data.ok;
+    } else if (_mv_366.is_ok) {
+        __auto_type g = _mv_366.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_361 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_361.tag) {
+            __auto_type _mv_367 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_367.tag) {
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type _ = _mv_361.data.reason_inconsistent;
+                    __auto_type _ = _mv_367.data.reason_inconsistent;
                     return 1;
                 }
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type _ = _mv_361.data.reason_success;
+                    __auto_type _ = _mv_367.data.reason_success;
                     printf("%s\n", "  ERROR: should have detected unsatisfiable property");
                     return 0;
                 }
@@ -558,32 +558,32 @@ uint8_t test_cli_test_validate_unsat_prop(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_validate_domain_reports_class(slop_arena* arena) {
-    __auto_type _mv_362 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-domain-unsat.ttl"));
-    if (!_mv_362.is_ok) {
-        __auto_type _ = _mv_362.data.err;
+    __auto_type _mv_368 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-domain-unsat.ttl"));
+    if (!_mv_368.is_ok) {
+        __auto_type _ = _mv_368.data.err;
         printf("%s\n", "  ERROR: failed to parse validate-domain-unsat.ttl");
         return 0;
-    } else if (_mv_362.is_ok) {
-        __auto_type g = _mv_362.data.ok;
+    } else if (_mv_368.is_ok) {
+        __auto_type g = _mv_368.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_363 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_363.tag) {
+            __auto_type _mv_369 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_369.tag) {
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type reports = _mv_363.data.reason_inconsistent;
-                    __auto_type _mv_364 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                    if (_mv_364.has_value) {
-                        __auto_type report = _mv_364.value;
+                    __auto_type reports = _mv_369.data.reason_inconsistent;
+                    __auto_type _mv_370 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    if (_mv_370.has_value) {
+                        __auto_type report = _mv_370.value;
                         return strlib_starts_with(report.reason, SLOP_STR("Unsatisfiable class:"));
-                    } else if (!_mv_364.has_value) {
+                    } else if (!_mv_370.has_value) {
                         return 0;
                     }
                 }
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type _ = _mv_363.data.reason_success;
+                    __auto_type _ = _mv_369.data.reason_success;
                     printf("%s\n", "  ERROR: should have detected inconsistency");
                     return 0;
                 }
@@ -593,32 +593,32 @@ uint8_t test_cli_test_validate_domain_reports_class(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_validate_ns_scoping(slop_arena* arena) {
-    __auto_type _mv_365 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-bg-domain.ttl"));
-    if (!_mv_365.is_ok) {
-        __auto_type _ = _mv_365.data.err;
+    __auto_type _mv_371 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-bg-domain.ttl"));
+    if (!_mv_371.is_ok) {
+        __auto_type _ = _mv_371.data.err;
         printf("%s\n", "  ERROR: failed to parse validate-bg-domain.ttl");
         return 0;
-    } else if (_mv_365.is_ok) {
-        __auto_type g = _mv_365.data.ok;
+    } else if (_mv_371.is_ok) {
+        __auto_type g = _mv_371.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/"), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_366 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_366.tag) {
+            __auto_type _mv_372 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_372.tag) {
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type reports = _mv_366.data.reason_inconsistent;
-                    __auto_type _mv_367 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                    if (_mv_367.has_value) {
-                        __auto_type report = _mv_367.value;
+                    __auto_type reports = _mv_372.data.reason_inconsistent;
+                    __auto_type _mv_373 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    if (_mv_373.has_value) {
+                        __auto_type report = _mv_373.value;
                         return strlib_starts_with(report.reason, SLOP_STR("Unsatisfiable class:"));
-                    } else if (!_mv_367.has_value) {
+                    } else if (!_mv_373.has_value) {
                         return 0;
                     }
                 }
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type _ = _mv_366.data.reason_success;
+                    __auto_type _ = _mv_372.data.reason_success;
                     printf("%s\n", "  ERROR: should have detected unsatisfiable ex:Bad");
                     return 0;
                 }
@@ -628,32 +628,32 @@ uint8_t test_cli_test_validate_ns_scoping(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_validate_ns_filters_tlo(slop_arena* arena) {
-    __auto_type _mv_368 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-bg-tlo.ttl"));
-    if (!_mv_368.is_ok) {
-        __auto_type _ = _mv_368.data.err;
+    __auto_type _mv_374 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-bg-tlo.ttl"));
+    if (!_mv_374.is_ok) {
+        __auto_type _ = _mv_374.data.err;
         printf("%s\n", "  ERROR: failed to parse validate-bg-tlo.ttl");
         return 0;
-    } else if (_mv_368.is_ok) {
-        __auto_type g = _mv_368.data.ok;
+    } else if (_mv_374.is_ok) {
+        __auto_type g = _mv_374.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/"), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_369 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_369.tag) {
+            __auto_type _mv_375 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_375.tag) {
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type _ = _mv_369.data.reason_success;
+                    __auto_type _ = _mv_375.data.reason_success;
                     return 1;
                 }
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type reports = _mv_369.data.reason_inconsistent;
+                    __auto_type reports = _mv_375.data.reason_inconsistent;
                     printf("%s", "  ERROR: unexpected inconsistency: ");
-                    __auto_type _mv_370 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                    if (_mv_370.has_value) {
-                        __auto_type report = _mv_370.value;
+                    __auto_type _mv_376 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    if (_mv_376.has_value) {
+                        __auto_type report = _mv_376.value;
                         printf("%.*s\n", (int)(report.reason).len, (report.reason).data);
-                    } else if (!_mv_370.has_value) {
+                    } else if (!_mv_376.has_value) {
                         printf("%s\n", "(no details)");
                     }
                     return 0;
@@ -664,20 +664,20 @@ uint8_t test_cli_test_validate_ns_filters_tlo(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_background_merge(slop_arena* arena) {
-    __auto_type _mv_371 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-bg-tlo.ttl"));
-    if (!_mv_371.is_ok) {
-        __auto_type _ = _mv_371.data.err;
+    __auto_type _mv_377 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-bg-tlo.ttl"));
+    if (!_mv_377.is_ok) {
+        __auto_type _ = _mv_377.data.err;
         printf("%s\n", "  ERROR: failed to parse validate-bg-tlo.ttl");
         return 0;
-    } else if (_mv_371.is_ok) {
-        __auto_type bg_graph = _mv_371.data.ok;
-        __auto_type _mv_372 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-domain-only.ttl"));
-        if (!_mv_372.is_ok) {
-            __auto_type _ = _mv_372.data.err;
+    } else if (_mv_377.is_ok) {
+        __auto_type bg_graph = _mv_377.data.ok;
+        __auto_type _mv_378 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-domain-only.ttl"));
+        if (!_mv_378.is_ok) {
+            __auto_type _ = _mv_378.data.err;
             printf("%s\n", "  ERROR: failed to parse validate-domain-only.ttl");
             return 0;
-        } else if (_mv_372.is_ok) {
-            __auto_type domain_graph = _mv_372.data.ok;
+        } else if (_mv_378.is_ok) {
+            __auto_type domain_graph = _mv_378.data.ok;
             {
                 __auto_type ig = test_cli_graph_to_indexed(arena, domain_graph);
                 __auto_type bg_blank_offset = (growl_max_blank_id_in_graph(ig) + 1);
@@ -696,22 +696,22 @@ uint8_t test_cli_test_background_merge(slop_arena* arena) {
                 }
                 {
                     __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR("http://example.org/"), .cancel_ptr = 0, .max_triples = 0});
-                    __auto_type _mv_373 = growl_reason_with_config(arena, ig, config);
-                    switch (_mv_373.tag) {
+                    __auto_type _mv_379 = growl_reason_with_config(arena, ig, config);
+                    switch (_mv_379.tag) {
                         case types_ReasonerResult_reason_inconsistent:
                         {
-                            __auto_type reports = _mv_373.data.reason_inconsistent;
-                            __auto_type _mv_374 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                            if (_mv_374.has_value) {
-                                __auto_type report = _mv_374.value;
+                            __auto_type reports = _mv_379.data.reason_inconsistent;
+                            __auto_type _mv_380 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                            if (_mv_380.has_value) {
+                                __auto_type report = _mv_380.value;
                                 return strlib_starts_with(report.reason, SLOP_STR("Unsatisfiable class:"));
-                            } else if (!_mv_374.has_value) {
+                            } else if (!_mv_380.has_value) {
                                 return 0;
                             }
                         }
                         case types_ReasonerResult_reason_success:
                         {
-                            __auto_type _ = _mv_373.data.reason_success;
+                            __auto_type _ = _mv_379.data.reason_success;
                             printf("%s\n", "  ERROR: should have detected unsatisfiable ex:Bad via background merge");
                             return 0;
                         }
@@ -723,21 +723,21 @@ uint8_t test_cli_test_background_merge(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena) {
-    __auto_type _mv_375 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-multi-unsat.ttl"));
-    if (!_mv_375.is_ok) {
-        __auto_type _ = _mv_375.data.err;
+    __auto_type _mv_381 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/validate-multi-unsat.ttl"));
+    if (!_mv_381.is_ok) {
+        __auto_type _ = _mv_381.data.err;
         printf("%s\n", "  ERROR: failed to parse validate-multi-unsat.ttl");
         return 0;
-    } else if (_mv_375.is_ok) {
-        __auto_type g = _mv_375.data.ok;
+    } else if (_mv_381.is_ok) {
+        __auto_type g = _mv_381.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 0, .validate = 1, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_376 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_376.tag) {
+            __auto_type _mv_382 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_382.tag) {
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type reports = _mv_376.data.reason_inconsistent;
+                    __auto_type reports = _mv_382.data.reason_inconsistent;
                     {
                         __auto_type count = ((int64_t)((reports).len));
                         if (count == 2) {
@@ -773,7 +773,7 @@ uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena) {
                 }
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type _ = _mv_376.data.reason_success;
+                    __auto_type _ = _mv_382.data.reason_success;
                     printf("%s\n", "  ERROR: should have detected unsatisfiable classes");
                     return 0;
                 }
@@ -783,21 +783,21 @@ uint8_t test_cli_test_validate_multiple_unsat(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_enrich_basic(slop_arena* arena) {
-    __auto_type _mv_377 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/subclass-chain.ttl"));
-    if (!_mv_377.is_ok) {
-        __auto_type _ = _mv_377.data.err;
+    __auto_type _mv_383 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/subclass-chain.ttl"));
+    if (!_mv_383.is_ok) {
+        __auto_type _ = _mv_383.data.err;
         printf("%s\n", "  ERROR: failed to parse subclass-chain.ttl");
         return 0;
-    } else if (_mv_377.is_ok) {
-        __auto_type g = _mv_377.data.ok;
+    } else if (_mv_383.is_ok) {
+        __auto_type g = _mv_383.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_378 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_378.tag) {
+            __auto_type _mv_384 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_384.tag) {
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type s = _mv_378.data.reason_success;
+                    __auto_type s = _mv_384.data.reason_success;
                     {
                         __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
                         __auto_type person = rdf_make_iri(arena, SLOP_STR("http://example.org/Person"));
@@ -808,7 +808,7 @@ uint8_t test_cli_test_enrich_basic(slop_arena* arena) {
                 }
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type _ = _mv_378.data.reason_inconsistent;
+                    __auto_type _ = _mv_384.data.reason_inconsistent;
                     printf("%s\n", "  ERROR: unexpected inconsistency");
                     return 0;
                 }
@@ -818,21 +818,21 @@ uint8_t test_cli_test_enrich_basic(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_enrich_skips_eq(slop_arena* arena) {
-    __auto_type _mv_379 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/sameas-chain.ttl"));
-    if (!_mv_379.is_ok) {
-        __auto_type _ = _mv_379.data.err;
+    __auto_type _mv_385 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/sameas-chain.ttl"));
+    if (!_mv_385.is_ok) {
+        __auto_type _ = _mv_385.data.err;
         printf("%s\n", "  ERROR: failed to parse sameas-chain.ttl");
         return 0;
-    } else if (_mv_379.is_ok) {
-        __auto_type g = _mv_379.data.ok;
+    } else if (_mv_385.is_ok) {
+        __auto_type g = _mv_385.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_380 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_380.tag) {
+            __auto_type _mv_386 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_386.tag) {
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type s = _mv_380.data.reason_success;
+                    __auto_type s = _mv_386.data.reason_success;
                     {
                         __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
                         __auto_type charlie = rdf_make_iri(arena, SLOP_STR("http://example.org/charlie"));
@@ -841,7 +841,7 @@ uint8_t test_cli_test_enrich_skips_eq(slop_arena* arena) {
                 }
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type _ = _mv_380.data.reason_inconsistent;
+                    __auto_type _ = _mv_386.data.reason_inconsistent;
                     printf("%s\n", "  ERROR: unexpected inconsistency");
                     return 0;
                 }
@@ -851,21 +851,21 @@ uint8_t test_cli_test_enrich_skips_eq(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_enrich_skips_cls(slop_arena* arena) {
-    __auto_type _mv_381 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/enrich-cls-test.ttl"));
-    if (!_mv_381.is_ok) {
-        __auto_type _ = _mv_381.data.err;
+    __auto_type _mv_387 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/enrich-cls-test.ttl"));
+    if (!_mv_387.is_ok) {
+        __auto_type _ = _mv_387.data.err;
         printf("%s\n", "  ERROR: failed to parse enrich-cls-test.ttl");
         return 0;
-    } else if (_mv_381.is_ok) {
-        __auto_type g = _mv_381.data.ok;
+    } else if (_mv_387.is_ok) {
+        __auto_type g = _mv_387.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_382 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_382.tag) {
+            __auto_type _mv_388 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_388.tag) {
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type s = _mv_382.data.reason_success;
+                    __auto_type s = _mv_388.data.reason_success;
                     {
                         __auto_type alice = rdf_make_iri(arena, SLOP_STR("http://example.org/alice"));
                         __auto_type p = rdf_make_iri(arena, SLOP_STR("http://example.org/p"));
@@ -876,7 +876,7 @@ uint8_t test_cli_test_enrich_skips_cls(slop_arena* arena) {
                 }
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type _ = _mv_382.data.reason_inconsistent;
+                    __auto_type _ = _mv_388.data.reason_inconsistent;
                     printf("%s\n", "  ERROR: unexpected inconsistency");
                     return 0;
                 }
@@ -886,26 +886,26 @@ uint8_t test_cli_test_enrich_skips_cls(slop_arena* arena) {
 }
 
 uint8_t test_cli_test_enrich_checks_consistency(slop_arena* arena) {
-    __auto_type _mv_383 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/disjoint-violation.ttl"));
-    if (!_mv_383.is_ok) {
-        __auto_type _ = _mv_383.data.err;
+    __auto_type _mv_389 = ttl_parse_ttl_file(arena, SLOP_STR("fixtures/disjoint-violation.ttl"));
+    if (!_mv_389.is_ok) {
+        __auto_type _ = _mv_389.data.err;
         printf("%s\n", "  ERROR: failed to parse disjoint-violation.ttl");
         return 0;
-    } else if (_mv_383.is_ok) {
-        __auto_type g = _mv_383.data.ok;
+    } else if (_mv_389.is_ok) {
+        __auto_type g = _mv_389.data.ok;
         {
             __auto_type ig = test_cli_graph_to_indexed(arena, g);
             __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 0, .fast = 0, .complete = 0, .enrich = 1, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
-            __auto_type _mv_384 = growl_reason_with_config(arena, ig, config);
-            switch (_mv_384.tag) {
+            __auto_type _mv_390 = growl_reason_with_config(arena, ig, config);
+            switch (_mv_390.tag) {
                 case types_ReasonerResult_reason_inconsistent:
                 {
-                    __auto_type _ = _mv_384.data.reason_inconsistent;
+                    __auto_type _ = _mv_390.data.reason_inconsistent;
                     return 1;
                 }
                 case types_ReasonerResult_reason_success:
                 {
-                    __auto_type _ = _mv_384.data.reason_success;
+                    __auto_type _ = _mv_390.data.reason_success;
                     printf("%s\n", "  ERROR: should have detected disjoint violation in enrich mode");
                     return 0;
                 }

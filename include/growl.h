@@ -24,6 +24,7 @@ struct index_TripleIndex {
     slop_map* spo;
     slop_map* pso;
     slop_map* osp;
+    slop_map* pos;
 };
 typedef struct index_TripleIndex index_TripleIndex;
 
@@ -51,58 +52,16 @@ typedef struct rdf_Literal rdf_Literal;
 typedef enum {
     rdf_TermKind_iri,
     rdf_TermKind_blank,
-    rdf_TermKind_literal
+    rdf_TermKind_literal,
+    rdf_TermKind_triple
 } rdf_TermKind;
 
 typedef enum {
     rdf_Term_term_iri,
     rdf_Term_term_blank,
-    rdf_Term_term_literal
+    rdf_Term_term_literal,
+    rdf_Term_term_triple
 } rdf_Term_tag;
-
-struct rdf_Term {
-    rdf_Term_tag tag;
-    union {
-        rdf_IRI term_iri;
-        rdf_BlankNode term_blank;
-        rdf_Literal term_literal;
-    } data;
-};
-typedef struct rdf_Term rdf_Term;
-
-struct rdf_Triple {
-    rdf_Term subject;
-    rdf_Term predicate;
-    rdf_Term object;
-};
-typedef struct rdf_Triple rdf_Triple;
-
-typedef struct { size_t len; size_t cap; rdf_Term* data; } slop_list_rdf_Term;
-
-typedef struct { size_t len; size_t cap; rdf_Triple* data; } slop_list_rdf_Triple;
-
-struct index_IndexedGraph {
-    slop_list_rdf_Triple triples;
-    index_TripleIndex index;
-    int64_t size;
-};
-typedef struct index_IndexedGraph index_IndexedGraph;
-
-struct rdf_Graph {
-    slop_list_rdf_Triple triples;
-    rdf_GraphSize size;
-};
-typedef struct rdf_Graph rdf_Graph;
-
-typedef struct { bool has_value; rdf_Term value; } slop_option_rdf_Term;
-
-struct types_InconsistencyReport {
-    slop_string reason;
-    slop_list_rdf_Triple witnesses;
-};
-typedef struct types_InconsistencyReport types_InconsistencyReport;
-
-typedef struct { size_t len; size_t cap; types_InconsistencyReport* data; } slop_list_types_InconsistencyReport;
 
 struct types_ReasonerConfig {
     uint8_t worker_count;
@@ -124,23 +83,6 @@ typedef enum {
     types_ReasonerResult_reason_inconsistent,
     types_ReasonerResult_reason_cancelled
 } types_ReasonerResult_tag;
-
-struct types_ReasonerSuccess {
-    index_IndexedGraph graph;
-    int64_t inferred_count;
-    int64_t iterations;
-};
-typedef struct types_ReasonerSuccess types_ReasonerSuccess;
-
-struct types_ReasonerResult {
-    types_ReasonerResult_tag tag;
-    union {
-        types_ReasonerSuccess reason_success;
-        slop_list_types_InconsistencyReport reason_inconsistent;
-        types_ReasonerSuccess reason_cancelled;
-    } data;
-};
-typedef struct types_ReasonerResult types_ReasonerResult;
 
 typedef enum {
     xsd_XsdCompareResult_xsd_compare_less,
@@ -183,6 +125,68 @@ struct xsd_XsdValue {
 };
 typedef struct xsd_XsdValue xsd_XsdValue;
 
+struct index_IndexedGraph {
+    slop_list_rdf_Triple triples;
+    index_TripleIndex index;
+    int64_t size;
+};
+typedef struct index_IndexedGraph index_IndexedGraph;
+
+struct rdf_Graph {
+    slop_list_rdf_Triple triples;
+    rdf_GraphSize size;
+};
+typedef struct rdf_Graph rdf_Graph;
+
+struct rdf_Term {
+    rdf_Term_tag tag;
+    union {
+        rdf_IRI term_iri;
+        rdf_BlankNode term_blank;
+        rdf_Literal term_literal;
+        rdf_Triple* term_triple;
+    } data;
+};
+typedef struct rdf_Term rdf_Term;
+
+struct rdf_Triple {
+    rdf_Term subject;
+    rdf_Term predicate;
+    rdf_Term object;
+};
+typedef struct rdf_Triple rdf_Triple;
+
+typedef struct { size_t len; size_t cap; rdf_Term* data; } slop_list_rdf_Term;
+
+typedef struct { size_t len; size_t cap; rdf_Triple* data; } slop_list_rdf_Triple;
+
+typedef struct { size_t len; size_t cap; types_InconsistencyReport* data; } slop_list_types_InconsistencyReport;
+
+typedef struct { bool has_value; rdf_Term value; } slop_option_rdf_Term;
+
+struct types_InconsistencyReport {
+    slop_string reason;
+    slop_list_rdf_Triple witnesses;
+};
+typedef struct types_InconsistencyReport types_InconsistencyReport;
+
+struct types_ReasonerResult {
+    types_ReasonerResult_tag tag;
+    union {
+        types_ReasonerSuccess reason_success;
+        slop_list_types_InconsistencyReport reason_inconsistent;
+        types_ReasonerSuccess reason_cancelled;
+    } data;
+};
+typedef struct types_ReasonerResult types_ReasonerResult;
+
+struct types_ReasonerSuccess {
+    index_IndexedGraph graph;
+    int64_t inferred_count;
+    int64_t iterations;
+};
+typedef struct types_ReasonerSuccess types_ReasonerSuccess;
+
 /* Public API */
 slop_map* growl_collect_annotation_properties(slop_arena* arena, rdf_Graph g);
 types_ReasonerConfig growl_default_config(void);
@@ -222,6 +226,7 @@ rdf_Graph rdf_make_graph(slop_arena* arena);
 rdf_Term rdf_make_iri(slop_arena* arena, slop_string value);
 rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_string datatype, slop_option_string lang);
 rdf_Triple rdf_make_triple(slop_arena* arena, rdf_Term subject, rdf_Term predicate, rdf_Term object);
+rdf_Term rdf_make_triple_term(slop_arena* arena, rdf_Triple t);
 uint8_t rdf_option_string_eq(slop_option_string a, slop_option_string b);
 uint8_t rdf_term_eq(rdf_Term a, rdf_Term b);
 void rdf_term_free(rdf_Term* t);

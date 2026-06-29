@@ -37,6 +37,7 @@ struct index_TripleIndex {
     slop_map* spo;
     slop_map* pso;
     slop_map* osp;
+    slop_map* pos;
 };
 typedef struct index_TripleIndex index_TripleIndex;
 

@@ -218,25 +218,29 @@ Safe Rust bindings are available in the [`rust/`](rust/) directory. See [`rust/R
 
 Compared against [OWL-RL](https://github.com/RDFLib/OWL-RL) (Python reference implementation, used as ground truth) and [Reasonable](https://github.com/gtfierro/reasonable) (Rust) on 5 real-world ontologies. Growl filters annotation triples before reasoning (see [Annotation Filtering](#annotation-filtering)), so its effective input is smaller — the "Input" column shows the raw triple count that OWL-RL and Reasonable see.
 
+All three reasoners are run in a single pass on the same machine, so the relative comparison holds regardless of hardware; absolute times are not comparable across machines or runs. Measured with owlrl 7.1.4 and reasonable 0.4.4 — reasoner versions can shift inference counts, so the Reasonable column reflects that release specifically.
+
 ### Performance
 
 | Ontology | Input | OWL-RL | Reasonable | Growl --complete | Growl | Growl --fast |
 |---|---|---|---|---|---|---|
-| BFO | 1,014 | 583ms | 35ms | 33ms | 21ms | 3ms |
-| Pizza | 1,944 | 2.2s | 114ms | 229ms | 164ms | 52ms |
-| CCO | 13,649 | 18.4s | 737ms | 3.1s | 2.8s | 434ms |
-| Schema.org | 17,823 | 8.3s | 132ms | 691ms | 566ms | 333ms |
-| Brick | 53,960 | 33.9s | 286ms | 4.6s | 4.0s | 2.3s |
+| BFO | 1,014 | 343ms | 4ms | 14ms | 7ms | 1ms |
+| Pizza | 1,944 | 1.3s | 6ms | 58ms | 33ms | 4ms |
+| CCO | 13,649 | 11.3s | 87ms | 462ms | 277ms | 59ms |
+| Schema.org | 17,823 | 5.2s | 88ms | 199ms | 138ms | 53ms |
+| Brick | 53,960 | 22.2s | 204ms | 492ms | 304ms | 98ms |
+
+At equivalent rule coverage, Growl `--fast` is faster than Reasonable on all five ontologies (e.g. Brick 98ms vs 204ms).
 
 ### Accuracy (inferred triples vs OWL-RL reference)
 
 | Ontology | OWL-RL (ref) | Reasonable | Growl --complete | Growl | Growl --fast |
 |---|---|---|---|---|---|
-| BFO | 2,186 | +91.9% | -0.7% | -17.1% | -83.7% |
-| Pizza | 8,005 | +29.1% | -1.9% | -30.6% | -95.2% |
-| CCO | 52,363 | -11.4% | +2.7% | -1.8% | -76.0% |
-| Schema.org | 26,682 | +15.9% | +0.6% | -0.6% | -40.5% |
-| Brick | 39,493 | +81.9% | -0.1% | -23.9% | -69.5% |
+| BFO | 2,186 | -34.3% | -0.6% | -17.1% | -83.7% |
+| Pizza | 8,005 | -64.0% | -1.8% | -30.6% | -95.2% |
+| CCO | 52,363 | -34.8% | +2.7% | -1.8% | -76.0% |
+| Schema.org | 26,682 | +28.7% | +0.7% | -0.6% | -40.5% |
+| Brick | 39,493 | +104.2% | -0.1% | -23.9% | -69.5% |
 
 **Modes**: `--complete` enables all spec rules (cls-thing, prp-ap, dt-type2) for closest OWL-RL parity. Default Growl skips those practically inert rules. `--enrich` runs only property/subclass propagation and consistency checks (no sameAs, class expressions, or schema materialization). `--fast` targets the same rule coverage as Reasonable (skips schema rules, datatypes, eq-ref, cardinality), making Growl --fast vs Reasonable an apples-to-apples comparison.
 
