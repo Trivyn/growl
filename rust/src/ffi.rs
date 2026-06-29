@@ -124,6 +124,13 @@ pub struct TripleIndex {
     pub spo: *mut c_void,
     pub pso: *mut c_void,
     pub osp: *mut c_void,
+    // 4th index added in slop-rdf (growl 0.6.0, "Performance improvements #20").
+    // This MUST mirror `struct index_TripleIndex` in csrc/src/slop_index.h exactly:
+    // a missing field here shifts `IndexedGraphFfi.size` (and everything after it,
+    // including ReasonerSuccess.iterations) to the wrong offset across the FFI
+    // boundary, so `graph.size()` returns a garbage pointer. See the layout
+    // assertions in the `ffi_layout` test module.
+    pub pos: *mut c_void,
 }
 
 #[repr(C)]
@@ -291,4 +298,78 @@ extern "C" {
         arena: *mut SlopArena,
         ig: IndexedGraphFfi,
     ) -> IndexedGraphFfi;
+
+    // FFI layout guards (defined in csrc_shim.c) — expose the real C ABI so the
+    // #[repr(C)] mirrors above can be asserted against it in tests.
+    pub fn growl_layout_sizeof_triple_index() -> usize;
+    pub fn growl_layout_sizeof_indexed_graph() -> usize;
+    pub fn growl_layout_offset_graph_size() -> usize;
+    pub fn growl_layout_sizeof_rdf_term() -> usize;
+    pub fn growl_layout_sizeof_rdf_triple() -> usize;
+    pub fn growl_layout_sizeof_reasoner_config() -> usize;
+    pub fn growl_layout_offset_cfg_cancel_ptr() -> usize;
+    pub fn growl_layout_sizeof_reasoner_success() -> usize;
+    pub fn growl_layout_offset_success_iterations() -> usize;
+}
+
+#[cfg(test)]
+mod layout_guard {
+    //! Assert the hand-written `#[repr(C)]` mirrors in this module match the real
+    //! C ABI reported by `csrc_shim.c`. This guards against silent FFI drift like
+    //! the growl 0.6.0 regression: slop-rdf added a 4th index (`pos`) to
+    //! `index_TripleIndex`, but this binding was not updated, so
+    //! `IndexedGraph.size` / `ReasonerSuccess.iterations` were read at the wrong
+    //! offset across the boundary and `graph.size()` returned a garbage pointer.
+    use super::*;
+
+    #[test]
+    fn ffi_structs_match_c_abi() {
+        unsafe {
+            assert_eq!(
+                core::mem::size_of::<TripleIndex>(),
+                growl_layout_sizeof_triple_index(),
+                "TripleIndex size != C index_TripleIndex (a triple index was added/removed in slop-rdf)"
+            );
+            assert_eq!(
+                core::mem::size_of::<IndexedGraphFfi>(),
+                growl_layout_sizeof_indexed_graph(),
+                "IndexedGraphFfi size != C index_IndexedGraph"
+            );
+            assert_eq!(
+                core::mem::offset_of!(IndexedGraphFfi, size),
+                growl_layout_offset_graph_size(),
+                "IndexedGraphFfi.size offset != C — graph.size() would read garbage"
+            );
+            assert_eq!(
+                core::mem::size_of::<RdfTerm>(),
+                growl_layout_sizeof_rdf_term(),
+                "RdfTerm size != C rdf_Term"
+            );
+            assert_eq!(
+                core::mem::size_of::<RdfTriple>(),
+                growl_layout_sizeof_rdf_triple(),
+                "RdfTriple size != C rdf_Triple"
+            );
+            assert_eq!(
+                core::mem::size_of::<ReasonerConfigFfi>(),
+                growl_layout_sizeof_reasoner_config(),
+                "ReasonerConfigFfi size != C types_ReasonerConfig"
+            );
+            assert_eq!(
+                core::mem::offset_of!(ReasonerConfigFfi, cancel_ptr),
+                growl_layout_offset_cfg_cancel_ptr(),
+                "ReasonerConfigFfi.cancel_ptr offset != C — cancellation would break"
+            );
+            assert_eq!(
+                core::mem::size_of::<ReasonerSuccessFfi>(),
+                growl_layout_sizeof_reasoner_success(),
+                "ReasonerSuccessFfi size != C types_ReasonerSuccess"
+            );
+            assert_eq!(
+                core::mem::offset_of!(ReasonerSuccessFfi, iterations),
+                growl_layout_offset_success_iterations(),
+                "ReasonerSuccessFfi.iterations offset != C — iteration counts would be wrong"
+            );
+        }
+    }
 }
