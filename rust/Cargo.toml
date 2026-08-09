@@ -19,5 +19,9 @@ include = [
     "LICENSE",
 ]
 
+[dependencies]
+slop-std-sys = { path = "../../slop-sys/slop-std-sys", version = "0.1.0" }
+slop-rdf-sys = { path = "../../slop-sys/slop-rdf-sys", version = "0.1.0" }
+
 [build-dependencies]
 cc = "1"

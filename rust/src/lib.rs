@@ -24,6 +24,17 @@
 
 pub mod ffi;
 
+// Force-link the native static libraries bundled in these -sys crates.
+//
+// growl's own C code (csrc/src/*.c) calls directly into slop-rdf-sys's and
+// slop-std-sys's C symbols (vocab_*, rdf_*, xsd_*, strlib_*, ...) via FFI.
+// Nothing in this crate's *Rust* source otherwise names either crate, so
+// without this marker rustc's dead-crate-elimination drops both `--extern`
+// crates -- and the native archives bundled inside their rlibs -- from the
+// final binary link, leaving those C symbols undefined at link time.
+extern crate slop_rdf_sys as _;
+extern crate slop_std_sys as _;
+
 use std::os::raw::c_char;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
