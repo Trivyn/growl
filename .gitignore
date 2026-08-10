@@ -3,3 +3,8 @@ build/
 __pycache__
 target/
 rust/csrc
+.claude/
+.codex/
+.mcp.json
+.moosedev/
+!./moosedev/kg.nq
