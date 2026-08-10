@@ -22,6 +22,7 @@ SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
 rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset);
+int64_t growl_max_blank_id_in_term(rdf_Term t);
 int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig);
 types_ReasonerConfig growl_default_config(void);
 types_ReasonerResult growl_reason(slop_arena* arena, index_IndexedGraph input);

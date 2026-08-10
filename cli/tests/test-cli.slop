@@ -8,7 +8,8 @@
 (module test-cli
   (@doc "Integration tests for growl CLI pipeline")
 
-  (import rdf (Term Triple Graph GraphSize make-iri make-triple make-graph graph-size term-eq))
+  (import rdf (Term Triple Graph GraphSize make-iri make-blank make-triple make-triple-term
+               make-graph graph-size term-eq))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-match indexed-graph-size indexed-graph-contains))
   (import ttl (PrefixMap PrefixBinding make-prefix-map parse-ttl-file))
@@ -593,6 +594,33 @@
               false))))))
 
   ;; ============================================================
+  ;; RDF-star blank node remapping regression
+  ;; ============================================================
+
+  (fn test-rdf-star-blank-remapping ((arena Arena))
+    (@intent "Recursively find and remap blank nodes inside nested RDF-star triple terms")
+    (@spec ((Arena) -> Bool))
+    (@alloc arena)
+    (let ((predicate (make-iri arena "http://example.org/p"))
+          (value (make-iri arena "http://example.org/value"))
+          (inner (make-triple arena (make-blank arena 2) predicate value))
+          (inner-term (make-triple-term arena inner))
+          (outer (make-triple arena (make-blank arena 7) predicate inner-term))
+          (quoted (make-triple-term arena outer))
+          (expected-inner (make-triple arena (make-blank arena 12) predicate value))
+          (expected-inner-term (make-triple-term arena expected-inner))
+          (expected-outer (make-triple arena (make-blank arena 17) predicate expected-inner-term))
+          (expected (make-triple-term arena expected-outer))
+          (remapped (remap-blank-term arena quoted 10))
+          (mut ig (indexed-graph-create arena)))
+      (do
+        (set! ig (indexed-graph-add arena ig
+          (make-triple arena value predicate quoted)))
+        (and
+          (== (max-blank-id-in-graph ig) 7)
+          (term-eq remapped expected)))))
+
+  ;; ============================================================
   ;; Test 19: --background merge pattern
   ;; ============================================================
 
@@ -936,6 +964,10 @@
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
 
         ;; Background merge
+        (let ((r (test-rdf-star-blank-remapping arena)))
+          (print-result "background merge: remaps RDF-star blank nodes" r)
+          (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))
+
         (let ((r (test-background-merge arena)))
           (print-result "background merge: detects unsatisfiable class" r)
           (if r (set! passed (+ passed 1)) (set! failed (+ failed 1))))

@@ -2,6 +2,7 @@
 #include "slop_growl.h"
 
 rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset);
+int64_t growl_max_blank_id_in_term(rdf_Term t);
 int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig);
 types_ReasonerConfig growl_default_config(void);
 types_ReasonerResult growl_reason(slop_arena* arena, index_IndexedGraph input);
@@ -29,6 +30,53 @@ rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
             __auto_type _ = _mv_317.data.term_literal;
             return t;
         }
+        case rdf_Term_term_triple:
+        {
+            __auto_type tt = _mv_317.data.term_triple;
+            {
+                __auto_type triple = (*tt);
+                return rdf_make_triple_term(arena, rdf_make_triple(arena, growl_remap_blank_term(arena, triple.subject, offset), growl_remap_blank_term(arena, triple.predicate, offset), growl_remap_blank_term(arena, triple.object, offset)));
+            }
+        }
+    }
+}
+
+int64_t growl_max_blank_id_in_term(rdf_Term t) {
+    __auto_type _mv_318 = t;
+    switch (_mv_318.tag) {
+        case rdf_Term_term_blank:
+        {
+            __auto_type b = _mv_318.data.term_blank;
+            return b.id;
+        }
+        case rdf_Term_term_iri:
+        {
+            __auto_type _ = _mv_318.data.term_iri;
+            return 0;
+        }
+        case rdf_Term_term_literal:
+        {
+            __auto_type _ = _mv_318.data.term_literal;
+            return 0;
+        }
+        case rdf_Term_term_triple:
+        {
+            __auto_type tt = _mv_318.data.term_triple;
+            {
+                __auto_type triple = (*tt);
+                __auto_type subject_max = growl_max_blank_id_in_term(triple.subject);
+                __auto_type predicate_max = growl_max_blank_id_in_term(triple.predicate);
+                __auto_type object_max = growl_max_blank_id_in_term(triple.object);
+                __auto_type max_id = subject_max;
+                if (predicate_max > max_id) {
+                    max_id = predicate_max;
+                }
+                if (object_max > max_id) {
+                    max_id = object_max;
+                }
+                return max_id;
+            }
+        }
     }
 }
 
@@ -40,32 +88,18 @@ int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig) {
             __auto_type _coll = triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
-                __auto_type _mv_318 = t.subject;
-                switch (_mv_318.tag) {
-                    case rdf_Term_term_blank:
-                    {
-                        __auto_type b = _mv_318.data.term_blank;
-                        if (b.id > max_id) {
-                            max_id = b.id;
-                        }
-                        break;
+                {
+                    __auto_type subject_max = growl_max_blank_id_in_term(t.subject);
+                    __auto_type predicate_max = growl_max_blank_id_in_term(t.predicate);
+                    __auto_type object_max = growl_max_blank_id_in_term(t.object);
+                    if (subject_max > max_id) {
+                        max_id = subject_max;
                     }
-                    default: {
-                        break;
+                    if (predicate_max > max_id) {
+                        max_id = predicate_max;
                     }
-                }
-                __auto_type _mv_319 = t.object;
-                switch (_mv_319.tag) {
-                    case rdf_Term_term_blank:
-                    {
-                        __auto_type b = _mv_319.data.term_blank;
-                        if (b.id > max_id) {
-                            max_id = b.id;
-                        }
-                        break;
-                    }
-                    default: {
-                        break;
+                    if (object_max > max_id) {
+                        max_id = object_max;
                     }
                 }
             }
@@ -109,21 +143,21 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
 
 uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
-    __auto_type _mv_320 = growl_reason(arena, input);
-    switch (_mv_320.tag) {
+    __auto_type _mv_319 = growl_reason(arena, input);
+    switch (_mv_319.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type _ = _mv_320.data.reason_success;
+            __auto_type _ = _mv_319.data.reason_success;
             return 1;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_320.data.reason_inconsistent;
+            __auto_type _ = _mv_319.data.reason_inconsistent;
             return 0;
         }
         case types_ReasonerResult_reason_cancelled:
         {
-            __auto_type _ = _mv_320.data.reason_cancelled;
+            __auto_type _ = _mv_319.data.reason_cancelled;
             return 1;
         }
     }
@@ -182,21 +216,21 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 
 int64_t growl_get_inferred_count(types_ReasonerResult result) {
     int64_t _retval = {0};
-    __auto_type _mv_321 = result;
-    switch (_mv_321.tag) {
+    __auto_type _mv_320 = result;
+    switch (_mv_320.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type s = _mv_321.data.reason_success;
+            __auto_type s = _mv_320.data.reason_success;
             return s.inferred_count;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_321.data.reason_inconsistent;
+            __auto_type _ = _mv_320.data.reason_inconsistent;
             return 0;
         }
         case types_ReasonerResult_reason_cancelled:
         {
-            __auto_type s = _mv_321.data.reason_cancelled;
+            __auto_type s = _mv_320.data.reason_cancelled;
             return s.inferred_count;
         }
     }

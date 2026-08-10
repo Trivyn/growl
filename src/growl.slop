@@ -8,7 +8,7 @@
 (module growl
   (@doc "OWL 2 RL reasoner with formally verified inference rules")
 
-  (import rdf (Term Triple term-eq triple-eq make-iri make-blank make-triple))
+  (import rdf (Term Triple term-eq triple-eq make-iri make-blank make-triple make-triple-term))
   (import index (IndexedGraph indexed-graph-create indexed-graph-add
                  indexed-graph-match indexed-graph-contains indexed-graph-size))
   (import vocab (RDF_TYPE RDFS_SUBCLASS_OF OWL_SAME_AS OWL_DIFFERENT_FROM))
@@ -53,27 +53,54 @@
   ;; ============================================================
 
   (fn remap-blank-term ((arena Arena) (t Term) (offset I64))
-    (@intent "If term is a blank node, return new blank with ID + offset; otherwise return unchanged")
+    (@intent "Remap blank node IDs by an offset, including inside nested RDF-star triple terms")
     (@spec ((Arena Term I64) -> Term))
     (@alloc arena)
     (match t
       ((term-blank b) (make-blank arena (+ (. b id) offset)))
       ((term-iri _) t)
-      ((term-literal _) t)))
+      ((term-literal _) t)
+      ((term-triple tt)
+        (let ((triple (deref tt)))
+          (make-triple-term arena
+            (make-triple arena
+              (remap-blank-term arena (. triple subject) offset)
+              (remap-blank-term arena (. triple predicate) offset)
+              (remap-blank-term arena (. triple object) offset)))))))
+
+  (fn max-blank-id-in-term ((t Term))
+    (@intent "Find the highest blank node ID in a term, including nested RDF-star triple terms")
+    (@spec ((Term) -> Int))
+    (@pure)
+    (match t
+      ((term-blank b) (. b id))
+      ((term-iri _) 0)
+      ((term-literal _) 0)
+      ((term-triple tt)
+        (let ((triple (deref tt))
+              (subject-max (max-blank-id-in-term (. triple subject)))
+              (predicate-max (max-blank-id-in-term (. triple predicate)))
+              (object-max (max-blank-id-in-term (. triple object)))
+              (mut max-id subject-max))
+          (do
+            (when (> predicate-max max-id) (set! max-id predicate-max))
+            (when (> object-max max-id) (set! max-id object-max))
+            max-id)))))
 
   (fn max-blank-id-in-graph ((ig IndexedGraph))
-    (@intent "Find the highest blank node ID across all triples in the graph")
+    (@intent "Find the highest blank node ID across graph terms and nested RDF-star triple terms")
     (@spec ((IndexedGraph) -> Int))
     (@pure)
     (let ((triples (. ig triples))
           (mut max-id 0))
       (for-each (t triples)
-        (match (. t subject)
-          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
-          (_ (do)))
-        (match (. t object)
-          ((term-blank b) (when (> (. b id) max-id) (set! max-id (. b id))))
-          (_ (do))))
+        (let ((subject-max (max-blank-id-in-term (. t subject)))
+              (predicate-max (max-blank-id-in-term (. t predicate)))
+              (object-max (max-blank-id-in-term (. t object))))
+          (do
+            (when (> subject-max max-id) (set! max-id subject-max))
+            (when (> predicate-max max-id) (set! max-id predicate-max))
+            (when (> object-max max-id) (set! max-id object-max)))))
       max-id))
 
   ;; ============================================================
