@@ -3,8 +3,8 @@ build/
 __pycache__
 target/
 rust/csrc
-
-# MOOSEDev: ignore the derived store/vector cache,
-# but commit the canonical project-graph text (kg.nq).
-/.moosedev/*
-!/.moosedev/kg.nq
+.claude/
+.codex/
+.mcp.json
+.moosedev/
+!./moosedev/kg.nq
