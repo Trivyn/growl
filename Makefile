@@ -97,12 +97,23 @@ dist:
 
 # --- Rust crate targets ---
 
+# These modules are provided by slop-std-sys / slop-rdf-sys from slop-sys v0.2.1.
+# The Rust crate must not vendor its own copy, or consumers linking both copies
+# will collide on duplicate symbols.
+SHARED_MODULES := common file index list rdf serialize_ttl strlib thread ttl vocab xsd
+
+CRATE_ALL_C := $(wildcard $(CSRC)/*.c)
+CRATE_ALL_H := $(wildcard $(CSRC)/*.h)
+CRATE_SRCS  := $(filter-out $(foreach m,$(SHARED_MODULES),$(CSRC)/slop_$(m).c),$(CRATE_ALL_C))
+CRATE_HDRS  := $(filter-out $(foreach m,$(SHARED_MODULES),$(CSRC)/slop_$(m).h),$(CRATE_ALL_H))
+
 crate-vendor:
 	@mkdir -p rust/csrc/src rust/csrc/runtime
-	cp csrc/src/*.c csrc/src/*.h rust/csrc/src/
+	rm -f $(foreach m,$(SHARED_MODULES),rust/csrc/src/slop_$(m).c rust/csrc/src/slop_$(m).h)
+	cp $(CRATE_SRCS) $(CRATE_HDRS) rust/csrc/src/
 	cp csrc/runtime/slop_runtime.h rust/csrc/runtime/
 	cp LICENSE rust/LICENSE
-	@echo "  -> rust/csrc/ vendored"
+	@echo "  -> rust/csrc/ vendored (shared modules excluded; provided by slop-std-sys/slop-rdf-sys)"
 
 crate-build: crate-vendor
 	cd rust && cargo build
