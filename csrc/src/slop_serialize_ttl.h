@@ -19,6 +19,7 @@ typedef struct serialize_ttl_SubjectGroup serialize_ttl_SubjectGroup;
 
 #ifndef SLOP_LIST_RDF_TERM_DEFINED
 #define SLOP_LIST_RDF_TERM_DEFINED
+#define SLOP_LIST_RDF_TERM_IMPL_DEFINED
 SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
 #endif
 
@@ -81,6 +82,7 @@ SLOP_OPTION_DEFINE(serialize_ttl_ObjectGroup, slop_option_serialize_ttl_ObjectGr
 
 #ifndef SLOP_LIST_SERIALIZE_TTL_OBJECTGROUP_DEFINED
 #define SLOP_LIST_SERIALIZE_TTL_OBJECTGROUP_DEFINED
+#define SLOP_LIST_SERIALIZE_TTL_OBJECTGROUP_IMPL_DEFINED
 SLOP_LIST_DEFINE(serialize_ttl_ObjectGroup, slop_list_serialize_ttl_ObjectGroup)
 #endif
 
@@ -97,6 +99,7 @@ SLOP_OPTION_DEFINE(serialize_ttl_SubjectGroup, slop_option_serialize_ttl_Subject
 
 #ifndef SLOP_LIST_SERIALIZE_TTL_SUBJECTGROUP_DEFINED
 #define SLOP_LIST_SERIALIZE_TTL_SUBJECTGROUP_DEFINED
+#define SLOP_LIST_SERIALIZE_TTL_SUBJECTGROUP_IMPL_DEFINED
 SLOP_LIST_DEFINE(serialize_ttl_SubjectGroup, slop_list_serialize_ttl_SubjectGroup)
 #endif
 

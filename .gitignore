@@ -9,3 +9,4 @@ rust/csrc
 .moosedev/*
 !/.moosedev/kg.nq
 cli/tests/.moosedev/*
+.env

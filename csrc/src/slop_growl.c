@@ -13,55 +13,56 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 int64_t growl_get_inferred_count(types_ReasonerResult result);
 
 rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
-    __auto_type _mv_317 = t;
-    switch (_mv_317.tag) {
+    __auto_type _mv_457 = t;
+    switch (_mv_457.tag) {
         case rdf_Term_term_blank:
         {
-            __auto_type b = _mv_317.data.term_blank;
+            __auto_type b = _mv_457.data.term_blank;
             return rdf_make_blank(arena, (b.id + offset));
         }
         case rdf_Term_term_iri:
         {
-            __auto_type _ = _mv_317.data.term_iri;
+            __auto_type _ = _mv_457.data.term_iri;
             return t;
         }
         case rdf_Term_term_literal:
         {
-            __auto_type _ = _mv_317.data.term_literal;
+            __auto_type _ = _mv_457.data.term_literal;
             return t;
         }
         case rdf_Term_term_triple:
         {
-            __auto_type tt = _mv_317.data.term_triple;
+            __auto_type tt = _mv_457.data.term_triple;
             {
                 __auto_type triple = (*tt);
                 return rdf_make_triple_term(arena, rdf_make_triple(arena, growl_remap_blank_term(arena, triple.subject, offset), growl_remap_blank_term(arena, triple.predicate, offset), growl_remap_blank_term(arena, triple.object, offset)));
             }
         }
     }
+    SLOP_UNREACHABLE();
 }
 
 int64_t growl_max_blank_id_in_term(rdf_Term t) {
-    __auto_type _mv_318 = t;
-    switch (_mv_318.tag) {
+    __auto_type _mv_458 = t;
+    switch (_mv_458.tag) {
         case rdf_Term_term_blank:
         {
-            __auto_type b = _mv_318.data.term_blank;
+            __auto_type b = _mv_458.data.term_blank;
             return b.id;
         }
         case rdf_Term_term_iri:
         {
-            __auto_type _ = _mv_318.data.term_iri;
+            __auto_type _ = _mv_458.data.term_iri;
             return 0;
         }
         case rdf_Term_term_literal:
         {
-            __auto_type _ = _mv_318.data.term_literal;
+            __auto_type _ = _mv_458.data.term_literal;
             return 0;
         }
         case rdf_Term_term_triple:
         {
-            __auto_type tt = _mv_318.data.term_triple;
+            __auto_type tt = _mv_458.data.term_triple;
             {
                 __auto_type triple = (*tt);
                 __auto_type subject_max = growl_max_blank_id_in_term(triple.subject);
@@ -78,6 +79,7 @@ int64_t growl_max_blank_id_in_term(rdf_Term t) {
             }
         }
     }
+    SLOP_UNREACHABLE();
 }
 
 int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig) {
@@ -143,24 +145,25 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
 
 uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
-    __auto_type _mv_319 = growl_reason(arena, input);
-    switch (_mv_319.tag) {
+    __auto_type _mv_459 = growl_reason(arena, input);
+    switch (_mv_459.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type _ = _mv_319.data.reason_success;
+            __auto_type _ = _mv_459.data.reason_success;
             return 1;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_319.data.reason_inconsistent;
+            __auto_type _ = _mv_459.data.reason_inconsistent;
             return 0;
         }
         case types_ReasonerResult_reason_cancelled:
         {
-            __auto_type _ = _mv_319.data.reason_cancelled;
+            __auto_type _ = _mv_459.data.reason_cancelled;
             return 1;
         }
     }
+    SLOP_UNREACHABLE();
 }
 
 slop_list_rdf_Term growl_get_types(slop_arena* arena, index_IndexedGraph g, rdf_Term individual) {
@@ -216,24 +219,25 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 
 int64_t growl_get_inferred_count(types_ReasonerResult result) {
     int64_t _retval = {0};
-    __auto_type _mv_320 = result;
-    switch (_mv_320.tag) {
+    __auto_type _mv_460 = result;
+    switch (_mv_460.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type s = _mv_320.data.reason_success;
+            __auto_type s = _mv_460.data.reason_success;
             return s.inferred_count;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_320.data.reason_inconsistent;
+            __auto_type _ = _mv_460.data.reason_inconsistent;
             return 0;
         }
         case types_ReasonerResult_reason_cancelled:
         {
-            __auto_type s = _mv_320.data.reason_cancelled;
+            __auto_type s = _mv_460.data.reason_cancelled;
             return s.inferred_count;
         }
     }
+    SLOP_UNREACHABLE();
     SLOP_POST(((_retval >= 0)), "(>= $result 0)");
     return _retval;
 }

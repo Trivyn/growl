@@ -12,6 +12,7 @@
 
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
 #define SLOP_LIST_RDF_TRIPLE_DEFINED
+#define SLOP_LIST_RDF_TRIPLE_IMPL_DEFINED
 SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
 #endif
 
@@ -56,6 +57,11 @@ SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
 #ifndef SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
 #define SLOP_OPTION_TYPES_INCONSISTENCYREPORT_DEFINED
 SLOP_OPTION_DEFINE(types_InconsistencyReport, slop_option_types_InconsistencyReport)
+#endif
+
+#ifndef SLOP_OPTION_RDF_TERM_DEFINED
+#define SLOP_OPTION_RDF_TERM_DEFINED
+SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
 

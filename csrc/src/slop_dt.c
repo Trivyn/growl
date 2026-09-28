@@ -86,14 +86,14 @@ slop_list_rdf_Triple dt_dt_type2(slop_arena* arena, index_IndexedGraph g) {
             __auto_type _coll = g.triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
-                __auto_type _mv_106 = rdf_triple_object(t);
-                switch (_mv_106.tag) {
+                __auto_type _mv_169 = rdf_triple_object(t);
+                switch (_mv_169.tag) {
                     case rdf_Term_term_literal:
                     {
-                        __auto_type lit = _mv_106.data.term_literal;
-                        __auto_type _mv_107 = lit.datatype;
-                        if (_mv_107.has_value) {
-                            __auto_type dt_iri = _mv_107.value;
+                        __auto_type lit = _mv_169.data.term_literal;
+                        __auto_type _mv_170 = lit.datatype;
+                        if (_mv_170.has_value) {
+                            __auto_type dt_iri = _mv_170.value;
                             if (dt_is_supported_datatype(dt_iri)) {
                                 {
                                     __auto_type inferred = rdf_make_triple(arena, rdf_triple_object(t), type_pred, rdf_make_iri(arena, dt_iri));
@@ -102,7 +102,7 @@ slop_list_rdf_Triple dt_dt_type2(slop_arena* arena, index_IndexedGraph g) {
                                     }
                                 }
                             }
-                        } else if (!_mv_107.has_value) {
+                        } else if (!_mv_170.has_value) {
                         }
                         break;
                     }
@@ -126,18 +126,18 @@ slop_option_types_InconsistencyReport dt_dt_not_type(slop_arena* arena, index_In
         __auto_type _coll = g.triples;
         for (size_t _i = 0; _i < _coll.len; _i++) {
             __auto_type t = _coll.data[_i];
-            __auto_type _mv_108 = rdf_triple_object(t);
-            switch (_mv_108.tag) {
+            __auto_type _mv_171 = rdf_triple_object(t);
+            switch (_mv_171.tag) {
                 case rdf_Term_term_literal:
                 {
-                    __auto_type lit = _mv_108.data.term_literal;
-                    __auto_type _mv_109 = lit.datatype;
-                    if (_mv_109.has_value) {
-                        __auto_type dt_iri = _mv_109.value;
+                    __auto_type lit = _mv_171.data.term_literal;
+                    __auto_type _mv_172 = lit.datatype;
+                    if (_mv_172.has_value) {
+                        __auto_type dt_iri = _mv_172.value;
                         if (!(xsd_validate_lexical(lit.value, dt_iri))) {
                             return (slop_option_types_InconsistencyReport){.has_value = 1, .value = ((types_InconsistencyReport){.reason = SLOP_STR("dt-not-type: typed literal has invalid lexical form for its datatype"), .witnesses = ({ slop_list_rdf_Triple _ll = (slop_list_rdf_Triple){ .data = (rdf_Triple*)slop_arena_alloc(arena, 1 * sizeof(rdf_Triple)), .len = 1, .cap = 1 }; _ll.data[0] = t; _ll; })})};
                         }
-                    } else if (!_mv_109.has_value) {
+                    } else if (!_mv_172.has_value) {
                     }
                     break;
                 }

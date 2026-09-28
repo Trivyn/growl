@@ -33,6 +33,7 @@ return (ttl_BlankNodeCounter)v;
 
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
 #define SLOP_LIST_RDF_TRIPLE_DEFINED
+#define SLOP_LIST_RDF_TRIPLE_IMPL_DEFINED
 SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
 #endif
 
@@ -54,6 +55,7 @@ SLOP_OPTION_DEFINE(ttl_PrefixBinding, slop_option_ttl_PrefixBinding)
 
 #ifndef SLOP_LIST_TTL_PREFIXBINDING_DEFINED
 #define SLOP_LIST_TTL_PREFIXBINDING_DEFINED
+#define SLOP_LIST_TTL_PREFIXBINDING_IMPL_DEFINED
 SLOP_LIST_DEFINE(ttl_PrefixBinding, slop_list_ttl_PrefixBinding)
 #endif
 
@@ -81,6 +83,7 @@ SLOP_OPTION_DEFINE(ttl_BlankLabelBinding, slop_option_ttl_BlankLabelBinding)
 
 #ifndef SLOP_LIST_TTL_BLANKLABELBINDING_DEFINED
 #define SLOP_LIST_TTL_BLANKLABELBINDING_DEFINED
+#define SLOP_LIST_TTL_BLANKLABELBINDING_IMPL_DEFINED
 SLOP_LIST_DEFINE(ttl_BlankLabelBinding, slop_list_ttl_BlankLabelBinding)
 #endif
 

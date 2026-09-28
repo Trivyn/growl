@@ -10,6 +10,7 @@
 
 #ifndef SLOP_LIST_RDF_TERM_DEFINED
 #define SLOP_LIST_RDF_TERM_DEFINED
+#define SLOP_LIST_RDF_TERM_IMPL_DEFINED
 SLOP_LIST_DEFINE(rdf_Term, slop_list_rdf_Term)
 #endif
 

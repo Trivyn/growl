@@ -12,6 +12,7 @@
 
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
 #define SLOP_LIST_RDF_TRIPLE_DEFINED
+#define SLOP_LIST_RDF_TRIPLE_IMPL_DEFINED
 SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
 #endif
 
@@ -62,6 +63,11 @@ slop_list_rdf_Triple scm_scm_hv(slop_arena* arena, index_IndexedGraph g, types_D
 #ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
 #define SLOP_OPTION_RDF_TRIPLE_DEFINED
 SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
+#endif
+
+#ifndef SLOP_OPTION_RDF_TERM_DEFINED
+#define SLOP_OPTION_RDF_TERM_DEFINED
+SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
 #endif
 
 

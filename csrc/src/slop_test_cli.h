@@ -55,5 +55,10 @@ int main(int argc, char** _c_argv);
 SLOP_OPTION_DEFINE(types_ReasonerResult, slop_option_types_ReasonerResult)
 #endif
 
+#ifndef SLOP_OPTION_RDF_TERM_DEFINED
+#define SLOP_OPTION_RDF_TERM_DEFINED
+SLOP_OPTION_DEFINE(rdf_Term, slop_option_rdf_Term)
+#endif
+
 
 #endif
