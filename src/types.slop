@@ -96,7 +96,7 @@
       (by-predicate (map-new arena Term (Set Triple)))
       (iteration iteration)))
 
-  (fn delta-add ((arena Arena) (d Delta) (t Triple))
+  (fn delta-add ((arena Arena) (mut d Delta) (t Triple))
     (@intent "Add a triple to delta if not already present")
     (@spec ((Arena Delta Triple) -> Delta))
     (@alloc arena)
