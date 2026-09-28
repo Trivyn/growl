@@ -6,5 +6,6 @@ rust/csrc
 .claude/
 .codex/
 .mcp.json
-.moosedev/
-!./moosedev/kg.nq
+.moosedev/*
+!/.moosedev/kg.nq
+cli/tests/.moosedev/*

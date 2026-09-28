@@ -22,7 +22,7 @@ ALL_SRCS    := $(wildcard $(CSRC)/*.c)
 SHARED_SRCS := $(filter-out $(CSRC)/slop_main.c $(CSRC)/slop_test_cli.c, $(ALL_SRCS))
 SHARED_OBJS := $(patsubst $(CSRC)/%.c,$(OBJ)/%.o,$(SHARED_SRCS))
 
-.PHONY: all cli lib test benchmark conformance reference clean release dist csrc slop-build \
+.PHONY: all cli lib test example-test benchmark conformance reference clean release dist csrc slop-build \
        crate-vendor crate-build crate-test crate-publish
 
 PLATFORM ?= unknown
@@ -54,6 +54,24 @@ test: $(BIN)
 	$(CC) $(CFLAGS) -I$(RUNTIME) -I$(CSRC) $(SHARED_SRCS) $(CSRC)/slop_test_cli.c $(LDFLAGS) -o $(BIN)/growl-test
 	@echo "Running tests..."
 	cd cli/tests && ../../$(BIN)/growl-test
+
+# SLOP < 0.2.1 counted unrunnable @examples as passed (slop-lang/slop#71).
+# Require the fixed runner and reject every non-executed outcome explicitly.
+example-test:
+	@version="$$(slop --version | awk '{print $$2}')"; \
+	python3 -c 'import sys; v=tuple(map(int, sys.argv[1].split("-")[0].split("."))); sys.exit(0 if v >= (0, 2, 1) else 1)' "$$version" || { \
+		echo "error: slop >= 0.2.1 is required; found $$version" >&2; exit 1; \
+	}
+	@set -e; files="$$(grep -l '@example' src/rules/*.slop src/growl.slop src/test.slop | sort)"; \
+	test -n "$$files" || { echo "error: no @examples found" >&2; exit 1; }; \
+	for file in $$files; do \
+		echo "Testing @examples in $$file"; \
+		output="$$(slop test "$$file" 2>&1)" || { printf '%s\n' "$$output"; exit 1; }; \
+		printf '%s\n' "$$output"; \
+		printf '%s\n' "$$output" | grep -Eq '[0-9]+ passed, 0 failed, 0 unrunnable, 0 unchecked$$' || { \
+			echo "error: $$file contains failed, unrunnable, or unchecked @examples" >&2; exit 1; \
+		}; \
+	done
 
 benchmark: cli
 	@echo "Running benchmarks..."
@@ -97,7 +115,7 @@ dist:
 
 # --- Rust crate targets ---
 
-# These modules are provided by slop-std-sys / slop-rdf-sys from slop-sys v0.2.1.
+# These modules are provided by slop-std-sys v0.3.0 / slop-rdf-sys v0.4.0 (slop-sys).
 # The Rust crate must not vendor its own copy, or consumers linking both copies
 # will collide on duplicate symbols.
 SHARED_MODULES := common file index list rdf serialize_ttl strlib thread ttl vocab xsd

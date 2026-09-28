@@ -20,8 +20,8 @@ include = [
 ]
 
 [dependencies]
-slop-std-sys = { git = "https://github.com/slop-lang/slop-sys", tag = "v0.2.1", version = "0.1.2" }
-slop-rdf-sys = { git = "https://github.com/slop-lang/slop-sys", tag = "v0.2.1", version = "0.3.0" }
+slop-std-sys = { git = "https://github.com/slop-lang/slop-sys", tag = "slop-std-sys-v0.3.0", version = "0.3.0" }
+slop-rdf-sys = { git = "https://github.com/slop-lang/slop-sys", tag = "slop-std-sys-v0.3.0", version = "0.4.0" }
 
 [build-dependencies]
 cc = "1"

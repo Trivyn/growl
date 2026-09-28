@@ -24,6 +24,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install SLOP 0.3.0
+        if: runner.os == 'Linux'
+        working-directory: ${{ runner.temp }}
+        run: |
+          SLOP_VERSION=v0.3.0
+          SLOP_ARCHIVE="slop-${SLOP_VERSION}-linux-x64.tar.gz"
+          SLOP_URL="https://github.com/slop-lang/slop/releases/download/${SLOP_VERSION}"
+          curl -fsSLO "${SLOP_URL}/${SLOP_ARCHIVE}"
+          curl -fsSLO "${SLOP_URL}/SHA256SUMS"
+          grep "  ${SLOP_ARCHIVE}$" SHA256SUMS | sha256sum --check
+          tar -xzf "${SLOP_ARCHIVE}"
+          SLOP_ROOT="${RUNNER_TEMP}/slop-${SLOP_VERSION}-linux-x64"
+          echo "${SLOP_ROOT}/bin" >> "${GITHUB_PATH}"
+          echo "SLOP_HOME=${SLOP_ROOT}" >> "${GITHUB_ENV}"
+
+      - name: Run SLOP @examples
+        if: runner.os == 'Linux'
+        run: make example-test
+
       - name: Install GCC 14 (macOS)
         if: runner.os == 'macOS'
         run: brew install gcc@14

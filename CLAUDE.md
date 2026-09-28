@@ -11,10 +11,10 @@
   bootstrap skill is installed under `.claude/skills/` by `moosedev init`.
 -->
 
-# <PROJECT NAME>
+# GROWL
 
 <!-- One short paragraph: what this project is and why it exists. Keep it current. -->
-<PROJECT DESCRIPTION>
+GROWL is an OWL 2 RL reasoner written in SLOP
 
 <!-- moosedev:begin — MOOSEDev project-memory workflow. Managed by `moosedev init`; edit around this block freely, or delete the whole begin…end block to opt out. -->
 > This project uses the **MOOSEDev** MCP server for durable, structured, long-term memory.

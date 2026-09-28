@@ -127,6 +127,7 @@
     (@post {(. $result iteration) == (. d1 iteration)})
     (let ((mut result d1))
       (for-each (t (. d2 triples))
+        (@loop-invariant {(. result iteration) == (. d1 iteration)})
         (set! result (delta-add arena result t)))
       result))
 
