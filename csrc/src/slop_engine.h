@@ -150,7 +150,7 @@ static inline bool slop_eq_rdf_IRI(const void* a, const void* b) {
     const rdf_IRI* _a = (const rdf_IRI*)a;
     const rdf_IRI* _b = (const rdf_IRI*)b;
     return true
-        && (slop_eq_string(&_a->value, &_b->value))
+        && slop_eq_string(&_a->value, &_b->value)
     ;
 }
 #endif
@@ -159,14 +159,14 @@ static inline bool slop_eq_rdf_IRI(const void* a, const void* b) {
 static inline uint64_t slop_hash_rdf_BlankNode(const void* key) {
     const rdf_BlankNode* _k = (const rdf_BlankNode*)key;
     uint64_t hash = 14695981039346656037ULL;
-    hash ^= slop_hash_int(&(int64_t){ (int64_t)_k->id }); hash *= 1099511628211ULL;
+    { int64_t _tmp = (int64_t)_k->id; hash ^= slop_hash_int(&_tmp); hash *= 1099511628211ULL; }
     return hash;
 }
 static inline bool slop_eq_rdf_BlankNode(const void* a, const void* b) {
     const rdf_BlankNode* _a = (const rdf_BlankNode*)a;
     const rdf_BlankNode* _b = (const rdf_BlankNode*)b;
     return true
-        && (_a->id == _b->id)
+        && _a->id == _b->id
     ;
 }
 #endif
@@ -176,17 +176,17 @@ static inline uint64_t slop_hash_rdf_Literal(const void* key) {
     const rdf_Literal* _k = (const rdf_Literal*)key;
     uint64_t hash = 14695981039346656037ULL;
     hash ^= slop_hash_string(&_k->value); hash *= 1099511628211ULL;
-    hash ^= ((_k->datatype).has_value ? slop_hash_combine(1, slop_hash_string(&(_k->datatype).value)) : 0); hash *= 1099511628211ULL;
-    hash ^= ((_k->lang).has_value ? slop_hash_combine(1, slop_hash_string(&(_k->lang).value)) : 0); hash *= 1099511628211ULL;
+    { const uint8_t* _b = (const uint8_t*)&_k->datatype; for(size_t _i=0; _i<sizeof(_k->datatype); _i++) { hash ^= _b[_i]; hash *= 1099511628211ULL; } }
+    { const uint8_t* _b = (const uint8_t*)&_k->lang; for(size_t _i=0; _i<sizeof(_k->lang); _i++) { hash ^= _b[_i]; hash *= 1099511628211ULL; } }
     return hash;
 }
 static inline bool slop_eq_rdf_Literal(const void* a, const void* b) {
     const rdf_Literal* _a = (const rdf_Literal*)a;
     const rdf_Literal* _b = (const rdf_Literal*)b;
     return true
-        && (slop_eq_string(&_a->value, &_b->value))
-        && ((_a->datatype).has_value == (_b->datatype).has_value && (!(_a->datatype).has_value || ((slop_eq_string(&(_a->datatype).value, &(_b->datatype).value)))))
-        && ((_a->lang).has_value == (_b->lang).has_value && (!(_a->lang).has_value || ((slop_eq_string(&(_a->lang).value, &(_b->lang).value)))))
+        && slop_eq_string(&_a->value, &_b->value)
+        && memcmp(&_a->datatype, &_b->datatype, sizeof(_a->datatype)) == 0
+        && memcmp(&_a->lang, &_b->lang, sizeof(_a->lang)) == 0
     ;
 }
 #endif
@@ -238,7 +238,7 @@ static inline bool slop_eq_rdf_IRI(const void* a, const void* b) {
     const rdf_IRI* _a = (const rdf_IRI*)a;
     const rdf_IRI* _b = (const rdf_IRI*)b;
     return true
-        && (slop_eq_string(&_a->value, &_b->value))
+        && slop_eq_string(&_a->value, &_b->value)
     ;
 }
 #endif
@@ -247,14 +247,14 @@ static inline bool slop_eq_rdf_IRI(const void* a, const void* b) {
 static inline uint64_t slop_hash_rdf_BlankNode(const void* key) {
     const rdf_BlankNode* _k = (const rdf_BlankNode*)key;
     uint64_t hash = 14695981039346656037ULL;
-    hash ^= slop_hash_int(&(int64_t){ (int64_t)_k->id }); hash *= 1099511628211ULL;
+    { int64_t _tmp = (int64_t)_k->id; hash ^= slop_hash_int(&_tmp); hash *= 1099511628211ULL; }
     return hash;
 }
 static inline bool slop_eq_rdf_BlankNode(const void* a, const void* b) {
     const rdf_BlankNode* _a = (const rdf_BlankNode*)a;
     const rdf_BlankNode* _b = (const rdf_BlankNode*)b;
     return true
-        && (_a->id == _b->id)
+        && _a->id == _b->id
     ;
 }
 #endif
@@ -264,17 +264,17 @@ static inline uint64_t slop_hash_rdf_Literal(const void* key) {
     const rdf_Literal* _k = (const rdf_Literal*)key;
     uint64_t hash = 14695981039346656037ULL;
     hash ^= slop_hash_string(&_k->value); hash *= 1099511628211ULL;
-    hash ^= ((_k->datatype).has_value ? slop_hash_combine(1, slop_hash_string(&(_k->datatype).value)) : 0); hash *= 1099511628211ULL;
-    hash ^= ((_k->lang).has_value ? slop_hash_combine(1, slop_hash_string(&(_k->lang).value)) : 0); hash *= 1099511628211ULL;
+    { const uint8_t* _b = (const uint8_t*)&_k->datatype; for(size_t _i=0; _i<sizeof(_k->datatype); _i++) { hash ^= _b[_i]; hash *= 1099511628211ULL; } }
+    { const uint8_t* _b = (const uint8_t*)&_k->lang; for(size_t _i=0; _i<sizeof(_k->lang); _i++) { hash ^= _b[_i]; hash *= 1099511628211ULL; } }
     return hash;
 }
 static inline bool slop_eq_rdf_Literal(const void* a, const void* b) {
     const rdf_Literal* _a = (const rdf_Literal*)a;
     const rdf_Literal* _b = (const rdf_Literal*)b;
     return true
-        && (slop_eq_string(&_a->value, &_b->value))
-        && ((_a->datatype).has_value == (_b->datatype).has_value && (!(_a->datatype).has_value || ((slop_eq_string(&(_a->datatype).value, &(_b->datatype).value)))))
-        && ((_a->lang).has_value == (_b->lang).has_value && (!(_a->lang).has_value || ((slop_eq_string(&(_a->lang).value, &(_b->lang).value)))))
+        && slop_eq_string(&_a->value, &_b->value)
+        && memcmp(&_a->datatype, &_b->datatype, sizeof(_a->datatype)) == 0
+        && memcmp(&_a->lang, &_b->lang, sizeof(_a->lang)) == 0
     ;
 }
 #endif
@@ -323,7 +323,7 @@ static inline bool slop_eq_rdf_IRI(const void* a, const void* b) {
     const rdf_IRI* _a = (const rdf_IRI*)a;
     const rdf_IRI* _b = (const rdf_IRI*)b;
     return true
-        && (slop_eq_string(&_a->value, &_b->value))
+        && slop_eq_string(&_a->value, &_b->value)
     ;
 }
 #endif
@@ -332,14 +332,14 @@ static inline bool slop_eq_rdf_IRI(const void* a, const void* b) {
 static inline uint64_t slop_hash_rdf_BlankNode(const void* key) {
     const rdf_BlankNode* _k = (const rdf_BlankNode*)key;
     uint64_t hash = 14695981039346656037ULL;
-    hash ^= slop_hash_int(&(int64_t){ (int64_t)_k->id }); hash *= 1099511628211ULL;
+    { int64_t _tmp = (int64_t)_k->id; hash ^= slop_hash_int(&_tmp); hash *= 1099511628211ULL; }
     return hash;
 }
 static inline bool slop_eq_rdf_BlankNode(const void* a, const void* b) {
     const rdf_BlankNode* _a = (const rdf_BlankNode*)a;
     const rdf_BlankNode* _b = (const rdf_BlankNode*)b;
     return true
-        && (_a->id == _b->id)
+        && _a->id == _b->id
     ;
 }
 #endif
@@ -349,17 +349,17 @@ static inline uint64_t slop_hash_rdf_Literal(const void* key) {
     const rdf_Literal* _k = (const rdf_Literal*)key;
     uint64_t hash = 14695981039346656037ULL;
     hash ^= slop_hash_string(&_k->value); hash *= 1099511628211ULL;
-    hash ^= ((_k->datatype).has_value ? slop_hash_combine(1, slop_hash_string(&(_k->datatype).value)) : 0); hash *= 1099511628211ULL;
-    hash ^= ((_k->lang).has_value ? slop_hash_combine(1, slop_hash_string(&(_k->lang).value)) : 0); hash *= 1099511628211ULL;
+    { const uint8_t* _b = (const uint8_t*)&_k->datatype; for(size_t _i=0; _i<sizeof(_k->datatype); _i++) { hash ^= _b[_i]; hash *= 1099511628211ULL; } }
+    { const uint8_t* _b = (const uint8_t*)&_k->lang; for(size_t _i=0; _i<sizeof(_k->lang); _i++) { hash ^= _b[_i]; hash *= 1099511628211ULL; } }
     return hash;
 }
 static inline bool slop_eq_rdf_Literal(const void* a, const void* b) {
     const rdf_Literal* _a = (const rdf_Literal*)a;
     const rdf_Literal* _b = (const rdf_Literal*)b;
     return true
-        && (slop_eq_string(&_a->value, &_b->value))
-        && ((_a->datatype).has_value == (_b->datatype).has_value && (!(_a->datatype).has_value || ((slop_eq_string(&(_a->datatype).value, &(_b->datatype).value)))))
-        && ((_a->lang).has_value == (_b->lang).has_value && (!(_a->lang).has_value || ((slop_eq_string(&(_a->lang).value, &(_b->lang).value)))))
+        && slop_eq_string(&_a->value, &_b->value)
+        && memcmp(&_a->datatype, &_b->datatype, sizeof(_a->datatype)) == 0
+        && memcmp(&_a->lang, &_b->lang, sizeof(_a->lang)) == 0
     ;
 }
 #endif
@@ -408,7 +408,7 @@ static inline bool slop_eq_rdf_IRI(const void* a, const void* b) {
     const rdf_IRI* _a = (const rdf_IRI*)a;
     const rdf_IRI* _b = (const rdf_IRI*)b;
     return true
-        && (slop_eq_string(&_a->value, &_b->value))
+        && slop_eq_string(&_a->value, &_b->value)
     ;
 }
 #endif
@@ -417,14 +417,14 @@ static inline bool slop_eq_rdf_IRI(const void* a, const void* b) {
 static inline uint64_t slop_hash_rdf_BlankNode(const void* key) {
     const rdf_BlankNode* _k = (const rdf_BlankNode*)key;
     uint64_t hash = 14695981039346656037ULL;
-    hash ^= slop_hash_int(&(int64_t){ (int64_t)_k->id }); hash *= 1099511628211ULL;
+    { int64_t _tmp = (int64_t)_k->id; hash ^= slop_hash_int(&_tmp); hash *= 1099511628211ULL; }
     return hash;
 }
 static inline bool slop_eq_rdf_BlankNode(const void* a, const void* b) {
     const rdf_BlankNode* _a = (const rdf_BlankNode*)a;
     const rdf_BlankNode* _b = (const rdf_BlankNode*)b;
     return true
-        && (_a->id == _b->id)
+        && _a->id == _b->id
     ;
 }
 #endif
@@ -434,17 +434,17 @@ static inline uint64_t slop_hash_rdf_Literal(const void* key) {
     const rdf_Literal* _k = (const rdf_Literal*)key;
     uint64_t hash = 14695981039346656037ULL;
     hash ^= slop_hash_string(&_k->value); hash *= 1099511628211ULL;
-    hash ^= ((_k->datatype).has_value ? slop_hash_combine(1, slop_hash_string(&(_k->datatype).value)) : 0); hash *= 1099511628211ULL;
-    hash ^= ((_k->lang).has_value ? slop_hash_combine(1, slop_hash_string(&(_k->lang).value)) : 0); hash *= 1099511628211ULL;
+    { const uint8_t* _b = (const uint8_t*)&_k->datatype; for(size_t _i=0; _i<sizeof(_k->datatype); _i++) { hash ^= _b[_i]; hash *= 1099511628211ULL; } }
+    { const uint8_t* _b = (const uint8_t*)&_k->lang; for(size_t _i=0; _i<sizeof(_k->lang); _i++) { hash ^= _b[_i]; hash *= 1099511628211ULL; } }
     return hash;
 }
 static inline bool slop_eq_rdf_Literal(const void* a, const void* b) {
     const rdf_Literal* _a = (const rdf_Literal*)a;
     const rdf_Literal* _b = (const rdf_Literal*)b;
     return true
-        && (slop_eq_string(&_a->value, &_b->value))
-        && ((_a->datatype).has_value == (_b->datatype).has_value && (!(_a->datatype).has_value || ((slop_eq_string(&(_a->datatype).value, &(_b->datatype).value)))))
-        && ((_a->lang).has_value == (_b->lang).has_value && (!(_a->lang).has_value || ((slop_eq_string(&(_a->lang).value, &(_b->lang).value)))))
+        && slop_eq_string(&_a->value, &_b->value)
+        && memcmp(&_a->datatype, &_b->datatype, sizeof(_a->datatype)) == 0
+        && memcmp(&_a->lang, &_b->lang, sizeof(_a->lang)) == 0
     ;
 }
 #endif
@@ -491,9 +491,9 @@ static inline bool slop_eq_rdf_Triple(const void* a, const void* b) {
     const rdf_Triple* _a = (const rdf_Triple*)a;
     const rdf_Triple* _b = (const rdf_Triple*)b;
     return true
-        && (slop_eq_rdf_Term(&_a->subject, &_b->subject))
-        && (slop_eq_rdf_Term(&_a->predicate, &_b->predicate))
-        && (slop_eq_rdf_Term(&_a->object, &_b->object))
+        && slop_eq_rdf_Term(&_a->subject, &_b->subject)
+        && slop_eq_rdf_Term(&_a->predicate, &_b->predicate)
+        && slop_eq_rdf_Term(&_a->object, &_b->object)
     ;
 }
 #endif
