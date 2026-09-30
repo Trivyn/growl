@@ -747,6 +747,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result OWL_SAME_AS))
+    (@post (forall (t $result) (term-eq (triple-predicate t) (make-iri arena OWL_SAME_AS))))
     (@property soundness
       (forall (t $result)
         (exists (dt (. delta triples))

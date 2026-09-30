@@ -460,6 +460,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@post (forall (t $result) (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))))
     (@property soundness
       (forall (t $result)
         (exists (dt (. delta triples))
@@ -516,6 +517,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@post (forall (t $result) (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))))
     (@property soundness
       (forall (t $result)
         (exists (dt (. delta triples))
@@ -1498,6 +1500,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@post (forall (t $result) (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))))
     (@property soundness
       (forall (t $result)
         (and
@@ -1518,6 +1521,11 @@
       (list-push props OWL_BACKWARD_COMPATIBLE_WITH)
       (list-push props OWL_INCOMPATIBLE_WITH)
       (for-each (p-iri props)
+        (@loop-invariant
+          (forall (t result)
+            (and (term-eq (triple-predicate t) type-pred)
+                 (term-eq (triple-object t) annot-class)
+                 (not (indexed-graph-contains g t)))))
         (let ((p-term (make-iri arena p-iri))
               (inferred (make-triple arena p-term type-pred annot-class)))
           (when (not (indexed-graph-contains g inferred))
