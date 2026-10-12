@@ -45,6 +45,7 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@post (forall (t $result) (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))))
     (@property soundness
       (forall (t $result)
         (and
@@ -97,6 +98,10 @@
         (list-push datatypes RDF_PLAIN_LITERAL)
         (list-push datatypes RDFS_LITERAL)
         (for-each (dt-iri datatypes)
+          (@loop-invariant
+            (forall (t result)
+              (and (term-eq (triple-predicate t) type-pred)
+                   (term-eq (triple-object t) datatype-class))))
           (let ((dt-term (make-iri arena dt-iri))
                 (inferred (make-triple arena dt-term type-pred datatype-class)))
             (when (not (indexed-graph-contains g inferred))
@@ -110,6 +115,7 @@
   (fn is-supported-datatype ((dt-iri String))
     (@intent "Check if IRI is one of the supported XSD/RDF datatypes")
     (@spec ((String) -> Bool))
+    (@pure)
     (or (string-eq dt-iri XSD_STRING)
         (string-eq dt-iri XSD_BOOLEAN)
         (string-eq dt-iri XSD_DECIMAL)
@@ -162,9 +168,11 @@
     (@pre {(indexed-graph-size g) >= 0})
     (@post {(list-len $result) >= 0})
     (@post (all-triples-have-predicate $result RDF_TYPE))
+    (@post (forall (t $result) (term-eq (triple-predicate t) (make-iri arena RDF_TYPE))))
     (let ((type-pred (make-iri arena RDF_TYPE))
           (mut result (list-new arena Triple)))
       (for-each (t (. g triples))
+        (@loop-invariant (forall (r result) (term-eq (triple-predicate r) type-pred)))
         (match (triple-object t)
           ((term-literal lit)
             (match (. lit datatype)

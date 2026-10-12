@@ -156,11 +156,11 @@ struct rdf_Triple {
 };
 typedef struct rdf_Triple rdf_Triple;
 
-typedef struct { size_t len; size_t cap; rdf_Term* data; } slop_list_rdf_Term;
+typedef struct { size_t len; size_t cap; rdf_Term* data; slop_arena* arena; } slop_list_rdf_Term;
 
-typedef struct { size_t len; size_t cap; rdf_Triple* data; } slop_list_rdf_Triple;
+typedef struct { size_t len; size_t cap; rdf_Triple* data; slop_arena* arena; } slop_list_rdf_Triple;
 
-typedef struct { size_t len; size_t cap; types_InconsistencyReport* data; } slop_list_types_InconsistencyReport;
+typedef struct { size_t len; size_t cap; types_InconsistencyReport* data; slop_arena* arena; } slop_list_types_InconsistencyReport;
 
 typedef struct { bool has_value; rdf_Term value; } slop_option_rdf_Term;
 

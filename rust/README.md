@@ -6,11 +6,21 @@ Safe Rust wrapper over the [Growl](../) OWL 2 RL reasoner. Provides RAII arena m
 
 A C compiler is required. The `cc` crate handles compilation automatically; no SLOP toolchain is needed since pre-transpiled C sources are included in `csrc/`.
 
+The generated C uses GNU extensions (statement expressions, `__auto_type`), so the compiler must be GCC or Clang:
+
+- **Linux / macOS:** the system `cc` (GCC or Clang). Threads use POSIX `pthread`.
+- **Windows (MSVC targets):** clang-cl, from Visual Studio's C++ Clang tools or LLVM. MSVC's `cl.exe` can't compile the generated C, so the build prefers clang-cl. `CC` still overrides it.
+- **Windows (`*-windows-gnu` targets):** MinGW-w64 GCC.
+
+Windows support in the crate is preliminary. The C build and the shared slop-sys crates have been tested on Windows, but the crate's own test suite has not yet passed there end to end.
+
+The shared SLOP runtime, std and RDF modules come from the [`slop-std-sys`](https://crates.io/crates/slop-std-sys) and [`slop-rdf-sys`](https://crates.io/crates/slop-rdf-sys) crates.
+
 ## Installation
 
 ```toml
 [dependencies]
-growl = "0.1"
+growl = "0.8"
 ```
 
 ## Quick Start
@@ -155,6 +165,8 @@ enum OwnedReasonerResult {
 ```
 
 ## Low-Level API
+
+> **0.8.0 layout change:** SLOP 0.4 adds an `arena` field to every list header, so `ffi::SlopListRdfTerm`, `ffi::SlopListRdfTriple` and `ffi::SlopListInconsistencyReport` gained a trailing `arena` pointer. This changes the size of `IndexedGraphFfi`, `InconsistencyReportFfi` and `ReasonerResultFfi` too. Code that only uses the safe API is unaffected. A list grows in its own arena, so a graph built in one arena and passed to `reason()` with another still grows in the graph's arena.
 
 ### `Arena`
 
@@ -419,7 +431,7 @@ get_same_as(&arena, &graph, individual) -> Vec<Term>
 
 ## Thread Safety
 
-The C runtime uses a global intern pool (`slop_global_intern_pool`) that is protected by a `pthread_mutex_t` (enabled via the `SLOP_INTERN_THREADSAFE` compile flag in `build.rs`). This means multiple arenas can safely be used concurrently from different threads.
+The C runtime uses a global intern pool (`slop_global_intern_pool`) that is protected by a mutex (a `pthread_mutex_t` on POSIX, an SRW lock on Windows; enabled via the `SLOP_INTERN_THREADSAFE` compile flag in `build.rs`). This means multiple arenas can safely be used concurrently from different threads.
 
 The `Arena` type is still `!Send + !Sync`, individual arenas must not be shared across threads. Each thread should create its own arena.
 

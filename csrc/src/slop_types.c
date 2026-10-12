@@ -10,7 +10,9 @@ uint8_t types_all_triples_have_predicate(slop_list_rdf_Triple triples, slop_stri
 types_Delta types_make_delta(slop_arena* arena, int64_t iteration) {
     SLOP_PRE(((iteration >= 0)), "(>= iteration 0)");
     types_Delta _retval = {0};
-    _retval = ((types_Delta){.triples = ((slop_list_rdf_Triple){ .data = (rdf_Triple*)slop_arena_alloc(arena, 16 * sizeof(rdf_Triple)), .len = 0, .cap = 16 }), .seen = slop_map_new_ptr(arena, 16, sizeof(rdf_Triple), slop_hash_rdf_Triple, slop_eq_rdf_Triple), .by_predicate = slop_map_new_ptr(arena, 16, sizeof(rdf_Term), slop_hash_rdf_Term, slop_eq_rdf_Term), .iteration = iteration});
+    _retval = ((types_Delta){.triples = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena }), .seen = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Triple, slop_hash_rdf_Triple, slop_eq_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); }), .by_predicate = ({ static const slop_map_desc _d = SLOP_MAP_DESC(rdf_Term, slop_hash_rdf_Term, slop_eq_rdf_Term, SLOP_KEY_HASHED, slop_map*); slop_map_new_ptr(arena, 0, &_d); }), .iteration = iteration});
+    goto _slop_post;
+    _slop_post: ;
     SLOP_POST(((_retval.iteration == iteration)), "(== (. $result iteration) iteration)");
     SLOP_POST(((((int64_t)((_retval.triples).len)) == 0)), "(== (list-len (. $result triples)) 0)");
     return _retval;
@@ -19,28 +21,31 @@ types_Delta types_make_delta(slop_arena* arena, int64_t iteration) {
 types_Delta types_delta_add(slop_arena* arena, types_Delta d, rdf_Triple t) {
     SLOP_PRE(((d.iteration >= 0)), "(>= (. d iteration) 0)");
     types_Delta _retval = {0};
-    if (slop_map_get(d.seen, &(t)) != NULL) {
+    if (slop_map_has(d.seen, &(t))) {
         _retval = d;
+        goto _slop_post;
     } else {
-        ({ uint8_t _dummy = 1; slop_map_put(arena, d.seen, &(t), &_dummy); });
-        ({ __auto_type _lst_p = &(d.triples); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+        ({ slop_map_put(NULL, d.seen, &(t), NULL, 0); });
+        ({ __auto_type _lst_p = &(d.triples); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
         {
             __auto_type pred = rdf_triple_predicate(t);
             __auto_type pred_map = d.by_predicate;
-            __auto_type _mv_115 = ({ void* _ptr = slop_map_get(pred_map, &(pred)); _ptr ? (slop_option_ptr){ .has_value = true, .value = *(void**)_ptr } : (slop_option_ptr){ .has_value = false }; });
+            __auto_type _mv_115 = ({ void* _ptr = slop_map_get(pred_map, &(pred)); _ptr ? (slop_option_map_ptr){ .has_value = true, .value = *(slop_map**)_ptr } : (slop_option_map_ptr){ .has_value = false }; });
             if (_mv_115.has_value) {
                 __auto_type pred_set = _mv_115.value;
-                ({ uint8_t _dummy = 1; slop_map_put(arena, pred_set, &(t), &_dummy); });
+                ({ slop_map_put(NULL, pred_set, &(t), NULL, 0); });
             } else if (!_mv_115.has_value) {
                 {
-                    __auto_type new_set = slop_map_new_ptr(arena, 16, sizeof(rdf_Triple), slop_hash_rdf_Triple, slop_eq_rdf_Triple);
-                    ({ uint8_t _dummy = 1; slop_map_put(arena, new_set, &(t), &_dummy); });
-                    ({ __auto_type _val = new_set; void* _vptr = slop_arena_alloc(arena, sizeof(_val)); memcpy(_vptr, &_val, sizeof(_val)); slop_map_put(arena, pred_map, &(pred), _vptr); });
+                    __auto_type new_set = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Triple, slop_hash_rdf_Triple, slop_eq_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
+                    ({ slop_map_put(NULL, new_set, &(t), NULL, 0); });
+                    ({ slop_map* _val = new_set; slop_map_put(NULL, pred_map, &(pred), &_val, sizeof(_val)); });
                 }
             }
         }
         _retval = d;
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST(((_retval.iteration == d.iteration)), "(== (. $result iteration) (. d iteration))");
     return _retval;
 }
@@ -58,7 +63,9 @@ types_Delta types_delta_merge(slop_arena* arena, types_Delta d1, types_Delta d2)
             }
         }
         _retval = result;
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST(((_retval.iteration == d1.iteration)), "(== (. $result iteration) (. d1 iteration))");
     return _retval;
 }
@@ -66,6 +73,8 @@ types_Delta types_delta_merge(slop_arena* arena, types_Delta d1, types_Delta d2)
 uint8_t types_delta_is_empty(types_Delta d) {
     uint8_t _retval = {0};
     _retval = (((int64_t)((d.triples).len)) == 0);
+    goto _slop_post;
+    _slop_post: ;
     SLOP_POST(((_retval == (((int64_t)((d.triples).len)) == 0))), "(== $result (== (list-len (. d triples)) 0))");
     return _retval;
 }
@@ -99,7 +108,9 @@ uint8_t types_all_triples_have_predicate(slop_list_rdf_Triple triples, slop_stri
             }
         }
         _retval = result;
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST((((((int64_t)((triples).len)) > 0) || _retval)), "(or (> (list-len triples) 0) $result)");
     return _retval;
 }

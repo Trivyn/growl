@@ -35,9 +35,9 @@ SLOP_OPTION_DEFINE(slop_thread_int*, slop_option_thread_int_ptr)
 #ifndef SLOP_CHAN_ENGINE_WORKERMESSAGE_DEFINED
 #define SLOP_CHAN_ENGINE_WORKERMESSAGE_DEFINED
 typedef struct slop_chan_engine_WorkerMessage {
-    uint8_t mutex[64];       /* pthread_mutex_t storage */
-    uint8_t not_empty[64];   /* pthread_cond_t storage */
-    uint8_t not_full[64];    /* pthread_cond_t storage */
+    slop_mutex_t mutex;      /* Guards every field below */
+    slop_cond_t not_empty;   /* Signalled when an item arrives */
+    slop_cond_t not_full;    /* Signalled when space frees up */
     engine_WorkerMessage* buffer;         /* Ring buffer */
     size_t capacity;         /* Buffer capacity (0 = unbuffered) */
     size_t count;            /* Current item count */
@@ -50,7 +50,7 @@ typedef struct slop_chan_engine_WorkerMessage {
 #ifndef SLOP_THREAD_INT_DEFINED
 #define SLOP_THREAD_INT_DEFINED
 typedef struct slop_thread_int {
-    pthread_t id;            /* pthread handle */
+    slop_thread_t id;        /* Thread handle */
     int64_t result;          /* Thread return value */
     void* func;              /* Function pointer */
     void* env;               /* Closure environment */
@@ -525,68 +525,68 @@ typedef struct slop_result_engine_WorkerMessage_thread_ChanError {
 #endif
 
 static slop_result_void_thread_ChanError thread_send_slop_chan_engine_WorkerMessage(slop_chan_engine_WorkerMessage* ch, engine_WorkerMessage value) {
-    pthread_mutex_lock((pthread_mutex_t*)ch->mutex);
+    slop_mutex_lock(&ch->mutex);
     if (ch->closed) {
-        pthread_mutex_unlock((pthread_mutex_t*)ch->mutex);
+        slop_mutex_unlock(&ch->mutex);
         return (slop_result_void_thread_ChanError){.is_ok = 0, .data.err = thread_ChanError_send_on_closed};
     }
     if (ch->capacity == 0) {
         /* Unbuffered: synchronous handoff */
         while (ch->count > 0 && !ch->closed)
-            pthread_cond_wait((pthread_cond_t*)ch->not_full, (pthread_mutex_t*)ch->mutex);
+            slop_cond_wait(&ch->not_full, &ch->mutex);
         if (ch->closed) {
-            pthread_mutex_unlock((pthread_mutex_t*)ch->mutex);
+            slop_mutex_unlock(&ch->mutex);
             return (slop_result_void_thread_ChanError){.is_ok = 0, .data.err = thread_ChanError_send_on_closed};
         }
         /* Store value in single-element inline storage */
         if (!ch->buffer) ch->buffer = malloc(sizeof(engine_WorkerMessage));
         ch->buffer[0] = value;
         ch->count = 1;
-        pthread_cond_signal((pthread_cond_t*)ch->not_empty);
+        slop_cond_signal(&ch->not_empty);
         /* Wait for receiver to take it */
         while (ch->count > 0 && !ch->closed)
-            pthread_cond_wait((pthread_cond_t*)ch->not_full, (pthread_mutex_t*)ch->mutex);
-        pthread_mutex_unlock((pthread_mutex_t*)ch->mutex);
+            slop_cond_wait(&ch->not_full, &ch->mutex);
+        slop_mutex_unlock(&ch->mutex);
         return (slop_result_void_thread_ChanError){.is_ok = 1};
     } else {
         /* Buffered: enqueue to ring buffer */
         while (ch->count >= ch->capacity && !ch->closed)
-            pthread_cond_wait((pthread_cond_t*)ch->not_full, (pthread_mutex_t*)ch->mutex);
+            slop_cond_wait(&ch->not_full, &ch->mutex);
         if (ch->closed) {
-            pthread_mutex_unlock((pthread_mutex_t*)ch->mutex);
+            slop_mutex_unlock(&ch->mutex);
             return (slop_result_void_thread_ChanError){.is_ok = 0, .data.err = thread_ChanError_send_on_closed};
         }
         ch->buffer[ch->tail] = value;
         ch->tail = (ch->tail + 1) % ch->capacity;
         ch->count++;
-        pthread_cond_signal((pthread_cond_t*)ch->not_empty);
-        pthread_mutex_unlock((pthread_mutex_t*)ch->mutex);
+        slop_cond_signal(&ch->not_empty);
+        slop_mutex_unlock(&ch->mutex);
         return (slop_result_void_thread_ChanError){.is_ok = 1};
     }
 }
 
 static slop_result_engine_WorkerMessage_thread_ChanError thread_recv_slop_chan_engine_WorkerMessage(slop_chan_engine_WorkerMessage* ch) {
     engine_WorkerMessage _value;
-    pthread_mutex_lock((pthread_mutex_t*)ch->mutex);
+    slop_mutex_lock(&ch->mutex);
     while (ch->count == 0 && !ch->closed)
-        pthread_cond_wait((pthread_cond_t*)ch->not_empty, (pthread_mutex_t*)ch->mutex);
+        slop_cond_wait(&ch->not_empty, &ch->mutex);
     if (ch->count == 0 && ch->closed) {
-        pthread_mutex_unlock((pthread_mutex_t*)ch->mutex);
+        slop_mutex_unlock(&ch->mutex);
         return (slop_result_engine_WorkerMessage_thread_ChanError){.is_ok = 0, .data.err = thread_ChanError_closed};
     }
     if (ch->capacity == 0) {
         /* Unbuffered */
         _value = ch->buffer[0];
         ch->count = 0;
-        pthread_cond_signal((pthread_cond_t*)ch->not_full);
+        slop_cond_signal(&ch->not_full);
     } else {
         /* Buffered */
         _value = ch->buffer[ch->head];
         ch->head = (ch->head + 1) % ch->capacity;
         ch->count--;
-        pthread_cond_signal((pthread_cond_t*)ch->not_full);
+        slop_cond_signal(&ch->not_full);
     }
-    pthread_mutex_unlock((pthread_mutex_t*)ch->mutex);
+    slop_mutex_unlock(&ch->mutex);
     return (slop_result_engine_WorkerMessage_thread_ChanError){.is_ok = 1, .data.ok = _value};
 }
 
@@ -640,6 +640,11 @@ SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
 #ifndef SLOP_OPTION_THREAD_INT_PTR_DEFINED
 #define SLOP_OPTION_THREAD_INT_PTR_DEFINED
 SLOP_OPTION_DEFINE(slop_thread_int*, slop_option_thread_int_ptr)
+#endif
+
+#ifndef SLOP_OPTION_MAP_PTR_DEFINED
+#define SLOP_OPTION_MAP_PTR_DEFINED
+SLOP_OPTION_DEFINE(slop_map*, slop_option_map_ptr)
 #endif
 
 

@@ -10,7 +10,7 @@ slop_list_rdf_Term rdf_list_elements(slop_arena* arena, rdf_Graph g, rdf_Term he
     SLOP_PRE(((g.size >= 0)), "(>= (. g size) 0)");
     slop_list_rdf_Term _retval = {0};
     {
-        __auto_type result = ((slop_list_rdf_Term){ .data = (rdf_Term*)slop_arena_alloc(arena, 16 * sizeof(rdf_Term)), .len = 0, .cap = 16 });
+        __auto_type result = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
         __auto_type first_pred = rdf_make_iri(arena, vocab_RDF_FIRST);
         __auto_type rest_pred = rdf_make_iri(arena, vocab_RDF_REST);
         __auto_type nil_term = rdf_make_iri(arena, vocab_RDF_NIL);
@@ -23,7 +23,7 @@ slop_list_rdf_Term rdf_list_elements(slop_arena* arena, rdf_Graph g, rdf_Term he
                     __auto_type _mv_165 = ({ __auto_type _lst = first_matches.triples; size_t _idx = (size_t)0; slop_option_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                     if (_mv_165.has_value) {
                         __auto_type first_triple = _mv_165.value;
-                        ({ __auto_type _lst_p = &(result); __auto_type _item = (rdf_triple_object(first_triple)); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                        ({ __auto_type _lst_p = &(result); __auto_type _item = (rdf_triple_object(first_triple)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                     } else if (!_mv_165.has_value) {
                     }
                 }
@@ -44,7 +44,9 @@ slop_list_rdf_Term rdf_list_elements(slop_arena* arena, rdf_Graph g, rdf_Term he
             }
         }
         _retval = result;
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST(((((int64_t)((_retval).len)) >= 0)), "(>= (list-len $result) 0)");
     return _retval;
 }
@@ -53,7 +55,7 @@ slop_list_rdf_Term rdf_list_elements_indexed(slop_arena* arena, index_IndexedGra
     SLOP_PRE(((g.size >= 0)), "(>= (. g size) 0)");
     slop_list_rdf_Term _retval = {0};
     {
-        __auto_type result = ((slop_list_rdf_Term){ .data = (rdf_Term*)slop_arena_alloc(arena, 16 * sizeof(rdf_Term)), .len = 0, .cap = 16 });
+        __auto_type result = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
         __auto_type first_pred = rdf_make_iri(arena, vocab_RDF_FIRST);
         __auto_type rest_pred = rdf_make_iri(arena, vocab_RDF_REST);
         __auto_type nil_term = rdf_make_iri(arena, vocab_RDF_NIL);
@@ -66,7 +68,7 @@ slop_list_rdf_Term rdf_list_elements_indexed(slop_arena* arena, index_IndexedGra
                     __auto_type _mv_167 = ({ __auto_type _lst = first_matches; size_t _idx = (size_t)0; slop_option_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                     if (_mv_167.has_value) {
                         __auto_type first_triple = _mv_167.value;
-                        ({ __auto_type _lst_p = &(result); __auto_type _item = (rdf_triple_object(first_triple)); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                        ({ __auto_type _lst_p = &(result); __auto_type _item = (rdf_triple_object(first_triple)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                     } else if (!_mv_167.has_value) {
                     }
                 }
@@ -87,7 +89,9 @@ slop_list_rdf_Term rdf_list_elements_indexed(slop_arena* arena, index_IndexedGra
             }
         }
         _retval = result;
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST(((((int64_t)((_retval).len)) >= 0)), "(>= (list-len $result) 0)");
     return _retval;
 }
@@ -113,7 +117,9 @@ uint8_t rdf_list_contains(slop_arena* arena, rdf_Graph g, rdf_Term head, rdf_Ter
 int64_t rdf_list_length(slop_arena* arena, rdf_Graph g, rdf_Term head) {
     SLOP_PRE(((g.size >= 0)), "(>= (. g size) 0)");
     int64_t _retval = {0};
-    _retval = ((int64_t)((rdf_list_elements(arena, g, head)).len));
+    _retval = SLOP_RANGE(int64_t, ((int64_t)((rdf_list_elements(arena, g, head)).len)), 1, 0, 0, 0, "(Int 0 ..) at list.slop:93:5");
+    goto _slop_post;
+    _slop_post: ;
     SLOP_POST(((_retval >= 0)), "(>= $result 0)");
     return _retval;
 }

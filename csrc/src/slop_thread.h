@@ -4,7 +4,7 @@
 #include "../runtime/slop_runtime.h"
 #include <stdint.h>
 #include <stdbool.h>
-#include <pthread.h>
+#include "../runtime/slop_runtime.h"
 
 typedef struct thread_ThreadInt thread_ThreadInt;
 typedef struct thread_ThreadWithChan thread_ThreadWithChan;
@@ -19,9 +19,9 @@ typedef enum {
 #ifndef SLOP_CHAN_INT_DEFINED
 #define SLOP_CHAN_INT_DEFINED
 typedef struct slop_chan_int {
-    uint8_t mutex[64];       /* pthread_mutex_t storage */
-    uint8_t not_empty[64];   /* pthread_cond_t storage */
-    uint8_t not_full[64];    /* pthread_cond_t storage */
+    slop_mutex_t mutex;      /* Guards every field below */
+    slop_cond_t not_empty;   /* Signalled when an item arrives */
+    slop_cond_t not_full;    /* Signalled when space frees up */
     int64_t* buffer;         /* Ring buffer */
     size_t capacity;         /* Buffer capacity (0 = unbuffered) */
     size_t count;            /* Current item count */
@@ -34,7 +34,7 @@ typedef struct slop_chan_int {
 #ifndef SLOP_THREAD_INT_DEFINED
 #define SLOP_THREAD_INT_DEFINED
 typedef struct slop_thread_int {
-    pthread_t id;            /* pthread handle */
+    slop_thread_t id;        /* Thread handle */
     int64_t result;          /* Thread return value */
     void* func;              /* Function pointer */
     void* env;               /* Closure environment */
@@ -53,7 +53,7 @@ static void* slop_thread_int_entry(void* arg) {
 #endif
 
 struct thread_ThreadInt {
-    pthread_t id;
+    slop_thread_t id;
     int64_t result;
     void* func;
     void* env;
@@ -70,7 +70,7 @@ struct thread_ThreadWithChan {
     void* func;
     slop_chan_int* chan;
     void* env;
-    pthread_t id;
+    slop_thread_t id;
     int64_t result;
     uint8_t done;
 };

@@ -134,11 +134,13 @@ def main():
             header = content.get("header", "")
             impl = content.get("impl", "")
 
-            # Fix runtime include path
-            header = header.replace(
-                '#include "slop_runtime.h"',
-                '#include "../runtime/slop_runtime.h"',
-            )
+            # Fix runtime include path (std modules such as thread and file
+            # emit the angle form; slop-sys rewrites both the same way)
+            for runtime_include in ('#include "slop_runtime.h"', '#include <slop_runtime.h>'):
+                header = header.replace(
+                    runtime_include,
+                    '#include "../runtime/slop_runtime.h"',
+                )
 
             # Write header
             with open(header_path, "w") as f:

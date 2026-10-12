@@ -22,15 +22,13 @@ typedef enum {
 typedef int64_t rdf_BlankNodeId;
 
 static inline rdf_BlankNodeId rdf_BlankNodeId_new(int64_t v) {
-SLOP_PRE(v >= 0, "rdf_BlankNodeId >= 0");
-return (rdf_BlankNodeId)v;
+return SLOP_RANGE(rdf_BlankNodeId, v, 1, 0, 0, 0, "BlankNodeId (Int 0 ..)");
 }
 
 typedef int64_t rdf_GraphSize;
 
 static inline rdf_GraphSize rdf_GraphSize_new(int64_t v) {
-SLOP_PRE(v >= 0, "rdf_GraphSize >= 0");
-return (rdf_GraphSize)v;
+return SLOP_RANGE(rdf_GraphSize, v, 1, 0, 0, 0, "GraphSize (Int 0 ..)");
 }
 
 struct rdf_IRI {

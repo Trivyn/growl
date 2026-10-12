@@ -93,6 +93,8 @@ pub struct SlopListRdfTerm {
     pub len: usize,
     pub cap: usize,
     pub data: *mut RdfTerm,
+    /// Arena the list grows in (SLOP #278).
+    pub arena: *mut SlopArena,
 }
 
 #[repr(C)]
@@ -101,6 +103,8 @@ pub struct SlopListRdfTriple {
     pub len: usize,
     pub cap: usize,
     pub data: *mut RdfTriple,
+    /// Arena the list grows in (SLOP #278).
+    pub arena: *mut SlopArena,
 }
 
 // ---------------------------------------------------------------------------
@@ -191,6 +195,8 @@ pub struct SlopListInconsistencyReport {
     pub len: usize,
     pub cap: usize,
     pub data: *mut InconsistencyReportFfi,
+    /// Arena the list grows in (SLOP #278).
+    pub arena: *mut SlopArena,
 }
 
 #[repr(C)]
@@ -310,6 +316,13 @@ extern "C" {
     pub fn growl_layout_offset_cfg_cancel_ptr() -> usize;
     pub fn growl_layout_sizeof_reasoner_success() -> usize;
     pub fn growl_layout_offset_success_iterations() -> usize;
+    pub fn growl_layout_sizeof_list_rdf_term() -> usize;
+    pub fn growl_layout_sizeof_list_rdf_triple() -> usize;
+    pub fn growl_layout_sizeof_list_report() -> usize;
+    pub fn growl_layout_offset_graph_index() -> usize;
+    pub fn growl_layout_sizeof_report() -> usize;
+    pub fn growl_layout_sizeof_reasoner_result() -> usize;
+    pub fn growl_layout_offset_result_data() -> usize;
 }
 
 #[cfg(test)]
@@ -369,6 +382,41 @@ mod layout_guard {
                 core::mem::offset_of!(ReasonerSuccessFfi, iterations),
                 growl_layout_offset_success_iterations(),
                 "ReasonerSuccessFfi.iterations offset != C — iteration counts would be wrong"
+            );
+            assert_eq!(
+                core::mem::size_of::<SlopListRdfTerm>(),
+                growl_layout_sizeof_list_rdf_term(),
+                "SlopListRdfTerm size != C slop_list_rdf_Term (the SLOP list header changed)"
+            );
+            assert_eq!(
+                core::mem::size_of::<SlopListRdfTriple>(),
+                growl_layout_sizeof_list_rdf_triple(),
+                "SlopListRdfTriple size != C slop_list_rdf_Triple (the SLOP list header changed)"
+            );
+            assert_eq!(
+                core::mem::size_of::<SlopListInconsistencyReport>(),
+                growl_layout_sizeof_list_report(),
+                "SlopListInconsistencyReport size != C slop_list_types_InconsistencyReport"
+            );
+            assert_eq!(
+                core::mem::offset_of!(IndexedGraphFfi, index),
+                growl_layout_offset_graph_index(),
+                "IndexedGraphFfi.index offset != C — index lookups would read garbage"
+            );
+            assert_eq!(
+                core::mem::size_of::<InconsistencyReportFfi>(),
+                growl_layout_sizeof_report(),
+                "InconsistencyReportFfi size != C types_InconsistencyReport — reports past the first would be misread"
+            );
+            assert_eq!(
+                core::mem::size_of::<ReasonerResultFfi>(),
+                growl_layout_sizeof_reasoner_result(),
+                "ReasonerResultFfi size != C types_ReasonerResult"
+            );
+            assert_eq!(
+                core::mem::offset_of!(ReasonerResultFfi, data),
+                growl_layout_offset_result_data(),
+                "ReasonerResultFfi.data offset != C"
             );
         }
     }

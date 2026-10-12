@@ -210,6 +210,8 @@ make conformance  # per-rule + multi-rule interaction tests (92 tests)
 make reference    # accuracy tests against OWL-RL reference reasoner
 ```
 
+The generated C uses GNU extensions, so use GCC or Clang. On Windows, build from an [MSYS2](https://www.msys2.org/) MINGW64 shell with `mingw-w64-x86_64-gcc` and `make`. MSVC's `cl.exe` can't compile it.
+
 ### Rust Bindings
 
 Safe Rust bindings are available in the [`rust/`](rust/) directory. See [`rust/README.md`](rust/README.md) for usage instructions.

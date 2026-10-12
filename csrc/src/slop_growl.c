@@ -13,26 +13,26 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
 int64_t growl_get_inferred_count(types_ReasonerResult result);
 
 rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
-    __auto_type _mv_457 = t;
-    switch (_mv_457.tag) {
+    __auto_type _mv_458 = t;
+    switch (_mv_458.tag) {
         case rdf_Term_term_blank:
         {
-            __auto_type b = _mv_457.data.term_blank;
-            return rdf_make_blank(arena, (b.id + offset));
+            __auto_type b = _mv_458.data.term_blank;
+            return rdf_make_blank(arena, SLOP_RANGE(rdf_BlankNodeId, (b.id + offset), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at growl.slop:60:41"));
         }
         case rdf_Term_term_iri:
         {
-            __auto_type _ = _mv_457.data.term_iri;
+            __auto_type _ = _mv_458.data.term_iri;
             return t;
         }
         case rdf_Term_term_literal:
         {
-            __auto_type _ = _mv_457.data.term_literal;
+            __auto_type _ = _mv_458.data.term_literal;
             return t;
         }
         case rdf_Term_term_triple:
         {
-            __auto_type tt = _mv_457.data.term_triple;
+            __auto_type tt = _mv_458.data.term_triple;
             {
                 __auto_type triple = (*tt);
                 return rdf_make_triple_term(arena, rdf_make_triple(arena, growl_remap_blank_term(arena, triple.subject, offset), growl_remap_blank_term(arena, triple.predicate, offset), growl_remap_blank_term(arena, triple.object, offset)));
@@ -43,32 +43,32 @@ rdf_Term growl_remap_blank_term(slop_arena* arena, rdf_Term t, int64_t offset) {
 }
 
 int64_t growl_max_blank_id_in_term(rdf_Term t) {
-    __auto_type _mv_458 = t;
-    switch (_mv_458.tag) {
+    __auto_type _mv_459 = t;
+    switch (_mv_459.tag) {
         case rdf_Term_term_blank:
         {
-            __auto_type b = _mv_458.data.term_blank;
+            __auto_type b = _mv_459.data.term_blank;
             return b.id;
         }
         case rdf_Term_term_iri:
         {
-            __auto_type _ = _mv_458.data.term_iri;
+            __auto_type _ = _mv_459.data.term_iri;
             return 0;
         }
         case rdf_Term_term_literal:
         {
-            __auto_type _ = _mv_458.data.term_literal;
+            __auto_type _ = _mv_459.data.term_literal;
             return 0;
         }
         case rdf_Term_term_triple:
         {
-            __auto_type tt = _mv_458.data.term_triple;
+            __auto_type tt = _mv_459.data.term_triple;
             {
                 __auto_type triple = (*tt);
                 __auto_type subject_max = growl_max_blank_id_in_term(triple.subject);
                 __auto_type predicate_max = growl_max_blank_id_in_term(triple.predicate);
                 __auto_type object_max = growl_max_blank_id_in_term(triple.object);
-                __auto_type max_id = subject_max;
+                int64_t max_id = subject_max;
                 if (predicate_max > max_id) {
                     max_id = predicate_max;
                 }
@@ -113,6 +113,8 @@ int64_t growl_max_blank_id_in_graph(index_IndexedGraph ig) {
 types_ReasonerConfig growl_default_config(void) {
     types_ReasonerConfig _retval = {0};
     _retval = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = 1, .fast = 0, .complete = 0, .enrich = 0, .validate = 0, .validate_ns = SLOP_STR(""), .cancel_ptr = 0, .max_triples = 0});
+    goto _slop_post;
+    _slop_post: ;
     SLOP_POST(((_retval.worker_count == 4)), "(== (. $result worker-count) 4)");
     SLOP_POST(((_retval.channel_buffer == 256)), "(== (. $result channel-buffer) 256)");
     SLOP_POST(((_retval.max_iterations == 1000)), "(== (. $result max-iterations) 1000)");
@@ -129,7 +131,9 @@ types_ReasonerResult growl_reason(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
     types_ReasonerResult _retval = {0};
     _retval = growl_reason_with_config(arena, input, growl_default_config());
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.inferred_count >= 0); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; } case types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.inferred_count >= 0); break; }  } _mr; })), "(match $result ((reason-success s) (>= (. s inferred-count) 0)) ((reason-inconsistent _) true) ((reason-cancelled s) (>= (. s inferred-count) 0)))");
+    goto _slop_post;
+    _slop_post: ;
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; int _mm = 0; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.inferred_count >= 0); _mm = 1; break; } case types_ReasonerResult_reason_inconsistent: { _mr = 1; _mm = 1; break; } case types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.inferred_count >= 0); _mm = 1; break; }  } if (!_mm) { SLOP_UNREACHABLE(); } _mr; })), "(match $result ((reason-success s) (>= (. s inferred-count) 0)) ((reason-inconsistent _) true) ((reason-cancelled s) (>= (. s inferred-count) 0)))");
     return _retval;
 }
 
@@ -139,27 +143,29 @@ types_ReasonerResult growl_reason_with_config(slop_arena* arena, index_IndexedGr
     SLOP_PRE(((config.max_iterations >= 1)), "(>= (. config max-iterations) 1)");
     types_ReasonerResult _retval = {0};
     _retval = engine_engine_run(arena, config, input);
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); break; } case types_ReasonerResult_reason_inconsistent: { __auto_type _ = _mv.data.reason_inconsistent; _mr = 1; break; } case types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.iterations <= config.max_iterations); break; }  } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true) ((reason-cancelled s) (<= (. s iterations) (. config max-iterations))))");
+    goto _slop_post;
+    _slop_post: ;
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; int _mm = 0; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); _mm = 1; break; } case types_ReasonerResult_reason_inconsistent: { _mr = 1; _mm = 1; break; } case types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.iterations <= config.max_iterations); _mm = 1; break; }  } if (!_mm) { SLOP_UNREACHABLE(); } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true) ((reason-cancelled s) (<= (. s iterations) (. config max-iterations))))");
     return _retval;
 }
 
 uint8_t growl_is_consistent(slop_arena* arena, index_IndexedGraph input) {
     SLOP_PRE(((rdf_indexed_graph_size(input) >= 0)), "(>= (indexed-graph-size input) 0)");
-    __auto_type _mv_459 = growl_reason(arena, input);
-    switch (_mv_459.tag) {
+    __auto_type _mv_460 = growl_reason(arena, input);
+    switch (_mv_460.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type _ = _mv_459.data.reason_success;
+            __auto_type _ = _mv_460.data.reason_success;
             return 1;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_459.data.reason_inconsistent;
+            __auto_type _ = _mv_460.data.reason_inconsistent;
             return 0;
         }
         case types_ReasonerResult_reason_cancelled:
         {
-            __auto_type _ = _mv_459.data.reason_cancelled;
+            __auto_type _ = _mv_460.data.reason_cancelled;
             return 1;
         }
     }
@@ -173,16 +179,18 @@ slop_list_rdf_Term growl_get_types(slop_arena* arena, index_IndexedGraph g, rdf_
         __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
         __auto_type matches = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = individual}, (slop_option_rdf_Term){.has_value = 1, .value = type_pred}, no_term);
-        __auto_type result = ((slop_list_rdf_Term){ .data = (rdf_Term*)slop_arena_alloc(arena, 16 * sizeof(rdf_Term)), .len = 0, .cap = 16 });
+        __auto_type result = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
         {
             __auto_type _coll = matches;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
-                ({ __auto_type _lst_p = &(result); __auto_type _item = (t.object); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                ({ __auto_type _lst_p = &(result); __auto_type _item = (t.object); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
             }
         }
         _retval = result;
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST(((((int64_t)((_retval).len)) >= 0)), "(>= (list-len $result) 0)");
     return _retval;
 }
@@ -195,49 +203,55 @@ slop_list_rdf_Term growl_get_same_as(slop_arena* arena, index_IndexedGraph g, rd
         slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
         __auto_type as_subject = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = individual}, (slop_option_rdf_Term){.has_value = 1, .value = same_pred}, no_term);
         __auto_type as_object = rdf_indexed_graph_match(arena, g, no_term, (slop_option_rdf_Term){.has_value = 1, .value = same_pred}, (slop_option_rdf_Term){.has_value = 1, .value = individual});
-        __auto_type result = ((slop_list_rdf_Term){ .data = (rdf_Term*)slop_arena_alloc(arena, 16 * sizeof(rdf_Term)), .len = 0, .cap = 16 });
-        ({ __auto_type _lst_p = &(result); __auto_type _item = (individual); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+        __auto_type result = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+        ({ __auto_type _lst_p = &(result); __auto_type _item = (individual); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
         {
             __auto_type _coll = as_subject;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
-                ({ __auto_type _lst_p = &(result); __auto_type _item = (t.object); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                ({ __auto_type _lst_p = &(result); __auto_type _item = (t.object); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
             }
         }
         {
             __auto_type _coll = as_object;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
-                ({ __auto_type _lst_p = &(result); __auto_type _item = (t.subject); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                ({ __auto_type _lst_p = &(result); __auto_type _item = (t.subject); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
             }
         }
         _retval = result;
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST(((((int64_t)((_retval).len)) >= 0)), "(>= (list-len $result) 0)");
     return _retval;
 }
 
 int64_t growl_get_inferred_count(types_ReasonerResult result) {
     int64_t _retval = {0};
-    __auto_type _mv_460 = result;
-    switch (_mv_460.tag) {
+    __auto_type _mv_461 = result;
+    switch (_mv_461.tag) {
         case types_ReasonerResult_reason_success:
         {
-            __auto_type s = _mv_460.data.reason_success;
-            return s.inferred_count;
+            __auto_type s = _mv_461.data.reason_success;
+            _retval = s.inferred_count;
+            goto _slop_post;
         }
         case types_ReasonerResult_reason_inconsistent:
         {
-            __auto_type _ = _mv_460.data.reason_inconsistent;
-            return 0;
+            __auto_type _ = _mv_461.data.reason_inconsistent;
+            _retval = 0;
+            goto _slop_post;
         }
         case types_ReasonerResult_reason_cancelled:
         {
-            __auto_type s = _mv_460.data.reason_cancelled;
-            return s.inferred_count;
+            __auto_type s = _mv_461.data.reason_cancelled;
+            _retval = s.inferred_count;
+            goto _slop_post;
         }
     }
     SLOP_UNREACHABLE();
+    _slop_post: ;
     SLOP_POST(((_retval >= 0)), "(>= $result 0)");
     return _retval;
 }
