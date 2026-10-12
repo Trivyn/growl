@@ -49,12 +49,18 @@ pub struct RdfLiteral {
 }
 
 /// Tag for the `rdf_Term` tagged union.
+///
+/// This MUST list every variant of C's `rdf_Term_tag`: a tag value Rust has no
+/// variant for is an invalid enum value, which is undefined behaviour the
+/// moment a term is read. The `layout_guard` test checks the C values.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RdfTermTag {
     Iri = 0,
     Blank = 1,
     Literal = 2,
+    /// RDF 1.2 quoted triple term (`<<( s p o )>>`).
+    Triple = 3,
 }
 
 /// Data payload for `rdf_Term` — a C union.
@@ -64,6 +70,7 @@ pub union RdfTermData {
     pub term_iri: RdfIri,
     pub term_blank: RdfBlankNode,
     pub term_literal: RdfLiteral,
+    pub term_triple: *mut RdfTriple,
 }
 
 /// Tagged union representing an RDF term.
@@ -241,6 +248,7 @@ extern "C" {
     ) -> RdfTriple;
 
     // Term accessors
+    pub fn rdf_make_triple_term(arena: *mut SlopArena, t: RdfTriple) -> RdfTerm;
     pub fn rdf_triple_subject(t: RdfTriple) -> RdfTerm;
     pub fn rdf_triple_predicate(t: RdfTriple) -> RdfTerm;
     pub fn rdf_triple_object(t: RdfTriple) -> RdfTerm;
@@ -323,6 +331,11 @@ extern "C" {
     pub fn growl_layout_sizeof_report() -> usize;
     pub fn growl_layout_sizeof_reasoner_result() -> usize;
     pub fn growl_layout_offset_result_data() -> usize;
+    pub fn growl_layout_tag_term_iri() -> usize;
+    pub fn growl_layout_tag_term_blank() -> usize;
+    pub fn growl_layout_tag_term_literal() -> usize;
+    pub fn growl_layout_tag_term_triple() -> usize;
+    pub fn growl_layout_tag_count() -> usize;
 }
 
 #[cfg(test)]
@@ -417,6 +430,15 @@ mod layout_guard {
                 core::mem::offset_of!(ReasonerResultFfi, data),
                 growl_layout_offset_result_data(),
                 "ReasonerResultFfi.data offset != C"
+            );
+            assert_eq!(RdfTermTag::Iri as usize, growl_layout_tag_term_iri());
+            assert_eq!(RdfTermTag::Blank as usize, growl_layout_tag_term_blank());
+            assert_eq!(RdfTermTag::Literal as usize, growl_layout_tag_term_literal());
+            assert_eq!(RdfTermTag::Triple as usize, growl_layout_tag_term_triple());
+            assert_eq!(
+                4,
+                growl_layout_tag_count(),
+                "C rdf_Term_tag gained a variant RdfTermTag lacks — reading such a term is UB"
             );
         }
     }

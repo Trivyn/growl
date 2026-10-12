@@ -42,6 +42,31 @@ size_t growl_layout_sizeof_report(void)             { return sizeof(types_Incons
 size_t growl_layout_sizeof_reasoner_result(void)    { return sizeof(types_ReasonerResult); }
 size_t growl_layout_offset_result_data(void)        { return offsetof(types_ReasonerResult, data); }
 
+/* rdf_Term tag values, mirrored by ffi::RdfTermTag. A C tag Rust has no variant
+ * for is UB the moment Rust reads the term (issue #24: RDF 1.2 term_triple). */
+size_t growl_layout_tag_term_iri(void)              { return rdf_Term_term_iri; }
+size_t growl_layout_tag_term_blank(void)            { return rdf_Term_term_blank; }
+size_t growl_layout_tag_term_literal(void)          { return rdf_Term_term_literal; }
+size_t growl_layout_tag_term_triple(void)           { return rdf_Term_term_triple; }
+
+/* The variant count. C enums carry no count, so this switch names every tag
+ * and -Wswitch is an error here: a tag added in slop-rdf fails the build
+ * until it is handled here and in ffi::RdfTermTag. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic error "-Wswitch"
+size_t growl_layout_tag_count(void) {
+    rdf_Term_tag tag = rdf_Term_term_iri;
+    switch (tag) {
+        case rdf_Term_term_iri:
+        case rdf_Term_term_blank:
+        case rdf_Term_term_literal:
+        case rdf_Term_term_triple:
+            break;
+    }
+    return 4;
+}
+#pragma GCC diagnostic pop
+
 slop_arena* growl_arena_new(size_t capacity) {
     slop_arena* a = (slop_arena*)malloc(sizeof(slop_arena));
     if (!a) return NULL;

@@ -218,14 +218,17 @@ enum Term<'a> {
     Iri(&'a str),
     Blank(i64),
     Literal { value: &'a str, datatype: Option<&'a str>, lang: Option<&'a str> },
+    Triple(Box<Triple<'a>>),  // RDF 1.2 quoted triple term
 }
 
 // Convert from FFI
 let term = Term::from_ffi(raw_term);
 
-// Display formats: <http://...>, _:b42, "hello"@en
+// Display formats: <http://...>, _:b42, "hello"@en, <<( <s> <p> <o> )>>
 println!("{}", term);
 ```
+
+`Term::Triple` is an RDF 1.2 quoted triple term. It can appear in any position, and the reasoner carries it through: for example, `rdfs:domain` types a quoted triple used as a subject. `OwnedTerm::Triple` is the owned form. To build one at the FFI level, use `arena.make_triple_term(arena.make_triple(s, p, o))`.
 
 ### `Triple`
 

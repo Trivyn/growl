@@ -26,11 +26,17 @@ fn main() {
         .include(&std_inc)
         .define("SLOP_ARENA_NO_CAP", None)
         .define("SLOP_INTERN_THREADSAFE", None)
-        .opt_level(2)
-        .warnings(false);
+        .opt_level(2);
+    // The shim keeps warnings on: its growl_layout_tag_count switch turns
+    // -Wswitch into an error, and -w would silence even that.
+    let mut shim = build.clone();
+    // Generated headers define static helpers the shim never calls.
+    shim.flag_if_supported("-Wno-unused-function");
+    build.warnings(false);
     for src in &sources { build.file(csrc.join(src)); }
-    build.file("csrc_shim.c");   // keeps growl_arena_* + growl_layout_* ABI probes
     build.compile("growl_c");
+    shim.file("csrc_shim.c");   // keeps growl_arena_* + growl_layout_* ABI probes
+    shim.compile("growl_shim");
 
     // slop_runtime.h threads through pthreads on POSIX and Win32 on Windows.
     if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
