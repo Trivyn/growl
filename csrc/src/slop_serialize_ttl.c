@@ -45,7 +45,7 @@ uint8_t serialize_ttl_needs_escaping(slop_string s) {
         int64_t i = 0;
         while ((i < len) && !(found)) {
             {
-                __auto_type c = strlib_char_at(s, i);
+                __auto_type c = strlib_char_at(s, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:80:29"));
                 if ((c == 10) || ((c == 13) || ((c == 9) || ((c == 92) || (c == 34))))) {
                     found = 1;
                 }
@@ -60,6 +60,7 @@ slop_string serialize_ttl_escape_string(slop_arena* arena, slop_string s) {
     slop_string _retval = {0};
     if (!(serialize_ttl_needs_escaping(s))) {
         _retval = s;
+        goto _slop_post;
     } else {
         {
             __auto_type len = string_len(s);
@@ -68,15 +69,17 @@ slop_string serialize_ttl_escape_string(slop_arena* arena, slop_string s) {
                 int64_t i = 0;
                 while (i < len) {
                     {
-                        __auto_type c = strlib_char_at(s, i);
+                        __auto_type c = strlib_char_at(s, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:97:33"));
                         result = string_concat(arena, result, serialize_ttl_escape_string_char(arena, c));
                         i = (i + 1);
                     }
                 }
             }
             _retval = result;
+            goto _slop_post;
         }
     }
+    _slop_post: ;
     SLOP_POST(((string_len(_retval) >= 0)), "(>= (string-len $result) 0)");
     return _retval;
 }
@@ -88,7 +91,7 @@ uint8_t serialize_ttl_string_contains_newline(slop_string s) {
         int64_t i = 0;
         while ((i < len) && !(found)) {
             {
-                __auto_type c = strlib_char_at(s, i);
+                __auto_type c = strlib_char_at(s, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:110:29"));
                 if ((c == 10) || (c == 13)) {
                     found = 1;
                 }
@@ -110,7 +113,7 @@ uint8_t serialize_ttl_valid_pn_local(slop_string s) {
                 int64_t i = 0;
                 while ((i < len) && ok) {
                     {
-                        __auto_type c = strlib_char_at(s, i);
+                        __auto_type c = strlib_char_at(s, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:130:33"));
                         if (!(ttl_is_pn_chars(c))) {
                             ok = 0;
                         }
@@ -133,15 +136,15 @@ slop_string serialize_ttl_serialize_iri(slop_arena* arena, rdf_IRI iri, ttl_Pref
             __auto_type _coll = prefixes.bindings;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type b = _coll.data[_i];
-                __auto_type _mv_461 = compressed;
-                if (_mv_461.has_value) {
-                    __auto_type _ = _mv_461.value;
-                } else if (!_mv_461.has_value) {
+                __auto_type _mv_462 = compressed;
+                if (_mv_462.has_value) {
+                    __auto_type _ = _mv_462.value;
+                } else if (!_mv_462.has_value) {
                     {
                         __auto_type prefix_iri = b.iri;
                         if (strlib_starts_with(iri_val, prefix_iri)) {
                             {
-                                __auto_type local = strlib_substring(arena, iri_val, string_len(prefix_iri), (string_len(iri_val) - string_len(prefix_iri)));
+                                __auto_type local = strlib_substring(arena, iri_val, SLOP_RANGE(int64_t, string_len(prefix_iri), 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:160:55"), SLOP_RANGE(int64_t, (string_len(iri_val) - string_len(prefix_iri)), 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:161:32"));
                                 if (serialize_ttl_valid_pn_local(local)) {
                                     compressed = (slop_option_string){.has_value = 1, .value = string_concat(arena, string_concat(arena, b.prefix, SLOP_STR(":")), local)};
                                 }
@@ -151,15 +154,18 @@ slop_string serialize_ttl_serialize_iri(slop_arena* arena, rdf_IRI iri, ttl_Pref
                 }
             }
         }
-        __auto_type _mv_462 = compressed;
-        if (_mv_462.has_value) {
-            __auto_type s = _mv_462.value;
-            return s;
-        } else if (!_mv_462.has_value) {
-            return string_concat(arena, string_concat(arena, SLOP_STR("<"), iri_val), SLOP_STR(">"));
+        __auto_type _mv_463 = compressed;
+        if (_mv_463.has_value) {
+            __auto_type s = _mv_463.value;
+            _retval = s;
+            goto _slop_post;
+        } else if (!_mv_463.has_value) {
+            _retval = string_concat(arena, string_concat(arena, SLOP_STR("<"), iri_val), SLOP_STR(">"));
+            goto _slop_post;
         }
         SLOP_UNREACHABLE();
     }
+    _slop_post: ;
     SLOP_POST(((string_len(_retval) > 0)), "(> (string-len $result) 0)");
     return _retval;
 }
@@ -170,42 +176,53 @@ slop_string serialize_ttl_serialize_literal(slop_arena* arena, rdf_Literal lit) 
         __auto_type val = lit.value;
         __auto_type dt = lit.datatype;
         __auto_type lang = lit.lang;
-        __auto_type _mv_463 = lang;
-        if (_mv_463.has_value) {
-            __auto_type l = _mv_463.value;
-            return string_concat(arena, string_concat(arena, string_concat(arena, SLOP_STR("\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\"@")), l);
-        } else if (!_mv_463.has_value) {
-            __auto_type _mv_464 = dt;
-            if (_mv_464.has_value) {
-                __auto_type dt_iri = _mv_464.value;
+        __auto_type _mv_464 = lang;
+        if (_mv_464.has_value) {
+            __auto_type l = _mv_464.value;
+            _retval = string_concat(arena, string_concat(arena, string_concat(arena, SLOP_STR("\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\"@")), l);
+            goto _slop_post;
+        } else if (!_mv_464.has_value) {
+            __auto_type _mv_465 = dt;
+            if (_mv_465.has_value) {
+                __auto_type dt_iri = _mv_465.value;
                 if (string_eq(dt_iri, vocab_XSD_INTEGER)) {
-                    return val;
+                    _retval = val;
+                    goto _slop_post;
                 } else if (string_eq(dt_iri, vocab_XSD_DECIMAL)) {
-                    return val;
+                    _retval = val;
+                    goto _slop_post;
                 } else if (string_eq(dt_iri, vocab_XSD_DOUBLE)) {
-                    return val;
+                    _retval = val;
+                    goto _slop_post;
                 } else if (string_eq(dt_iri, vocab_XSD_BOOLEAN)) {
-                    return val;
+                    _retval = val;
+                    goto _slop_post;
                 } else if (string_eq(dt_iri, vocab_XSD_STRING)) {
                     if (serialize_ttl_string_contains_newline(val)) {
-                        return string_concat(arena, string_concat(arena, SLOP_STR("\"\"\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\"\"\""));
+                        _retval = string_concat(arena, string_concat(arena, SLOP_STR("\"\"\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\"\"\""));
+                        goto _slop_post;
                     } else {
-                        return string_concat(arena, string_concat(arena, SLOP_STR("\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\""));
+                        _retval = string_concat(arena, string_concat(arena, SLOP_STR("\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\""));
+                        goto _slop_post;
                     }
                 } else {
-                    return string_concat(arena, string_concat(arena, string_concat(arena, string_concat(arena, SLOP_STR("\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\"^^<")), dt_iri), SLOP_STR(">"));
+                    _retval = string_concat(arena, string_concat(arena, string_concat(arena, string_concat(arena, SLOP_STR("\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\"^^<")), dt_iri), SLOP_STR(">"));
+                    goto _slop_post;
                 }
-            } else if (!_mv_464.has_value) {
+            } else if (!_mv_465.has_value) {
                 if (serialize_ttl_string_contains_newline(val)) {
-                    return string_concat(arena, string_concat(arena, SLOP_STR("\"\"\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\"\"\""));
+                    _retval = string_concat(arena, string_concat(arena, SLOP_STR("\"\"\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\"\"\""));
+                    goto _slop_post;
                 } else {
-                    return string_concat(arena, string_concat(arena, SLOP_STR("\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\""));
+                    _retval = string_concat(arena, string_concat(arena, SLOP_STR("\""), serialize_ttl_escape_string(arena, val)), SLOP_STR("\""));
+                    goto _slop_post;
                 }
             }
             SLOP_UNREACHABLE();
         }
         SLOP_UNREACHABLE();
     }
+    _slop_post: ;
     SLOP_POST(((string_len(_retval) > 0)), "(> (string-len $result) 0)");
     SLOP_POST(((string_len(_retval) > 0)), "(> (string-len $result) 0)");
     return _retval;
@@ -215,36 +232,43 @@ slop_string serialize_ttl_serialize_blank(slop_arena* arena, rdf_BlankNode node)
     SLOP_PRE(((node.id >= 0)), "(>= node.id 0)");
     slop_string _retval = {0};
     _retval = string_concat(arena, SLOP_STR("_:b"), int_to_string(arena, node.id));
+    goto _slop_post;
+    _slop_post: ;
     SLOP_POST((strlib_starts_with(_retval, SLOP_STR("_:"))), "(starts-with $result \"_:\")");
     return _retval;
 }
 
 slop_string serialize_ttl_serialize_term(slop_arena* arena, rdf_Term t, ttl_PrefixMap prefixes) {
     slop_string _retval = {0};
-    __auto_type _mv_465 = t;
-    switch (_mv_465.tag) {
+    __auto_type _mv_466 = t;
+    switch (_mv_466.tag) {
         case rdf_Term_term_iri:
         {
-            __auto_type iri = _mv_465.data.term_iri;
-            return serialize_ttl_serialize_iri(arena, iri, prefixes);
+            __auto_type iri = _mv_466.data.term_iri;
+            _retval = serialize_ttl_serialize_iri(arena, iri, prefixes);
+            goto _slop_post;
         }
         case rdf_Term_term_blank:
         {
-            __auto_type node = _mv_465.data.term_blank;
-            return serialize_ttl_serialize_blank(arena, node);
+            __auto_type node = _mv_466.data.term_blank;
+            _retval = serialize_ttl_serialize_blank(arena, node);
+            goto _slop_post;
         }
         case rdf_Term_term_literal:
         {
-            __auto_type lit = _mv_465.data.term_literal;
-            return serialize_ttl_serialize_literal(arena, lit);
+            __auto_type lit = _mv_466.data.term_literal;
+            _retval = serialize_ttl_serialize_literal(arena, lit);
+            goto _slop_post;
         }
         case rdf_Term_term_triple:
         {
-            __auto_type tt = _mv_465.data.term_triple;
-            return serialize_ttl_serialize_triple_term(arena, tt, prefixes);
+            __auto_type tt = _mv_466.data.term_triple;
+            _retval = serialize_ttl_serialize_triple_term(arena, tt, prefixes);
+            goto _slop_post;
         }
     }
     SLOP_UNREACHABLE();
+    _slop_post: ;
     SLOP_POST(((string_len(_retval) > 0)), "(> (string-len $result) 0)");
     return _retval;
 }
@@ -256,7 +280,9 @@ slop_string serialize_ttl_serialize_triple_term(slop_arena* arena, rdf_Triple* t
         __auto_type p = serialize_ttl_serialize_term(arena, (*tt).predicate, prefixes);
         __auto_type o = serialize_ttl_serialize_term(arena, (*tt).object, prefixes);
         _retval = string_concat(arena, SLOP_STR("<<( "), string_concat(arena, s, string_concat(arena, SLOP_STR(" "), string_concat(arena, p, string_concat(arena, SLOP_STR(" "), string_concat(arena, o, SLOP_STR(" )>>")))))));
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST(((string_len(_retval) > 0)), "(> (string-len $result) 0)");
     return _retval;
 }
@@ -273,17 +299,19 @@ slop_string serialize_ttl_serialize_prefixes(slop_arena* arena, ttl_PrefixMap pr
             }
         }
         _retval = result;
+        goto _slop_post;
     }
+    _slop_post: ;
     SLOP_POST(((string_len(_retval) >= 0)), "(>= (string-len $result) 0)");
     return _retval;
 }
 
 slop_string serialize_ttl_serialize_base(slop_arena* arena, slop_option_string base) {
-    __auto_type _mv_466 = base;
-    if (_mv_466.has_value) {
-        __auto_type iri = _mv_466.value;
+    __auto_type _mv_467 = base;
+    if (_mv_467.has_value) {
+        __auto_type iri = _mv_467.value;
         return string_concat(arena, string_concat(arena, SLOP_STR("@base <"), iri), SLOP_STR("> .\n"));
-    } else if (!_mv_466.has_value) {
+    } else if (!_mv_467.has_value) {
         return SLOP_STR("");
     }
     SLOP_UNREACHABLE();
@@ -309,10 +337,10 @@ slop_option_int serialize_ttl_find_subject_group(slop_list_serialize_ttl_Subject
             __auto_type _coll = groups;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type sg = _coll.data[_i];
-                __auto_type _mv_467 = found;
-                if (_mv_467.has_value) {
-                    __auto_type _ = _mv_467.value;
-                } else if (!_mv_467.has_value) {
+                __auto_type _mv_468 = found;
+                if (_mv_468.has_value) {
+                    __auto_type _ = _mv_468.value;
+                } else if (!_mv_468.has_value) {
                     if (rdf_term_eq(sg.subject, subj)) {
                         found = (slop_option_int){.has_value = 1, .value = i};
                     }
@@ -332,10 +360,10 @@ slop_option_int serialize_ttl_find_pred_group(slop_list_serialize_ttl_ObjectGrou
             __auto_type _coll = groups;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type og = _coll.data[_i];
-                __auto_type _mv_468 = found;
-                if (_mv_468.has_value) {
-                    __auto_type _ = _mv_468.value;
-                } else if (!_mv_468.has_value) {
+                __auto_type _mv_469 = found;
+                if (_mv_469.has_value) {
+                    __auto_type _ = _mv_469.value;
+                } else if (!_mv_469.has_value) {
                     if (rdf_term_eq(og.predicate, pred)) {
                         found = (slop_option_int){.has_value = 1, .value = i};
                     }
@@ -349,7 +377,7 @@ slop_option_int serialize_ttl_find_pred_group(slop_list_serialize_ttl_ObjectGrou
 
 slop_list_serialize_ttl_SubjectGroup serialize_ttl_build_groups(slop_arena* arena, rdf_Graph g) {
     {
-        __auto_type groups = ((slop_list_serialize_ttl_SubjectGroup){ .data = (serialize_ttl_SubjectGroup*)slop_arena_alloc(arena, 16 * sizeof(serialize_ttl_SubjectGroup)), .len = 0, .cap = 16 });
+        __auto_type groups = ((slop_list_serialize_ttl_SubjectGroup){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
         {
             __auto_type _coll = g.triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -360,38 +388,46 @@ slop_list_serialize_ttl_SubjectGroup serialize_ttl_build_groups(slop_arena* aren
                     __auto_type obj = triple.object;
                     {
                         __auto_type sg_idx = serialize_ttl_find_subject_group(groups, subj);
-                        __auto_type _mv_469 = sg_idx;
-                        if (_mv_469.has_value) {
-                            __auto_type idx = _mv_469.value;
-                            __auto_type _mv_470 = ({ __auto_type _lst = groups; size_t _idx = (size_t)idx; slop_option_serialize_ttl_SubjectGroup _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                            if (_mv_470.has_value) {
-                                __auto_type sg = _mv_470.value;
+                        __auto_type _mv_470 = sg_idx;
+                        if (_mv_470.has_value) {
+                            __auto_type idx = _mv_470.value;
+                            __auto_type _mv_471 = ({ __auto_type _lst = groups; size_t _idx = (size_t)idx; slop_option_serialize_ttl_SubjectGroup _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                            if (_mv_471.has_value) {
+                                __auto_type sg = _mv_471.value;
                                 {
                                     __auto_type pg_idx = serialize_ttl_find_pred_group(sg.pred_groups, pred);
-                                    __auto_type _mv_471 = pg_idx;
-                                    if (_mv_471.has_value) {
-                                        __auto_type pidx = _mv_471.value;
-                                        __auto_type _mv_472 = ({ __auto_type _lst = sg.pred_groups; size_t _idx = (size_t)pidx; slop_option_serialize_ttl_ObjectGroup _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
-                                        if (_mv_472.has_value) {
-                                            __auto_type pg = _mv_472.value;
-                                            ({ __auto_type _lst_p = &(pg.objects); __auto_type _item = (obj); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                                        } else if (!_mv_472.has_value) {
+                                    __auto_type _mv_472 = pg_idx;
+                                    if (_mv_472.has_value) {
+                                        __auto_type pidx = _mv_472.value;
+                                        __auto_type _mv_473 = ({ __auto_type _lst = sg.pred_groups; size_t _idx = (size_t)pidx; slop_option_serialize_ttl_ObjectGroup _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                        if (_mv_473.has_value) {
+                                            __auto_type pg = _mv_473.value;
+                                            {
+                                                __auto_type grown = pg;
+                                                ({ __auto_type _lst_p = &(grown.objects); __auto_type _item = (obj); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                                ({ __auto_type _set_lst = &(sg.pred_groups); size_t _set_idx = (size_t)(pidx); __auto_type _set_val = (grown); bool _set_ok = _set_idx < _set_lst->len; if (_set_ok) { _set_lst->data[_set_idx] = _set_val; } _set_ok; });
+                                            }
+                                        } else if (!_mv_473.has_value) {
                                         }
-                                    } else if (!_mv_471.has_value) {
+                                    } else if (!_mv_472.has_value) {
                                         {
-                                            __auto_type new_pg = ((serialize_ttl_ObjectGroup){.predicate = pred, .objects = ({ ({ __auto_type ol = ((slop_list_rdf_Term){ .data = (rdf_Term*)slop_arena_alloc(arena, 16 * sizeof(rdf_Term)), .len = 0, .cap = 16 }); ({ __auto_type _lst_p = &(ol); __auto_type _item = (obj); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; }); ol; }); })});
-                                            ({ __auto_type _lst_p = &(sg.pred_groups); __auto_type _item = (new_pg); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                            __auto_type new_pg = ((serialize_ttl_ObjectGroup){.predicate = pred, .objects = ({ ({ __auto_type ol = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena }); ({ __auto_type _lst_p = &(ol); __auto_type _item = (obj); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); ol; }); })});
+                                            {
+                                                __auto_type grown = sg;
+                                                ({ __auto_type _lst_p = &(grown.pred_groups); __auto_type _item = (new_pg); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                                ({ __auto_type _set_lst = &(groups); size_t _set_idx = (size_t)(idx); __auto_type _set_val = (grown); bool _set_ok = _set_idx < _set_lst->len; if (_set_ok) { _set_lst->data[_set_idx] = _set_val; } _set_ok; });
+                                            }
                                         }
                                     }
                                 }
-                            } else if (!_mv_470.has_value) {
+                            } else if (!_mv_471.has_value) {
                             }
-                        } else if (!_mv_469.has_value) {
+                        } else if (!_mv_470.has_value) {
                             {
-                                __auto_type new_pg = ((serialize_ttl_ObjectGroup){.predicate = pred, .objects = ({ ({ __auto_type ol = ((slop_list_rdf_Term){ .data = (rdf_Term*)slop_arena_alloc(arena, 16 * sizeof(rdf_Term)), .len = 0, .cap = 16 }); ({ __auto_type _lst_p = &(ol); __auto_type _item = (obj); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; }); ol; }); })});
+                                __auto_type new_pg = ((serialize_ttl_ObjectGroup){.predicate = pred, .objects = ({ ({ __auto_type ol = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena }); ({ __auto_type _lst_p = &(ol); __auto_type _item = (obj); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); ol; }); })});
                                 {
-                                    __auto_type new_sg = ((serialize_ttl_SubjectGroup){.subject = subj, .pred_groups = ({ ({ __auto_type pl = ((slop_list_serialize_ttl_ObjectGroup){ .data = (serialize_ttl_ObjectGroup*)slop_arena_alloc(arena, 16 * sizeof(serialize_ttl_ObjectGroup)), .len = 0, .cap = 16 }); ({ __auto_type _lst_p = &(pl); __auto_type _item = (new_pg); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; }); pl; }); })});
-                                    ({ __auto_type _lst_p = &(groups); __auto_type _item = (new_sg); if (_lst_p->len >= _lst_p->cap) { size_t _new_cap = _lst_p->cap == 0 ? 16 : _lst_p->cap * 2; __typeof__(_lst_p->data) _new_data = (__typeof__(_lst_p->data))slop_arena_alloc(arena, _new_cap * sizeof(*_lst_p->data)); if (_lst_p->len > 0) memcpy(_new_data, _lst_p->data, _lst_p->len * sizeof(*_lst_p->data)); _lst_p->data = _new_data; _lst_p->cap = _new_cap; } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                    __auto_type new_sg = ((serialize_ttl_SubjectGroup){.subject = subj, .pred_groups = ({ ({ __auto_type pl = ((slop_list_serialize_ttl_ObjectGroup){ .data = NULL, .len = 0, .cap = 0, .arena = arena }); ({ __auto_type _lst_p = &(pl); __auto_type _item = (new_pg); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); pl; }); })});
+                                    ({ __auto_type _lst_p = &(groups); __auto_type _item = (new_sg); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                 }
                             }
                         }
@@ -465,8 +501,10 @@ slop_string serialize_ttl_serialize_ttl_string(slop_arena* arena, rdf_Graph g, s
                 }
             }
             _retval = result;
+            goto _slop_post;
         }
     }
+    _slop_post: ;
     SLOP_POST(((string_len(_retval) >= 0)), "(>= (string-len $result) 0)");
     return _retval;
 }
@@ -477,14 +515,14 @@ slop_result_u8_serialize_ttl_TtlFileError serialize_ttl_serialize_ttl_file(slop_
         __auto_type content = serialize_ttl_serialize_ttl_string(arena, g, config);
         {
             __auto_type f = file_file_open(path, file_FileMode_write);
-            __auto_type _mv_473 = f;
-            if (_mv_473.is_ok) {
-                __auto_type handle = _mv_473.data.ok;
+            __auto_type _mv_474 = f;
+            if (_mv_474.is_ok) {
+                __auto_type handle = _mv_474.data.ok;
                 file_file_write_line((&handle), content);
                 file_file_close((&handle));
                 return ((slop_result_u8_serialize_ttl_TtlFileError){ .is_ok = true, .data.ok = 1 });
-            } else if (!_mv_473.is_ok) {
-                __auto_type e = _mv_473.data.err;
+            } else if (!_mv_474.is_ok) {
+                __auto_type e = _mv_474.data.err;
                 return ((slop_result_u8_serialize_ttl_TtlFileError){ .is_ok = false, .data.err = ((serialize_ttl_TtlFileError){ .tag = serialize_ttl_TtlFileError_file_error, .data.file_error = e }) });
             }
             SLOP_UNREACHABLE();
@@ -500,9 +538,9 @@ slop_result_u8_serialize_ttl_TtlFileError serialize_ttl_serialize_ttl_stream(slo
     SLOP_PRE(((string_len(path) > 0)), "(> (string-len path) 0)");
     {
         __auto_type f = file_file_open(path, file_FileMode_write);
-        __auto_type _mv_474 = f;
-        if (_mv_474.is_ok) {
-            __auto_type handle = _mv_474.data.ok;
+        __auto_type _mv_475 = f;
+        if (_mv_475.is_ok) {
+            __auto_type handle = _mv_475.data.ok;
             {
                 __auto_type fp = ((void*)(handle.handle));
                 __auto_type prefixes = config.prefixes;
@@ -524,14 +562,14 @@ slop_result_u8_serialize_ttl_TtlFileError serialize_ttl_serialize_ttl_stream(slo
                 {
                     rdf_Term prev_subj = rdf_make_blank(arena, 2147483647);
                     rdf_Term prev_pred = rdf_make_blank(arena, 2147483647);
-                    __auto_type first_triple = 1;
+                    uint8_t first_triple = 1;
                     {
                         __auto_type _coll = g.triples;
                         for (size_t _i = 0; _i < _coll.len; _i++) {
                             __auto_type triple = _coll.data[_i];
                             {
-                                slop_arena _arena = slop_arena_new(4096);
-                                slop_arena* arena = &_arena;
+                                slop_arena _arena_9 = slop_arena_new(4096);
+                                slop_arena* arena = &_arena_9;
                                 {
                                     __auto_type subj_str = serialize_ttl_serialize_term(arena, triple.subject, prefixes);
                                     __auto_type pred_str = serialize_ttl_serialize_term(arena, triple.predicate, prefixes);
@@ -574,8 +612,8 @@ slop_result_u8_serialize_ttl_TtlFileError serialize_ttl_serialize_ttl_stream(slo
                 file_file_close((&handle));
                 return ((slop_result_u8_serialize_ttl_TtlFileError){ .is_ok = true, .data.ok = 1 });
             }
-        } else if (!_mv_474.is_ok) {
-            __auto_type e = _mv_474.data.err;
+        } else if (!_mv_475.is_ok) {
+            __auto_type e = _mv_475.data.err;
             return ((slop_result_u8_serialize_ttl_TtlFileError){ .is_ok = false, .data.err = ((serialize_ttl_TtlFileError){ .tag = serialize_ttl_TtlFileError_file_error, .data.file_error = e }) });
         }
         SLOP_UNREACHABLE();

@@ -12,6 +12,19 @@
 #ifndef SLOP_RUNTIME_H
 #define SLOP_RUNTIME_H
 
+/* The Microsoft CRT marks standard C functions (fopen, strerror, ...) and
+ * POSIX names (access, strdup, ...) deprecated. SLOP code calls them on
+ * purpose, so silence that before the first CRT header. Generated code
+ * includes this header first. */
+#ifdef _WIN32
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+#ifndef _CRT_NONSTDC_NO_DEPRECATE
+#define _CRT_NONSTDC_NO_DEPRECATE
+#endif
+#endif
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -19,9 +32,35 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <inttypes.h>
+#include <sys/stat.h>
 
-#ifdef SLOP_INTERN_THREADSAFE
+/* Arena blocks come from the OS (see the Arena Allocator section), and
+ * threads and locks from the OS thread API (see Threads and locks).
+ *
+ * windows.h is trimmed of what the runtime doesn't use, which also keeps its
+ * min/max and winsock 1 definitions out of generated code. */
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <process.h>
+#include <io.h>
+#include <errno.h>
+#if defined(_WIN32_WINNT) && _WIN32_WINNT < 0x0600
+#error "SLOP needs _WIN32_WINNT >= 0x0600 (Windows Vista) for SRW locks, condition variables and GetTickCount64"
+#endif
+#else
+#include <sys/mman.h>
+#include <unistd.h>
 #include <pthread.h>
+#ifdef __linux__
+#include <sys/syscall.h>
+#endif
 #endif
 
 /* ============================================================
@@ -40,9 +79,210 @@
 #define SLOP_ARENA_MAX_TOTAL_BYTES (256UL * 1024UL * 1024UL)  /* 256 MB */
 #endif
 
-/* Global allocation tracking across all arenas (atomic for thread safety).
- * Weak attribute ensures linker merges all TU definitions into one symbol. */
-_Atomic size_t slop_global_allocated __attribute__((weak)) = 0;
+/* A global that every translation unit including this header defines, and
+ * that must still be one object in the program. On ELF and Mach-O a weak
+ * definition does that: the linker keeps one. On Windows (COFF) a weak
+ * symbol is a weak external with a per-TU default, not a merged definition,
+ * so it is a selectany COMDAT there instead, which the linker also keeps one
+ * copy of. Both need an initializer. */
+#ifdef _WIN32
+#define SLOP_SHARED_GLOBAL __declspec(selectany)
+#else
+#define SLOP_SHARED_GLOBAL __attribute__((weak))
+#endif
+
+/* Global allocation tracking across all arenas (atomic for thread safety) */
+SLOP_SHARED_GLOBAL _Atomic size_t slop_global_allocated = 0;
+
+/* ============================================================
+ * Threads and locks
+ *
+ * One API over pthreads (POSIX) and the Win32 thread API. Generated code,
+ * std/thread and the intern pool use only these names, so nothing
+ * pthread-specific reaches generated C. On POSIX each type is the pthread
+ * type itself, so struct layouts are the same as with pthreads directly.
+ *
+ * spawn starts its thread through slop_thread_start, and join waits through
+ * slop_thread_wait. Neither can fail quietly (#192): a spawn whose thread
+ * never started would otherwise hand back a handle that join treats as a
+ * finished thread, with an unset id and an unwritten result, and work
+ * split across threads would silently lose that thread's share. Both abort
+ * with the error instead, as an arena that cannot get memory does. The lock
+ * and condition calls abort the same way on the errors pthreads can report.
+ *
+ * SLOP_PTHREAD_CREATE is what creates the thread on POSIX. Tests define it,
+ * before this header, as a create that fails.
+ * ============================================================ */
+
+#ifdef _WIN32
+
+typedef HANDLE slop_thread_t;
+typedef SRWLOCK slop_mutex_t;
+typedef CONDITION_VARIABLE slop_cond_t;
+typedef INIT_ONCE slop_once_t;
+#define SLOP_ONCE_INIT INIT_ONCE_STATIC_INIT
+
+/* _beginthreadex wants an unsigned __stdcall routine; spawn's entries are
+   void* (*)(void*). The entry and its argument travel in a heap block that
+   the new thread frees before running the entry. */
+typedef struct {
+    void* (*entry)(void*);
+    void* arg;
+} slop_thread_boot_;
+
+static inline unsigned __stdcall slop_thread_boot_run_(void* p) {
+    slop_thread_boot_ boot = *(slop_thread_boot_*)p;
+    free(p);
+    boot.entry(boot.arg);
+    return 0;
+}
+
+/* entry is a void* (*)(void*); it is passed as void* so FFI callers can
+   hand over a trampoline without a function-pointer type of their own. */
+static inline void slop_thread_start(slop_thread_t* id, void* entry, void* arg) {
+    slop_thread_boot_* boot = (slop_thread_boot_*)malloc(sizeof(slop_thread_boot_));
+    if (boot == NULL) {
+        fprintf(stderr, "SLOP: spawn: cannot start a thread: %s\n", strerror(ENOMEM));
+        abort();
+    }
+    boot->entry = (void* (*)(void*))entry;
+    boot->arg = arg;
+    uintptr_t h = _beginthreadex(NULL, 0, slop_thread_boot_run_, boot, 0, NULL);
+    if (h == 0) {
+        int err = errno;
+        free(boot);
+        fprintf(stderr, "SLOP: spawn: cannot start a thread: %s\n", strerror(err));
+        abort();
+    }
+    *id = (slop_thread_t)h;
+}
+
+static inline void slop_thread_wait(slop_thread_t id) {
+    if (WaitForSingleObject(id, INFINITE) != WAIT_OBJECT_0) {
+        fprintf(stderr, "SLOP: join: cannot wait for the thread: Windows error %lu\n",
+                (unsigned long)GetLastError());
+        abort();
+    }
+    CloseHandle(id);
+}
+
+/* SRW locks and condition variables can't fail to initialize, lock or
+   signal, and need no destroy. */
+static inline void slop_mutex_init(slop_mutex_t* m) { InitializeSRWLock(m); }
+static inline void slop_mutex_destroy(slop_mutex_t* m) { (void)m; }
+static inline void slop_mutex_lock(slop_mutex_t* m) { AcquireSRWLockExclusive(m); }
+static inline void slop_mutex_unlock(slop_mutex_t* m) { ReleaseSRWLockExclusive(m); }
+
+static inline void slop_cond_init(slop_cond_t* c) { InitializeConditionVariable(c); }
+static inline void slop_cond_destroy(slop_cond_t* c) { (void)c; }
+static inline void slop_cond_signal(slop_cond_t* c) { WakeConditionVariable(c); }
+static inline void slop_cond_broadcast(slop_cond_t* c) { WakeAllConditionVariable(c); }
+
+static inline void slop_cond_wait(slop_cond_t* c, slop_mutex_t* m) {
+    if (!SleepConditionVariableSRW(c, m, INFINITE, 0)) {
+        fprintf(stderr, "SLOP: condition wait failed: Windows error %lu\n",
+                (unsigned long)GetLastError());
+        abort();
+    }
+}
+
+/* InitOnceExecuteOnce takes its own callback shape; the function to run
+   arrives as a pointer to the caller's function-pointer variable. */
+static inline BOOL CALLBACK slop_once_run_(PINIT_ONCE once, PVOID fn, PVOID* ctx) {
+    (void)once;
+    (void)ctx;
+    (*(void (**)(void))fn)();
+    return TRUE;
+}
+
+static inline void slop_once(slop_once_t* once, void (*fn)(void)) {
+    if (!InitOnceExecuteOnce(once, slop_once_run_, (PVOID)&fn, NULL)) {
+        fprintf(stderr, "SLOP: one-time initialization failed: Windows error %lu\n",
+                (unsigned long)GetLastError());
+        abort();
+    }
+}
+
+#else /* POSIX */
+
+typedef pthread_t slop_thread_t;
+typedef pthread_mutex_t slop_mutex_t;
+typedef pthread_cond_t slop_cond_t;
+typedef pthread_once_t slop_once_t;
+#define SLOP_ONCE_INIT PTHREAD_ONCE_INIT
+
+#ifndef SLOP_PTHREAD_CREATE
+#define SLOP_PTHREAD_CREATE pthread_create
+#endif
+
+static inline void slop_sync_fail_(const char* what, int rc) {
+    fprintf(stderr, "SLOP: %s: %s\n", what, strerror(rc));
+    abort();
+}
+
+/* entry is a void* (*)(void*); it is passed as void* so FFI callers can
+   hand over a trampoline without a function-pointer type of their own. */
+static inline void slop_thread_start(slop_thread_t* id, void* entry, void* arg) {
+    int rc = SLOP_PTHREAD_CREATE(id, NULL, (void* (*)(void*))entry, arg);
+    if (rc != 0) slop_sync_fail_("spawn: cannot start a thread", rc);
+}
+
+static inline void slop_thread_wait(slop_thread_t id) {
+    int rc = pthread_join(id, NULL);
+    if (rc != 0) slop_sync_fail_("join: cannot wait for the thread", rc);
+}
+
+static inline void slop_mutex_init(slop_mutex_t* m) {
+    int rc = pthread_mutex_init(m, NULL);
+    if (rc != 0) slop_sync_fail_("mutex init failed", rc);
+}
+
+static inline void slop_mutex_destroy(slop_mutex_t* m) {
+    int rc = pthread_mutex_destroy(m);
+    if (rc != 0) slop_sync_fail_("mutex destroy failed", rc);
+}
+
+static inline void slop_mutex_lock(slop_mutex_t* m) {
+    int rc = pthread_mutex_lock(m);
+    if (rc != 0) slop_sync_fail_("mutex lock failed", rc);
+}
+
+static inline void slop_mutex_unlock(slop_mutex_t* m) {
+    int rc = pthread_mutex_unlock(m);
+    if (rc != 0) slop_sync_fail_("mutex unlock failed", rc);
+}
+
+static inline void slop_cond_init(slop_cond_t* c) {
+    int rc = pthread_cond_init(c, NULL);
+    if (rc != 0) slop_sync_fail_("condition init failed", rc);
+}
+
+static inline void slop_cond_destroy(slop_cond_t* c) {
+    int rc = pthread_cond_destroy(c);
+    if (rc != 0) slop_sync_fail_("condition destroy failed", rc);
+}
+
+static inline void slop_cond_wait(slop_cond_t* c, slop_mutex_t* m) {
+    int rc = pthread_cond_wait(c, m);
+    if (rc != 0) slop_sync_fail_("condition wait failed", rc);
+}
+
+static inline void slop_cond_signal(slop_cond_t* c) {
+    int rc = pthread_cond_signal(c);
+    if (rc != 0) slop_sync_fail_("condition signal failed", rc);
+}
+
+static inline void slop_cond_broadcast(slop_cond_t* c) {
+    int rc = pthread_cond_broadcast(c);
+    if (rc != 0) slop_sync_fail_("condition broadcast failed", rc);
+}
+
+static inline void slop_once(slop_once_t* once, void (*fn)(void)) {
+    int rc = pthread_once(once, fn);
+    if (rc != 0) slop_sync_fail_("one-time initialization failed", rc);
+}
+
+#endif /* _WIN32 */
 
 /* ============================================================
  * Contracts
@@ -92,24 +332,101 @@ _Atomic size_t slop_global_allocated __attribute__((weak)) = 0;
         abort(); \
     } while(0)
 
-/* Expression-form range check - returns value after checking bounds.
- * Unlike SLOP_PRE, this can be used in expression contexts like return statements. */
-#ifdef SLOP_DEBUG
-    #define SLOP_RANGE_CHECK(val, cond, msg) \
-        ({ __auto_type _v = (val); \
-           if (!(cond)) { \
-               fprintf(stderr, "SLOP range check failed: %s\n  at %s:%d\n", \
-                       msg, __FILE__, __LINE__); \
-               abort(); \
-           } \
-           _v; })
+/* Range types (#265).
+ *
+ * A value narrowing into a range type -- a typed let, a set!, an argument, a
+ * return, a record field, a container element, a cast -- goes through
+ * SLOP_RANGE. The value is tested at int64_t width BEFORE it is converted to
+ * the type's storage, so 300 aimed at a uint8_t-backed (Int 0 .. 255) fails
+ * instead of wrapping to 44.
+ *
+ * Unlike the contracts above, these checks are on in every build, as Ada's are:
+ * a range is part of the type, not an assertion. SLOP_NO_RANGE_CHECKS (slop
+ * build --no-range-checks) removes them, like GNAT's -gnatp; a value that would
+ * have failed is then undefined.
+ *
+ * where names the type and the source position:
+ *   "Pct (Int 0 .. 100) at r.slop:7:5" */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noreturn, cold))
+#endif
+static inline void slop_range_fail(int64_t v, const char* where) {
+    fprintf(stderr, "SLOP range check failed: %lld is not in %s\n", (long long)v, where);
+    abort();
+}
+
+#ifndef SLOP_NO_RANGE_CHECKS
+    #define SLOP_RANGE(T, expr, has_lo, has_hi, lo, hi, where) \
+        ({ int64_t _slop_rv = (int64_t)(expr); \
+           if (((has_lo) && _slop_rv < (int64_t)(lo)) || ((has_hi) && _slop_rv > (int64_t)(hi))) \
+               slop_range_fail(_slop_rv, where); \
+           (T)_slop_rv; })
 #else
-    #define SLOP_RANGE_CHECK(val, cond, msg) (val)
+    #define SLOP_RANGE(T, expr, has_lo, has_hi, lo, hi, where) ((T)(expr))
 #endif
 
 /* ============================================================
  * Arena Allocator
- * ============================================================ */
+ * ============================================================
+ *
+ * Big blocks bypass malloc. A block of SLOP_ARENA_MAP_THRESHOLD bytes or
+ * more, head or overflow, is mapped straight from the OS (mmap, or
+ * VirtualAlloc on Windows) and unmapped when its arena is freed or reset, so
+ * freeing an arena gives its memory back. Through malloc it did not:
+ *   - macOS's libmalloc keeps big freed blocks dirty in its large-allocation
+ *     cache, reusing one only when a later request happens to fit, and
+ *     malloc_zone_pressure_relief does not release them. HOWL, right after
+ *     freeing its front-end arena, held 1,774 MB resident with 256 MB of
+ *     arenas live: 19 freed blocks in MALLOC_LARGE (empty).
+ *   - glibc raises its mmap threshold after large frees, up to 32 MB, so
+ *     later blocks land in the brk heap and stay there without malloc_trim.
+ *
+ * The threshold is 1 MiB. Arenas start at 4 KB and small ones are common;
+ * below about 1 MiB malloc serves them from dense size-class regions that it
+ * reuses and trims itself. From 1 MiB up, touching a block already costs 256
+ * page faults (4 KB pages), so one mmap/munmap pair more is noise, and every
+ * block big enough to sit in either allocator's cache goes to the OS.
+ *
+ * Under AddressSanitizer every block still comes from malloc. ASan poisons a
+ * freed block and quarantines it, so a use after arena-free is reported. An
+ * unmapped range is soon handed out again by the next mmap, and a stale
+ * pointer into it would silently read a live arena.
+ *
+ * Freed blocks are not kept for reuse. Tried on HOWL, which re-creates 16 MB
+ * and 1 MB arenas every round, a 64 MB cache of them saved at most 3% of run
+ * time and raised EL-GALEN's peak by 60 MB.
+ *
+ * A mapped block is zero-filled and a malloc'd one is not; nothing may rely
+ * on either. */
+
+#ifndef SLOP_ARENA_MAP_THRESHOLD
+#define SLOP_ARENA_MAP_THRESHOLD ((size_t)1 << 20)  /* 1 MiB */
+#endif
+
+#if defined(__SANITIZE_ADDRESS__)
+#define SLOP_ARENA_ASAN_ 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define SLOP_ARENA_ASAN_ 1
+#endif
+#endif
+
+#if !defined(_WIN32) && defined(MAP_ANONYMOUS)
+#define SLOP_ARENA_MAP_ANON_ MAP_ANONYMOUS
+#elif !defined(_WIN32) && defined(MAP_ANON)
+#define SLOP_ARENA_MAP_ANON_ MAP_ANON
+#endif
+
+/* 1 when big blocks are mapped; defining it 0 keeps every block in malloc */
+#ifndef SLOP_ARENA_USE_MAP
+#if defined(SLOP_ARENA_ASAN_)
+#define SLOP_ARENA_USE_MAP 0
+#elif defined(_WIN32) || defined(SLOP_ARENA_MAP_ANON_)
+#define SLOP_ARENA_USE_MAP 1
+#else
+#define SLOP_ARENA_USE_MAP 0
+#endif
+#endif
 
 typedef struct slop_arena {
     uint8_t* base;
@@ -117,7 +434,110 @@ typedef struct slop_arena {
     size_t capacity;
     size_t total_allocated;   /* Total bytes across all arenas in chain */
     struct slop_arena* next;  /* For overflow arenas */
+    bool mapped;              /* base came from the OS, not malloc */
 } slop_arena;
+
+#if SLOP_ARENA_USE_MAP
+#ifdef _WIN32
+static inline uint8_t* slop_arena_map_(size_t size) {
+    return (uint8_t*)VirtualAlloc(NULL, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+}
+
+static inline void slop_arena_unmap_(uint8_t* base, size_t size) {
+    (void)size;
+    VirtualFree(base, 0, MEM_RELEASE);
+}
+#else
+/* The length of the mapping behind a block of size bytes */
+static inline size_t slop_arena_map_len_(size_t size) {
+    size_t page = (size_t)sysconf(_SC_PAGESIZE);
+    return (size + page - 1) & ~(page - 1);
+}
+
+static inline uint8_t* slop_arena_map_(size_t size) {
+    void* p = mmap(NULL, slop_arena_map_len_(size), PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | SLOP_ARENA_MAP_ANON_, -1, 0);
+    return p == MAP_FAILED ? NULL : (uint8_t*)p;
+}
+
+static inline void slop_arena_unmap_(uint8_t* base, size_t size) {
+    munmap(base, slop_arena_map_len_(size));
+}
+#endif
+#endif
+
+/* A block of capacity bytes for an arena, mapped when it is big enough;
+ * *mapped records which, for slop_arena_block_put. NULL on failure. */
+static inline uint8_t* slop_arena_block_get(size_t capacity, bool* mapped) {
+#if SLOP_ARENA_USE_MAP
+    if (capacity >= SLOP_ARENA_MAP_THRESHOLD) {
+        uint8_t* base = slop_arena_map_(capacity);
+        *mapped = base != NULL;
+        return base;
+    }
+#endif
+    *mapped = false;
+    return (uint8_t*)malloc(capacity);
+}
+
+/* Return a block from slop_arena_block_get to where it came from */
+static inline void slop_arena_block_put(uint8_t* base, size_t capacity, bool mapped) {
+    if (base == NULL) return;
+#if SLOP_ARENA_USE_MAP
+    if (mapped) {
+        slop_arena_unmap_(base, capacity);
+        return;
+    }
+#else
+    (void)capacity;
+    (void)mapped;
+#endif
+    free(base);
+}
+
+/* Grow a block from capacity to new_capacity bytes, keeping its first used
+ * bytes, the way realloc would. A block that reaches the threshold moves to a
+ * mapping; a mapped one is grown with mremap on Linux, which moves pages
+ * instead of copying them, and copied into a new mapping elsewhere. Returns
+ * the (possibly moved) block, or NULL, leaving the old one intact. */
+static inline uint8_t* slop_arena_block_grow(uint8_t* base, size_t capacity, size_t used,
+                                             size_t new_capacity, bool* mapped) {
+#if SLOP_ARENA_USE_MAP
+    if (*mapped || new_capacity >= SLOP_ARENA_MAP_THRESHOLD) {
+#if defined(__linux__) && defined(SYS_mremap)
+        if (*mapped) {
+            /* Called through syscall(), as mremap() is declared only under
+             * _GNU_SOURCE; 1 is MREMAP_MAYMOVE */
+            void* p = (void*)syscall(SYS_mremap, base, slop_arena_map_len_(capacity),
+                                     slop_arena_map_len_(new_capacity), 1);
+            return p == MAP_FAILED ? NULL : (uint8_t*)p;
+        }
+#elif !defined(_WIN32)
+        if (*mapped) {
+            /* Map the growth just past the block's end, keeping it only if it
+             * lands there: munmap then releases both mappings as one range */
+            size_t old_len = slop_arena_map_len_(capacity);
+            size_t grow = slop_arena_map_len_(new_capacity) - old_len;
+            void* p = mmap(base + old_len, grow, PROT_READ | PROT_WRITE,
+                           MAP_PRIVATE | SLOP_ARENA_MAP_ANON_, -1, 0);
+            if (p == (void*)(base + old_len)) return base;
+            if (p != MAP_FAILED) munmap(p, grow);
+        }
+#endif
+        uint8_t* nb = slop_arena_map_(new_capacity);
+        if (nb == NULL) return NULL;
+        memcpy(nb, base, used);
+        slop_arena_block_put(base, capacity, *mapped);
+        *mapped = true;
+        return nb;
+    }
+#else
+    (void)mapped;
+#endif
+    (void)capacity;
+    (void)used;
+    return (uint8_t*)realloc(base, new_capacity);
+}
 
 /* ============================================================
  * String Interning Pool
@@ -143,7 +563,7 @@ typedef struct {
     size_t entry_count;
     slop_arena* arena;  /* Pool owns its own arena */
 #ifdef SLOP_INTERN_THREADSAFE
-    pthread_mutex_t lock;
+    slop_mutex_t lock;
 #endif
 } slop_intern_pool;
 
@@ -161,7 +581,7 @@ static inline slop_arena slop_arena_new(size_t capacity) {
 #endif
 
     slop_arena arena;
-    arena.base = (uint8_t*)malloc(capacity);
+    arena.base = slop_arena_block_get(capacity, &arena.mapped);
     arena.offset = 0;
     arena.capacity = (arena.base != NULL) ? capacity : 0;
     arena.total_allocated = arena.capacity;  /* Keep for per-chain tracking */
@@ -222,6 +642,68 @@ static inline void* slop_arena_alloc(slop_arena* arena, size_t size) {
     return ptr;
 }
 
+/* Grow the allocation at ptr from old_size to new_size bytes where it stands,
+ * when it is the last allocation in its block of this arena's chain and the
+ * block has room: a bump-pointer realloc. Returns false, changing nothing,
+ * otherwise -- including when ptr is not in this arena at all, so storage is
+ * only ever extended inside the arena the caller names. The bytes past
+ * old_size are unused block space and are not cleared. */
+static inline bool slop_arena_try_extend(slop_arena* arena, void* ptr,
+                                         size_t old_size, size_t new_size) {
+    old_size = (old_size + 7) & ~(size_t)7;
+    new_size = (new_size + 7) & ~(size_t)7;
+    uint8_t* p = (uint8_t*)ptr;
+    for (slop_arena* a = arena; a != NULL; a = a->next) {
+        if (a->base == NULL || p < a->base || p >= a->base + a->capacity) continue;
+        if (p + old_size != a->base + a->offset) return false;
+        if ((size_t)(p - a->base) + new_size > a->capacity) return false;
+        a->offset = (size_t)(p - a->base) + new_size;
+        return true;
+    }
+    return false;
+}
+
+/* Resize the allocation at ptr to new_size bytes when it is the ONLY
+ * allocation in its block of this arena's chain, by growing the block
+ * itself (slop_arena_block_grow): the old storage goes back to the allocator
+ * or the OS instead of lying abandoned in the arena. Returns the (possibly
+ * moved) allocation, or NULL, changing nothing, when ptr shares its block, is
+ * not in this arena, or the grow fails. On success the old address is dead, so this is only for
+ * storage with exactly one owner pointer -- a map's table, held only by its
+ * slop_map -- and never for a List's buffer, which every copy of the list
+ * header points at. */
+static inline void* slop_arena_realloc_sole(slop_arena* arena, void* ptr,
+                                            size_t old_size, size_t new_size) {
+    old_size = (old_size + 7) & ~(size_t)7;
+    new_size = (new_size + 7) & ~(size_t)7;
+    uint8_t* p = (uint8_t*)ptr;
+    for (slop_arena* a = arena; a != NULL; a = a->next) {
+        if (a->base == NULL || p < a->base || p >= a->base + a->capacity) continue;
+        if (p != a->base || a->offset != old_size) return NULL;
+        if (new_size <= a->capacity) {
+            a->offset = new_size;
+            return p;
+        }
+#ifndef SLOP_ARENA_NO_CAP
+        if (atomic_load(&slop_global_allocated) + (new_size - a->capacity) > SLOP_ARENA_MAX_TOTAL_BYTES) {
+            fprintf(stderr, "SLOP: arena allocation cap exceeded (%zu bytes). "
+                    "Increase SLOP_ARENA_MAX_TOTAL_BYTES or reduce allocation.\n",
+                    (size_t)SLOP_ARENA_MAX_TOTAL_BYTES);
+            abort();
+        }
+#endif
+        uint8_t* nb = slop_arena_block_grow(a->base, a->capacity, a->offset, new_size, &a->mapped);
+        if (nb == NULL) return NULL;
+        atomic_fetch_add(&slop_global_allocated, new_size - a->capacity);
+        a->total_allocated += new_size - a->capacity;
+        a->base = nb;
+        a->capacity = new_size;
+        a->offset = new_size;
+        return nb;
+    }
+    return NULL;
+}
+
 static inline void slop_arena_free(slop_arena* arena) {
     if (arena->next) {
         slop_arena_free(arena->next);
@@ -234,8 +716,9 @@ static inline void slop_arena_free(slop_arena* arena) {
         atomic_fetch_sub(&slop_global_allocated, arena->capacity);
     }
 
-    free(arena->base);
+    slop_arena_block_put(arena->base, arena->capacity, arena->mapped);
     arena->base = NULL;
+    arena->mapped = false;
     arena->offset = 0;
     arena->capacity = 0;
     arena->total_allocated = 0;
@@ -271,7 +754,10 @@ typedef struct { bool has_value; int64_t value; } _slop_option_generic;
 #define some(v) ((_slop_option_generic){true, (int64_t)(v)})
 #define none ((_slop_option_generic){false, 0})
 /* Generic unwrap for any Option type */
-#define unwrap(opt) ({ __auto_type _opt = (opt); SLOP_PRE(_opt.has_value, "unwrap on None"); _opt.value; })
+/* Variadic so an argument containing commas, such as the compound literal
+ * (some x) lowers to, reaches the body whole rather than as several
+ * macro arguments (#306) */
+#define unwrap(...) ({ __auto_type _opt = (__VA_ARGS__); SLOP_PRE(_opt.has_value, "unwrap on None"); _opt.value; })
 
 /* Generic Result type for native transpiler */
 /* ok/error constructors produce generic result that can be assigned to typed results */
@@ -286,19 +772,73 @@ typedef struct { void* fn; void* env; } slop_closure_t;
  * String Interning Functions
  * ============================================================ */
 
-/* FNV-1a hash for raw string data (used by interning) */
-static inline uint64_t slop_hash_string_data(const char* str, size_t len) {
-    uint64_t hash = 14695981039346656037ULL;
-    for (size_t i = 0; i < len; i++) {
-        hash ^= (uint8_t)str[i];
-        hash *= 1099511628211ULL;
+/* Byte-string hash: 8 bytes per step, after xxHash64's per-lane round and
+ * avalanche. It is a pure function of the bytes -- no seed, no addresses, and
+ * words are read little-endian on every host -- so a given key hashes the
+ * same across runs and platforms, and Map/Set iteration order with it. */
+#define SLOP_HASH_P1 0x9E3779B185EBCA87ULL
+#define SLOP_HASH_P2 0xC2B2AE3D27D4EB4FULL
+#define SLOP_HASH_P3 0x165667B19E3779F9ULL
+#define SLOP_HASH_P4 0x85EBCA77C2B2AE63ULL
+
+static inline uint64_t slop_hash_rotl(uint64_t x, int r) {
+    return (x << r) | (x >> (64 - r));
+}
+
+static inline uint64_t slop_hash_load64(const uint8_t* p) {
+    uint64_t w;
+    memcpy(&w, p, sizeof(w));
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    w = __builtin_bswap64(w);
+#endif
+    return w;
+}
+
+static inline uint64_t slop_hash_word(uint64_t h, uint64_t w) {
+    h ^= slop_hash_rotl(w * SLOP_HASH_P2, 31) * SLOP_HASH_P1;
+    return slop_hash_rotl(h, 27) * SLOP_HASH_P1 + SLOP_HASH_P4;
+}
+
+static inline uint64_t slop_hash_avalanche(uint64_t h) {
+    h ^= h >> 33;
+    h *= SLOP_HASH_P2;
+    h ^= h >> 29;
+    h *= SLOP_HASH_P3;
+    h ^= h >> 32;
+    return h;
+}
+
+static inline uint64_t slop_hash_bytes(const void* data, size_t len) {
+    const uint8_t* p = (const uint8_t*)data;
+    uint64_t h = SLOP_HASH_P3 ^ ((uint64_t)len * SLOP_HASH_P1);
+    while (len >= 8) {
+        h = slop_hash_word(h, slop_hash_load64(p));
+        p += 8;
+        len -= 8;
     }
-    return hash;
+    if (len > 0) {
+        /* Assembled byte by byte, so the tail is little-endian everywhere too. */
+        uint64_t w = 0;
+        for (size_t i = 0; i < len; i++) w |= (uint64_t)p[i] << (8 * i);
+        h = slop_hash_word(h, w);
+    }
+    return slop_hash_avalanche(h);
+}
+
+/* Fold one more 64-bit hash into a running one (generated hash functions
+ * use it to combine a tag with a payload hash). */
+static inline uint64_t slop_hash_combine(uint64_t h, uint64_t v) {
+    return slop_hash_word(h, v);
+}
+
+/* Hash for raw string data (used by interning) */
+static inline uint64_t slop_hash_string_data(const char* str, size_t len) {
+    return slop_hash_bytes(str, len);
 }
 
 /* Initialize the global intern pool (called lazily) */
 #ifdef SLOP_INTERN_THREADSAFE
-static pthread_once_t slop_intern_once = PTHREAD_ONCE_INIT;
+static slop_once_t slop_intern_once = SLOP_ONCE_INIT;
 static void slop_intern_pool_init_impl(void) {
     slop_global_intern_pool = (slop_intern_pool*)malloc(sizeof(slop_intern_pool));
     slop_global_intern_pool->bucket_count = SLOP_INTERN_BUCKET_COUNT;
@@ -307,10 +847,10 @@ static void slop_intern_pool_init_impl(void) {
         SLOP_INTERN_BUCKET_COUNT, sizeof(slop_intern_entry*));
     slop_global_intern_pool->arena = (slop_arena*)malloc(sizeof(slop_arena));
     *slop_global_intern_pool->arena = slop_arena_new(1024 * 1024);
-    pthread_mutex_init(&slop_global_intern_pool->lock, NULL);
+    slop_mutex_init(&slop_global_intern_pool->lock);
 }
 static inline void slop_intern_pool_init(void) {
-    pthread_once(&slop_intern_once, slop_intern_pool_init_impl);
+    slop_once(&slop_intern_once, slop_intern_pool_init_impl);
 }
 #else
 static inline void slop_intern_pool_init(void) {
@@ -336,7 +876,7 @@ static inline slop_string slop_intern_string(const char* str, size_t len) {
     size_t bucket = hash % slop_global_intern_pool->bucket_count;
 
 #ifdef SLOP_INTERN_THREADSAFE
-    pthread_mutex_lock(&slop_global_intern_pool->lock);
+    slop_mutex_lock(&slop_global_intern_pool->lock);
 #endif
 
     /* Check existing entries */
@@ -347,7 +887,7 @@ static inline slop_string slop_intern_string(const char* str, size_t len) {
             memcmp(entry->data, str, len) == 0) {
             /* Found existing - return it */
 #ifdef SLOP_INTERN_THREADSAFE
-            pthread_mutex_unlock(&slop_global_intern_pool->lock);
+            slop_mutex_unlock(&slop_global_intern_pool->lock);
 #endif
             return (slop_string){entry->len, entry->data};
         }
@@ -370,7 +910,7 @@ static inline slop_string slop_intern_string(const char* str, size_t len) {
     slop_global_intern_pool->entry_count++;
 
 #ifdef SLOP_INTERN_THREADSAFE
-    pthread_mutex_unlock(&slop_global_intern_pool->lock);
+    slop_mutex_unlock(&slop_global_intern_pool->lock);
 #endif
     return (slop_string){len, data};
 }
@@ -425,6 +965,8 @@ static inline slop_string slop_string_new_len(slop_arena* arena, const char* src
 
 static inline bool slop_string_eq(slop_string a, slop_string b) {
     if (a.len != b.len) return false;
+    /* Interned strings (SLOP_STRING_INTERN_ALL) that are equal share storage. */
+    if (a.data == b.data) return true;
     return memcmp(a.data, b.data, a.len) == 0;
 }
 
@@ -482,7 +1024,7 @@ static inline int64_t string_to_int(slop_string s) {
 
 static inline slop_string int_to_string(slop_arena* arena, int64_t n) {
     char buf[32];
-    int len = snprintf(buf, sizeof(buf), "%ld", (long)n);
+    int len = snprintf(buf, sizeof(buf), "%" PRId64, n);
     return slop_string_new_len(arena, buf, len);
 }
 
@@ -519,28 +1061,71 @@ static inline slop_bytes slop_bytes_from(slop_arena* arena, const uint8_t* src, 
  * List Type (dynamic array, generic via macros)
  * ============================================================ */
 
+#ifndef SLOP_LIST_FIRST_CAPACITY
+#define SLOP_LIST_FIRST_CAPACITY 4
+#endif
+
+/* Make room for one more element in a list whose len has reached its cap:
+ * the capacity doubles (a list with no storage gets SLOP_LIST_FIRST_CAPACITY),
+ * a new buffer is allocated in `arena`, the first len elements are copied, and
+ * the new data pointer is returned. Every list-push, generated or
+ * SLOP_LIST_IMPL's, grows through here.
+ *
+ * `arena` is the list's own (the header's `arena`, recorded by list-new or
+ * the literal that made it), or the one a `(list-push xs x :arena a)` names.
+ * A header with no arena -- zero-initialized, or a copy of a module-level
+ * const list, whose elements are static -- cannot grow.
+ *
+ * The buffer always moves, even when it is the last allocation in its block
+ * and could be extended where it stands (slop_arena_try_extend, as a map's
+ * table is). A List header is a value, and every copy of it -- a `mut`
+ * parameter, a record read out of a map -- points at the same buffer. Moving
+ * on growth is what separates a copy that outgrew its capacity from the
+ * others: were it extended in place, another header with spare capacity would
+ * still write into the grown copy's elements. The old buffer stays in the
+ * arena, so any copy of the old header still reads it. */
+static inline void* slop_list_grow_raw(slop_arena* arena, void* data, size_t* cap,
+                                       size_t len, size_t elem_size) {
+    if (arena == NULL) {
+        fprintf(stderr, "SLOP: list-push on a list with no arena "
+                        "(zero-initialized, or a copy of a module constant)\n");
+        abort();
+    }
+    size_t new_cap = *cap == 0 ? SLOP_LIST_FIRST_CAPACITY : *cap * 2;
+    void* new_data = slop_arena_alloc(arena, new_cap * elem_size);
+    if (new_data == NULL) {
+        fprintf(stderr, "SLOP: list growth failed (arena has no storage)\n");
+        abort();
+    }
+    if (len > 0) memcpy(new_data, data, len * elem_size);
+    *cap = new_cap;
+    return new_data;
+}
+
 /* SLOP_LIST_DECLARE: struct only — safe with incomplete element types (uses T*) */
 #define SLOP_LIST_DECLARE(T, Name) \
     typedef struct { \
         size_t len; \
         size_t cap; \
         T* data; \
+        slop_arena* arena;  /* where push grows it: see slop_list_grow_raw */ \
     } Name;
 
 /* SLOP_LIST_IMPL: inline functions — requires sizeof(T), so T must be complete */
 #define SLOP_LIST_IMPL(T, Name) \
     static inline Name Name##_new(slop_arena* arena, size_t initial_cap) { \
         T* data = (T*)slop_arena_alloc(arena, initial_cap * sizeof(T)); \
-        return (Name){0, initial_cap, data}; \
+        return (Name){0, initial_cap, data, arena}; \
     } \
     \
+    /* An empty list may have no storage yet ({NULL, 0, 0, arena}, as \
+     * list-new creates it): slop_list_grow_raw gives it its first buffer. \
+     * It grows in `arena` if one is given, else in the list's own. */ \
     static inline void Name##_push(slop_arena* arena, Name* list, T item) { \
         if (list->len >= list->cap) { \
-            size_t new_cap = list->cap * 2; \
-            T* new_data = (T*)slop_arena_alloc(arena, new_cap * sizeof(T)); \
-            memcpy(new_data, list->data, list->len * sizeof(T)); \
-            list->data = new_data; \
-            list->cap = new_cap; \
+            list->data = (T*)slop_list_grow_raw(arena ? arena : list->arena, \
+                                                list->data, &list->cap, \
+                                                list->len, sizeof(T)); \
         } \
         list->data[list->len++] = item; \
     } \
@@ -590,41 +1175,138 @@ static inline slop_list_string string_split(slop_arena* arena, slop_string s, sl
 }
 
 /* ============================================================
- * Map Type (generic hash map with arbitrary key types)
+ * Map and Set (one hash table; a Set is a Map with no value)
+ *
+ * LAYOUT. A map is a slop_map header -- allocated once and shared by
+ * pointer, which is why a Map or Set in a record field is shared by every
+ * copy of the record -- whose `table` is ONE arena block:
+ *
+ *   [entry 0][entry 1] ... [entry cap-1]   dense, entries 0..len-1 live
+ *   [slot][slot] ... [slot]                2*cap index slots
+ *
+ * An entry is the key's bytes, then the value's (none for a Set), then, for
+ * keys whose eq is costly, the key's mixed 64-bit hash: [key][pad][value]
+ * [hash]. Offsets and sizes come from the map's slop_map_desc, a static
+ * constant the transpiler emits per key/value type. An index slot holds an
+ * entry number plus one, 0 meaning empty, and above it a few bits of the
+ * key's hash, in 1, 2, 4 or 8 bytes as cap requires; the index is
+ * linear-probed from slop_map_mix(hash) and is never more than half full, so
+ * probe chains stay short, and the hash bits let a probe skip another key's
+ * slot without reading its entry.
+ *
+ * WHY INLINE AND DENSE. Keys and values live in the table, so a put
+ * allocates nothing per entry: a new key is copied into entries[len], and an
+ * overwrite copies the value over the old one where it stands. Storing a
+ * pointer per key or value instead cost HOWL, an OWL reasoner whose store is
+ * millions of Set and Map entries, ~150 bytes per element (a 32-byte padded
+ * slot at 37-75% load, an arena copy of each key, and a fresh copy of the
+ * value on every put, overwrites included), where this layout costs the entry
+ * plus a few bytes of index. Entries are dense rather than scattered through
+ * the probe table so that an empty slot costs an index slot, not a whole
+ * key and value: a large value is no dearer per element than its own size.
+ * Do not reintroduce a per-entry slop_arena_alloc.
+ *
+ * RULES.
+ * - Nothing may keep a pointer into the table across a put or a remove: a
+ *   put can move the whole table, a remove moves the last entry into the
+ *   hole. Generated code copies a key or value out the moment it reads one
+ *   (map-get builds an Option by value, for-each binds copies).
+ * - Growth doubles cap when a put finds len == cap. It goes to the map's own
+ *   arena -- the one map-new or set-new was given, recorded in the header --
+ *   unless the put names another (`(map-put m k v :arena a)`, which passes
+ *   `a` where a plain put passes NULL). It extends the block in place when the
+ *   block is the last allocation in its block of that arena
+ *   (slop_arena_try_extend); reallocs the arena block when the table is its
+ *   only allocation (slop_arena_realloc_sole), which frees the old storage;
+ *   and otherwise moves the table into that arena, abandoning one old block.
+ *   Every way the index is rebuilt from the entries in order, so the layout,
+ *   and iteration order with it, is the same. Growth allocates from an arena,
+ *   which only one thread may do at a time: a thread growing a map whose
+ *   arena another thread is using must name its own. (A List never grows in
+ *   place: see slop_list_grow_raw.)
+ * - Iteration is entries 0..len-1: insertion order, except that a remove
+ *   moves the last entry into the hole. So order is a pure function of the
+ *   operations and the keys (even for Ptr keys). The language promises only
+ *   that it is deterministic.
+ * - Reads (get, has, iteration) never write, so any number of threads may read
+ *   a map nobody is changing. There is no locking.
  * ============================================================ */
 
 /* Function pointer types for hash and equality */
 typedef uint64_t (*slop_hash_fn)(const void* key);
 typedef bool (*slop_eq_fn)(const void* a, const void* b);
 
-typedef struct {
-    void* key;          /* Pointer to key (arena-allocated copy) */
-    void* value;
-    bool occupied;
-} slop_map_entry;
+/* How a probe decides that an entry holds the key it is looking for */
+typedef enum {
+    SLOP_KEY_BITS = 0,    /* key bytes compared directly; no stored hash (integers, Bool,
+                             Symbol, Ptr, ranges) */
+    SLOP_KEY_CALL = 1,    /* eq called; no stored hash (Float and F32, whose -0.0 == 0.0) */
+    SLOP_KEY_HASHED = 2   /* stored hash compared first, then eq (String, and every type
+                             with a generated hash: records, unions, enums, Option, Result) */
+} slop_key_mode;
 
-typedef struct {
+typedef struct slop_map_desc {
+    slop_hash_fn hash;
+    slop_eq_fn eq;
+    uint32_t key_size;
+    uint32_t value_size;  /* 0 for a Set */
+    uint32_t value_off;   /* offset of the value in an entry */
+    uint32_t hash_off;    /* offset of the stored hash, when mode is SLOP_KEY_HASHED */
+    uint32_t entry_size;  /* a multiple of the entry's alignment */
+    uint32_t mode;        /* slop_key_mode */
+} slop_map_desc;
+
+typedef struct slop_map {
     size_t len;
-    size_t cap;
-    size_t key_size;    /* Size of key type in bytes */
-    slop_hash_fn hash;  /* Hash function for keys */
-    slop_eq_fn eq;      /* Equality function for keys */
-    slop_map_entry* entries;
+    size_t cap;           /* entry capacity: 0 (no table yet) or a power of two */
+    const slop_map_desc* desc;
+    uint8_t* table;       /* NULL while cap is 0 */
+    slop_arena* arena;    /* where a put grows the table, unless it names one */
 } slop_map;
+
+/* A key or value is aligned to at most 8, the arena's alignment; the
+ * negative array size is a compile error for a wider one. */
+#define SLOP_MAP_ALIGN_OK(T) (0 * sizeof(char[_Alignof(T) <= 8 ? 1 : -1]))
+#define SLOP_MAP_ROUND(n, a) ((((n) + (a) - 1) / (a)) * (a))
+#define SLOP_MAP_MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#ifdef SLOP_MAP_FORCE_KEY_MODE
+#define SLOP_MAP_MODE(MODE) (SLOP_MAP_FORCE_KEY_MODE)
+#else
+#define SLOP_MAP_MODE(MODE) (MODE)
+#endif
+
+/* Descriptor initializers: SLOP_MAP_DESC(K, HASH, EQ, MODE, V) and
+ * SLOP_SET_DESC(K, HASH, EQ, MODE), key first so the transpiler emits one key
+ * description for both. MODE is a slop_key_mode; SLOP_KEY_BITS is only for
+ * keys with no padding whose equality is byte equality. SLOP_MAP_FORCE_KEY_MODE
+ * overrides every map's mode, for measuring. */
+#define SLOP_MAP_DESC_(KSIZE, KALIGN, VSIZE, VALIGN, HASH, EQ, MODE) { \
+    .hash = (HASH), .eq = (EQ), \
+    .key_size = (uint32_t)(KSIZE), \
+    .value_size = (uint32_t)(VSIZE), \
+    .value_off = (uint32_t)SLOP_MAP_ROUND((KSIZE), (VALIGN)), \
+    .hash_off = (uint32_t)SLOP_MAP_ROUND(SLOP_MAP_ROUND((KSIZE), (VALIGN)) + (VSIZE), 8), \
+    .entry_size = (uint32_t)(SLOP_MAP_MODE(MODE) == SLOP_KEY_HASHED \
+        ? SLOP_MAP_ROUND(SLOP_MAP_ROUND((KSIZE), (VALIGN)) + (VSIZE), 8) + 8 \
+        : SLOP_MAP_ROUND(SLOP_MAP_ROUND((KSIZE), (VALIGN)) + (VSIZE), \
+                         SLOP_MAP_MAX((KALIGN), (VALIGN)))), \
+    .mode = (uint32_t)SLOP_MAP_MODE(MODE) }
+
+#define SLOP_MAP_DESC(K, HASH, EQ, MODE, V) \
+    SLOP_MAP_DESC_(sizeof(K) + SLOP_MAP_ALIGN_OK(K), _Alignof(K), \
+                   sizeof(V) + SLOP_MAP_ALIGN_OK(V), _Alignof(V), HASH, EQ, MODE)
+
+#define SLOP_SET_DESC(K, HASH, EQ, MODE) \
+    SLOP_MAP_DESC_(sizeof(K) + SLOP_MAP_ALIGN_OK(K), _Alignof(K), 0, 1, HASH, EQ, MODE)
 
 /* ============================================================
  * Hash functions for primitive types
  * ============================================================ */
 
-/* FNV-1a hash for strings */
 static inline uint64_t slop_hash_string(const void* key) {
     const slop_string* s = (const slop_string*)key;
-    uint64_t hash = 14695981039346656037ULL;
-    for (size_t i = 0; i < s->len; i++) {
-        hash ^= (uint8_t)s->data[i];
-        hash *= 1099511628211ULL;
-    }
-    return hash;
+    return slop_hash_bytes(s->data, s->len);
 }
 
 static inline bool slop_eq_string(const void* a, const void* b) {
@@ -655,6 +1337,49 @@ static inline bool slop_eq_uint(const void* a, const void* b) {
     return *(const uint64_t*)a == *(const uint64_t*)b;
 }
 
+/* Hash/eq for keys narrower than 64 bits. Each reads exactly its own width --
+ * a key is stored in key_size bytes, so reading 8 would run past it -- and
+ * widens before hashing, so a value hashes as it would as an Int. */
+#define SLOP_NARROW_KEY_HASH_EQ(NAME, T, WIDE, HASH) \
+    static inline uint64_t slop_hash_##NAME(const void* key) { \
+        WIDE x = (WIDE)*(const T*)key; \
+        return HASH(&x); \
+    } \
+    static inline bool slop_eq_##NAME(const void* a, const void* b) { \
+        return *(const T*)a == *(const T*)b; \
+    }
+
+SLOP_NARROW_KEY_HASH_EQ(i32, int32_t, int64_t, slop_hash_int)
+SLOP_NARROW_KEY_HASH_EQ(i16, int16_t, int64_t, slop_hash_int)
+SLOP_NARROW_KEY_HASH_EQ(i8, int8_t, int64_t, slop_hash_int)
+SLOP_NARROW_KEY_HASH_EQ(u32, uint32_t, uint64_t, slop_hash_uint)
+SLOP_NARROW_KEY_HASH_EQ(u16, uint16_t, uint64_t, slop_hash_uint)
+SLOP_NARROW_KEY_HASH_EQ(u8, uint8_t, uint64_t, slop_hash_uint)
+SLOP_NARROW_KEY_HASH_EQ(bool, bool, uint64_t, slop_hash_uint)
+
+/* Hash/eq for Float (double) and F32 (float) keys. eq is C's ==, so -0.0
+ * and 0.0 are one key and must hash alike, and a NaN key is never found. */
+static inline uint64_t slop_hash_double(const void* key) {
+    double d = *(const double*)key;
+    if (d == 0.0) d = 0.0;
+    uint64_t bits;
+    memcpy(&bits, &d, sizeof(bits));
+    return slop_hash_uint(&bits);
+}
+
+static inline bool slop_eq_double(const void* a, const void* b) {
+    return *(const double*)a == *(const double*)b;
+}
+
+static inline uint64_t slop_hash_float(const void* key) {
+    double d = (double)*(const float*)key;
+    return slop_hash_double(&d);
+}
+
+static inline bool slop_eq_float(const void* a, const void* b) {
+    return *(const float*)a == *(const float*)b;
+}
+
 /* Hash for pointers (useful for identity maps) */
 static inline uint64_t slop_hash_ptr(const void* key) {
     uint64_t x = (uint64_t)(*(const void**)key);
@@ -671,16 +1396,11 @@ static inline bool slop_eq_ptr(const void* a, const void* b) {
 #define slop_hash_symbol slop_hash_int
 #define slop_eq_symbol slop_eq_int
 
-/* Generate hash/eq functions for arbitrary struct types using FNV-1a */
+/* Generate hash/eq functions over the raw bytes of a type with no padding
+ * (an enum, a range alias) */
 #define SLOP_STRUCT_HASH_EQ_DEFINE(T) \
     static inline uint64_t slop_hash_##T(const void* key) { \
-        const uint8_t* bytes = (const uint8_t*)key; \
-        uint64_t hash = 14695981039346656037ULL; \
-        for (size_t i = 0; i < sizeof(T); i++) { \
-            hash ^= bytes[i]; \
-            hash *= 1099511628211ULL; \
-        } \
-        return hash; \
+        return slop_hash_bytes(key, sizeof(T)); \
     } \
     static inline bool slop_eq_##T(const void* a, const void* b) { \
         return memcmp(a, b, sizeof(T)) == 0; \
@@ -690,146 +1410,375 @@ static inline bool slop_eq_ptr(const void* a, const void* b) {
  * Map operations
  * ============================================================ */
 
+/* Spread a key hash across the low bits before masking. Generated hash
+ * functions fold fields with FNV-style steps and slop_hash_int's low bits come
+ * from a multiply, so neither can be trusted to vary in the bits a small
+ * power-of-two index looks at. The result is what an entry stores. */
+static inline uint64_t slop_map_mix(uint64_t h) {
+    h ^= h >> 32;
+    h *= 0x9E3779B97F4A7C15ULL;
+    h ^= h >> 29;
+    return h;
+}
+
+/* The capacity of the first table a map with no table gets */
+#ifndef SLOP_MAP_FIRST_CAPACITY
+#define SLOP_MAP_FIRST_CAPACITY 4
+#endif
+
+/* Smallest power of two >= n, and at least SLOP_MAP_FIRST_CAPACITY */
+static inline size_t slop_map_round_cap(size_t n) {
+    size_t cap = SLOP_MAP_FIRST_CAPACITY;
+    while (cap < n) cap <<= 1;
+    return cap;
+}
+
+/* An index slot holds an entry number plus one (0 is empty) in its low
+ * idx_bits, and in the bits above them a tag: the top bits of the entry's
+ * mixed hash. A probe compares the tag before it reads the entry, so a slot
+ * belonging to another key is passed over without touching that key's entry
+ * -- which, in a big table of large entries, is a cache and TLB miss. */
+static inline size_t slop_map_idx_bits(size_t cap) {
+    return (size_t)__builtin_ctzll((unsigned long long)cap) + 1;
+}
+
+/* Bytes per index slot for a table of cap entries: room for the entry number
+ * and a tag of at least 1, 4, 8 and 30 bits respectively */
+static inline size_t slop_map_index_width(size_t cap) {
+    if (cap <= 64) return 1;
+    if (cap <= 2048) return 2;
+    if (cap <= ((size_t)1 << 23)) return 4;
+    return 8;
+}
+
+/* The slot value for entry i with mixed hash h */
+static inline size_t slop_map_slot_value(size_t cap, size_t i, uint64_t h) {
+    size_t idx_bits = slop_map_idx_bits(cap);
+    size_t tag_bits = 8 * slop_map_index_width(cap) - idx_bits;
+    return (i + 1) | (size_t)((h >> (64 - tag_bits)) << idx_bits);
+}
+
+/* The entry number a non-empty slot value points at */
+static inline size_t slop_map_slot_entry(size_t cap, size_t v) {
+    return (v & (((size_t)1 << slop_map_idx_bits(cap)) - 1)) - 1;
+}
+
+/* The index starts after the entries, 8-aligned */
+static inline size_t slop_map_index_off(const slop_map_desc* d, size_t cap) {
+    return (cap * d->entry_size + 7) & ~(size_t)7;
+}
+
+static inline size_t slop_map_table_bytes(const slop_map_desc* d, size_t cap) {
+    return slop_map_index_off(d, cap) + 2 * cap * slop_map_index_width(cap);
+}
+
+/* Entry i's key, and its value (a Set's is zero bytes long) */
+static inline void* slop_map_key_at(const slop_map* m, size_t i) {
+    return m->table + i * m->desc->entry_size;
+}
+
+static inline void* slop_map_value_at(const slop_map* m, size_t i) {
+    return m->table + i * m->desc->entry_size + m->desc->value_off;
+}
+
+static inline size_t slop_map_slot_load(const uint8_t* index, size_t w, size_t s) {
+    switch (w) {
+    case 1: return index[s];
+    case 2: return ((const uint16_t*)index)[s];
+    case 4: return ((const uint32_t*)index)[s];
+    default: return (size_t)((const uint64_t*)index)[s];
+    }
+}
+
+static inline void slop_map_slot_store(uint8_t* index, size_t w, size_t s, size_t v) {
+    switch (w) {
+    case 1: index[s] = (uint8_t)v; break;
+    case 2: ((uint16_t*)index)[s] = (uint16_t)v; break;
+    case 4: ((uint32_t*)index)[s] = (uint32_t)v; break;
+    default: ((uint64_t*)index)[s] = (uint64_t)v; break;
+    }
+}
+
+/* Entry i's mixed hash: stored, or recomputed from its key */
+static inline uint64_t slop_map_entry_hash(const slop_map* m, size_t i) {
+    const slop_map_desc* d = m->desc;
+    const uint8_t* e = (const uint8_t*)slop_map_key_at(m, i);
+    if (d->mode == SLOP_KEY_HASHED) {
+        uint64_t h;
+        memcpy(&h, e + d->hash_off, sizeof(h));
+        return h;
+    }
+    return slop_map_mix(d->hash(e));
+}
+
+static inline bool slop_map_key_eq(const slop_map_desc* d, const uint8_t* e,
+                                   const void* key, uint64_t h) {
+    switch (d->mode) {
+    case SLOP_KEY_BITS:
+        switch (d->key_size) {
+        case 8: { uint64_t a, b; memcpy(&a, e, 8); memcpy(&b, key, 8); return a == b; }
+        case 4: { uint32_t a, b; memcpy(&a, e, 4); memcpy(&b, key, 4); return a == b; }
+        case 2: { uint16_t a, b; memcpy(&a, e, 2); memcpy(&b, key, 2); return a == b; }
+        case 1: return *e == *(const uint8_t*)key;
+        default: return memcmp(e, key, d->key_size) == 0;
+        }
+    case SLOP_KEY_CALL:
+        return d->eq(e, key);
+    default: {
+        uint64_t eh;
+        memcpy(&eh, e + d->hash_off, sizeof(eh));
+        return eh == h && d->eq(e, key);
+    }
+    }
+}
+
+/* Probe the index for key (mixed hash h). Returns the slot holding its entry
+ * with *found set, or the empty slot that ended the search. The index is at
+ * most half full, so an empty slot always exists. The caller ensures cap > 0. */
+static inline size_t slop_map_probe(const slop_map* m, const void* key, uint64_t h,
+                                    bool* found) {
+    size_t mask = 2 * m->cap - 1;
+    size_t w = slop_map_index_width(m->cap);
+    size_t idx_bits = slop_map_idx_bits(m->cap);
+    size_t tag = slop_map_slot_value(m->cap, 0, h) >> idx_bits;
+    const uint8_t* index = m->table + slop_map_index_off(m->desc, m->cap);
+    size_t s = h & mask;
+    for (;;) {
+        size_t v = slop_map_slot_load(index, w, s);
+        if (v == 0) { *found = false; return s; }
+        if ((v >> idx_bits) == tag &&
+            slop_map_key_eq(m->desc, (const uint8_t*)slop_map_key_at(m, slop_map_slot_entry(m->cap, v)),
+                            key, h)) {
+            *found = true;
+            return s;
+        }
+        s = (s + 1) & mask;
+    }
+}
+
+/* Point the first empty slot on hash h's probe chain at entry i */
+static inline void slop_map_link(slop_map* m, uint64_t h, size_t i) {
+    size_t mask = 2 * m->cap - 1;
+    size_t w = slop_map_index_width(m->cap);
+    uint8_t* index = m->table + slop_map_index_off(m->desc, m->cap);
+    size_t s = h & mask;
+    while (slop_map_slot_load(index, w, s) != 0) s = (s + 1) & mask;
+    slop_map_slot_store(index, w, s, slop_map_slot_value(m->cap, i, h));
+}
+
+/* Give the map a table of new_cap entries (a power of two >= len), keeping
+ * its entries in order and rebuilding the index from them. In order of
+ * preference the table is
+ *   - extended where it stands, when it is the last allocation in its block
+ *     of `arena` and the block has room;
+ *   - realloc'd with its block, when it is the only allocation in that block
+ *     (a large table ends up alone in the block made for it, and the blocks
+ *     of a chain grow no faster than it does, so without this it would move
+ *     on every growth); the old storage is freed, so this needs
+ *     may_free_old, which a put clears when its key or value points into
+ *     the table;
+ *   - moved into a new allocation in `arena`, abandoning the old one.
+ * All three give the same layout. The table's one pointer is m->table: no
+ * other pointer into it survives a put (see the RULES above). A NULL `arena`
+ * means the map's own. */
+static inline void slop_map_resize_(slop_arena* arena, slop_map* m, size_t new_cap,
+                                    bool may_free_old) {
+    if (arena == NULL) arena = m->arena;
+    if (arena == NULL) {
+        fprintf(stderr, "SLOP: map growth with no arena\n");
+        abort();
+    }
+    const slop_map_desc* d = m->desc;
+    size_t new_bytes = slop_map_table_bytes(d, new_cap);
+    bool placed = false;
+    if (m->table != NULL) {
+        size_t old_bytes = slop_map_table_bytes(d, m->cap);
+        if (slop_arena_try_extend(arena, m->table, old_bytes, new_bytes)) {
+            placed = true;
+        } else if (may_free_old) {
+            uint8_t* t = (uint8_t*)slop_arena_realloc_sole(arena, m->table, old_bytes, new_bytes);
+            if (t != NULL) {
+                m->table = t;
+                placed = true;
+            }
+        }
+    }
+    if (!placed) {
+        uint8_t* table = (uint8_t*)slop_arena_alloc(arena, new_bytes);
+        if (table == NULL) {
+            fprintf(stderr, "SLOP: map growth failed (arena has no storage)\n");
+            abort();
+        }
+        if (m->len > 0) memcpy(table, m->table, m->len * d->entry_size);
+        m->table = table;
+    }
+    m->cap = new_cap;
+    memset(m->table + slop_map_index_off(d, new_cap), 0,
+           2 * new_cap * slop_map_index_width(new_cap));
+    for (size_t i = 0; i < m->len; i++) {
+        slop_map_link(m, slop_map_entry_hash(m, i), i);
+    }
+}
+
+static inline void slop_map_resize(slop_arena* arena, slop_map* m, size_t new_cap) {
+    slop_map_resize_(arena, m, new_cap, true);
+}
+
+/* Double the table -- or, for a map with none yet, create the first */
+static inline void slop_map_grow(slop_arena* arena, slop_map* m) {
+    slop_map_resize(arena, m, m->cap == 0 ? SLOP_MAP_FIRST_CAPACITY : m->cap * 2);
+}
+
+/* Whether p points into m's table */
+static inline bool slop_map_in_table(const slop_map* m, const void* p) {
+    if (m->table == NULL || p == NULL) return false;
+    const uint8_t* q = (const uint8_t*)p;
+    return q >= m->table && q < m->table + slop_map_table_bytes(m->desc, m->cap);
+}
+
+/* capacity 0 creates a map with no table (cap 0, table NULL), which the first
+ * put allocates; map-new and set-new ask for that, so an empty Map or Set
+ * costs only this struct. Any other capacity is rounded up to a power of two
+ * and allocated now. */
 static inline slop_map slop_map_new(slop_arena* arena, size_t capacity,
-                                     size_t key_size, slop_hash_fn hash, slop_eq_fn eq) {
-    slop_map_entry* entries = (slop_map_entry*)slop_arena_alloc(
-        arena, capacity * sizeof(slop_map_entry));
-    memset(entries, 0, capacity * sizeof(slop_map_entry));
-    return (slop_map){0, capacity, key_size, hash, eq, entries};
+                                    const slop_map_desc* desc) {
+    slop_map m = {0, 0, desc, NULL, arena};
+    if (capacity > 0) slop_map_resize(arena, &m, slop_map_round_cap(capacity));
+    return m;
 }
 
 /* Return pointer to arena-allocated map (for slop_map* type) */
 static inline slop_map* slop_map_new_ptr(slop_arena* arena, size_t capacity,
-                                          size_t key_size, slop_hash_fn hash, slop_eq_fn eq) {
+                                         const slop_map_desc* desc) {
     slop_map* map = (slop_map*)slop_arena_alloc(arena, sizeof(slop_map));
-    *map = slop_map_new(arena, capacity, key_size, hash, eq);
+    *map = slop_map_new(arena, capacity, desc);
     return map;
 }
 
-/* Legacy string-only constructor for backward compatibility */
-static inline slop_map* slop_map_new_string(slop_arena* arena, size_t capacity) {
-    return slop_map_new_ptr(arena, capacity, sizeof(slop_string), slop_hash_string, slop_eq_string);
+/* The stored value for key, or NULL. The pointer is into the table: copy what
+ * it points at before the next put or remove. Reads never write, so any
+ * number of threads may read a map that nobody is mutating. */
+static inline void* slop_map_get(const slop_map* map, const void* key) {
+    if (map->len == 0) return NULL;         /* nothing to find; hash nothing */
+    uint64_t h = slop_map_mix(map->desc->hash(key));
+    bool found;
+    size_t s = slop_map_probe(map, key, h, &found);
+    if (!found) return NULL;
+    const uint8_t* index = map->table + slop_map_index_off(map->desc, map->cap);
+    return slop_map_value_at(map, slop_map_slot_entry(map->cap,
+                                  slop_map_slot_load(index, slop_map_index_width(map->cap), s)));
 }
 
-static inline void* slop_map_get(slop_map* map, const void* key) {
-    uint64_t hash = map->hash(key);
-    size_t idx = hash % map->cap;
-
-    for (size_t i = 0; i < map->cap; i++) {
-        size_t probe = (idx + i) % map->cap;
-        if (!map->entries[probe].occupied) {
-            return NULL;
-        }
-        if (map->eq(map->entries[probe].key, key)) {
-            return map->entries[probe].value;
-        }
-    }
-    return NULL;
+static inline bool slop_map_has(const slop_map* map, const void* key) {
+    if (map->len == 0) return false;
+    bool found;
+    slop_map_probe(map, key, slop_map_mix(map->desc->hash(key)), &found);
+    return found;
 }
 
-/* Forward declaration for recursive call in put */
+/* Store a copy of key and of the value_size bytes at value (a Set passes
+ * NULL, 0). value_size must be the map's own value size: it is checked, and a
+ * mismatch -- a transpiler bug, since both come from the map's value type --
+ * aborts rather than write past an entry. */
 static inline void slop_map_put(slop_arena* arena, slop_map* map,
-                                 const void* key, void* value);
-
-static inline void slop_map_grow(slop_arena* arena, slop_map* map) {
-    size_t new_cap = map->cap * 2;
-    slop_map new_map = slop_map_new(arena, new_cap, map->key_size, map->hash, map->eq);
-    for (size_t i = 0; i < map->cap; i++) {
-        if (map->entries[i].occupied) {
-            slop_map_put(arena, &new_map,
-                        map->entries[i].key, map->entries[i].value);
-        }
+                                const void* key, const void* value, size_t value_size) {
+    const slop_map_desc* d = map->desc;
+    if (value_size != d->value_size) {
+        fprintf(stderr, "SLOP: map value size mismatch (put %zu bytes into %u-byte values)\n",
+                value_size, (unsigned)d->value_size);
+        abort();
     }
-    *map = new_map;
-}
-
-static inline void slop_map_put(slop_arena* arena, slop_map* map,
-                                 const void* key, void* value) {
-    /* Grow if needed (75% load factor) */
-    if (map->len * 4 >= map->cap * 3) {
-        slop_map_grow(arena, map);
-    }
-
-    uint64_t hash = map->hash(key);
-    size_t idx = hash % map->cap;
-
-    for (size_t i = 0; i < map->cap; i++) {
-        size_t probe = (idx + i) % map->cap;
-        if (!map->entries[probe].occupied) {
-            /* Allocate and copy key */
-            void* key_copy = slop_arena_alloc(arena, map->key_size);
-            memcpy(key_copy, key, map->key_size);
-            map->entries[probe].key = key_copy;
-            map->entries[probe].value = value;
-            map->entries[probe].occupied = true;
-            map->len++;
-            return;
-        }
-        if (map->eq(map->entries[probe].key, key)) {
-            map->entries[probe].value = value;
+    uint64_t h = slop_map_mix(d->hash(key));
+    if (map->len > 0) {
+        bool found;
+        size_t s = slop_map_probe(map, key, h, &found);
+        if (found) {
+            const uint8_t* index = map->table + slop_map_index_off(d, map->cap);
+            size_t i = slop_map_slot_entry(map->cap,
+                                           slop_map_slot_load(index, slop_map_index_width(map->cap), s));
+            if (value_size > 0) memcpy(slop_map_value_at(map, i), value, value_size);
             return;
         }
     }
-}
-
-static inline bool slop_map_has(slop_map* map, const void* key) {
-    return slop_map_get(map, key) != NULL;
+    if (map->len == map->cap) {
+        /* A key or value read out of this very table stays readable: the
+         * old table is then moved from, never freed */
+        bool aliased = slop_map_in_table(map, key) || slop_map_in_table(map, value);
+        slop_map_resize_(arena, map, map->cap == 0 ? SLOP_MAP_FIRST_CAPACITY : map->cap * 2,
+                         !aliased);
+    }
+    size_t i = map->len;
+    uint8_t* e = (uint8_t*)slop_map_key_at(map, i);
+    memcpy(e, key, d->key_size);
+    if (value_size > 0) memcpy(e + d->value_off, value, value_size);
+    if (d->mode == SLOP_KEY_HASHED) memcpy(e + d->hash_off, &h, sizeof(h));
+    slop_map_link(map, h, i);
+    map->len++;
 }
 
 static inline bool slop_map_remove(slop_map* map, const void* key) {
-    uint64_t hash = map->hash(key);
-    size_t idx = hash % map->cap;
+    if (map->len == 0) return false;
+    bool found;
+    size_t hole = slop_map_probe(map, key, slop_map_mix(map->desc->hash(key)), &found);
+    if (!found) return false;
 
-    /* Locate the entry. */
-    size_t hole = map->cap;                 /* cap == "not found" sentinel */
-    for (size_t n = 0; n < map->cap; n++) {
-        size_t probe = (idx + n) % map->cap;
-        if (!map->entries[probe].occupied) return false;
-        if (map->eq(map->entries[probe].key, key)) { hole = probe; break; }
-    }
-    if (hole == map->cap) return false;
+    size_t mask = 2 * map->cap - 1;
+    size_t w = slop_map_index_width(map->cap);
+    uint8_t* index = map->table + slop_map_index_off(map->desc, map->cap);
+    size_t gone = slop_map_slot_entry(map->cap, slop_map_slot_load(index, w, hole));
 
-    /* Backward-shift deletion (Knuth 6.4R, adapted to forward probing).
-     * Clearing `occupied` on its own would truncate every probe chain that
-     * ran through this slot, so slop_map_get would stop early and report
-     * still-present keys as missing, and slop_map_put would insert a
-     * duplicate into the gap. Shifting later entries back preserves the
-     * invariant both rely on: every chain is contiguous from its home slot.
-     * slop_map_put grows at a 75% load factor, so an unoccupied slot always
-     * exists and the scan below always terminates. */
+    /* Unlink the slot by backward-shift deletion (Knuth 6.4R, adapted to
+     * forward probing). Emptying the slot on its own would truncate every
+     * probe chain that ran through it, so a probe would stop early and miss
+     * keys that are present, and a put would insert a duplicate. Shifting
+     * later slots back keeps every chain contiguous from its home slot. The
+     * index is at most half full, so the scan always meets an empty slot. */
     size_t i = hole;
     for (;;) {
-        map->entries[i].occupied = false;
+        slop_map_slot_store(index, w, i, 0);
         size_t j = i;
+        size_t v;
         for (;;) {
-            j = (j + 1) % map->cap;
-            if (!map->entries[j].occupied) {
-                map->len--;
-                return true;
-            }
-            size_t k = map->hash(map->entries[j].key) % map->cap;
-            /* Entry j may fill the hole at i only if its home slot k does
-             * not lie cyclically within (i, j]. */
+            j = (j + 1) & mask;
+            v = slop_map_slot_load(index, w, j);
+            if (v == 0) goto unlinked;
+            size_t k = slop_map_entry_hash(map, slop_map_slot_entry(map->cap, v)) & mask;
+            /* Slot j may fill the hole at i only if its home slot k does not
+             * lie cyclically within (i, j]. */
             if (i <= j ? (i < k && k <= j) : (i < k || k <= j)) continue;
             break;
         }
-        map->entries[i] = map->entries[j];
+        slop_map_slot_store(index, w, i, v);
         i = j;
     }
+unlinked:
+    /* Keep the entries dense: the last one moves into the gap, and the slot
+     * that pointed at it is repointed. */
+    {
+        size_t last = map->len - 1;
+        if (gone != last) {
+            uint64_t lh = slop_map_entry_hash(map, last);
+            size_t s = lh & mask;
+            while (slop_map_slot_entry(map->cap, slop_map_slot_load(index, w, s)) != last)
+                s = (s + 1) & mask;
+            slop_map_slot_store(index, w, s, slop_map_slot_value(map->cap, gone, lh));
+            memcpy(slop_map_key_at(map, gone), slop_map_key_at(map, last),
+                   map->desc->entry_size);
+        }
+        map->len--;
+    }
+    return true;
 }
 
-/* Get all keys - returns generic list of pointers to keys */
 static inline size_t slop_map_key_count(slop_map* map) {
     return map->len;
 }
 
-/* Legacy string key iteration for backward compatibility */
+/* String keys, in iteration order, as a list */
 static inline slop_list_string slop_map_keys(slop_arena* arena, slop_map* map) {
     slop_list_string result = slop_list_string_new(arena, map->len > 0 ? map->len : 1);
-    for (size_t i = 0; i < map->cap; i++) {
-        if (map->entries[i].occupied) {
-            slop_list_string_push(arena, &result, *(slop_string*)map->entries[i].key);
-        }
+    for (size_t i = 0; i < map->len; i++) {
+        slop_list_string_push(arena, &result, *(slop_string*)slop_map_key_at(map, i));
     }
     return result;
 }
@@ -848,12 +1797,13 @@ static inline slop_set_elements_result slop_set_elements_raw(slop_arena* arena, 
     if (count == 0) {
         return (slop_set_elements_result){NULL, 0, 0};
     }
-    void* result = slop_arena_alloc(arena, count * set->key_size);
-    size_t idx = 0;
-    for (size_t i = 0; i < set->cap && idx < count; i++) {
-        if (set->entries[i].occupied) {
-            memcpy((char*)result + idx * set->key_size, set->entries[i].key, set->key_size);
-            idx++;
+    size_t key_size = set->desc->key_size;
+    void* result = slop_arena_alloc(arena, count * key_size);
+    if (set->desc->entry_size == key_size) {
+        memcpy(result, set->table, count * key_size);
+    } else {
+        for (size_t i = 0; i < count; i++) {
+            memcpy((char*)result + i * key_size, slop_map_key_at(set, i), key_size);
         }
     }
     return (slop_set_elements_result){result, count, count};
@@ -869,8 +1819,14 @@ static inline slop_set_elements_result slop_set_elements_raw(slop_arena* arena, 
 #define SLOP_STRING_MAP_DEFINE(V, Name, OptName) \
     typedef slop_map Name; \
     \
+    static inline const slop_map_desc* Name##_desc(void) { \
+        static const slop_map_desc d = \
+            SLOP_MAP_DESC(slop_string, slop_hash_string, slop_eq_string, SLOP_KEY_HASHED, V); \
+        return &d; \
+    } \
+    \
     static inline Name Name##_new(slop_arena* arena, size_t cap) { \
-        return slop_map_new(arena, cap, sizeof(slop_string), slop_hash_string, slop_eq_string); \
+        return slop_map_new(arena, cap, Name##_desc()); \
     } \
     \
     static inline OptName Name##_get(Name* map, slop_string key) { \
@@ -880,13 +1836,11 @@ static inline slop_set_elements_result slop_set_elements_raw(slop_arena* arena, 
     } \
     \
     static inline void Name##_put(slop_arena* arena, Name* map, slop_string key, V value) { \
-        V* stored = (V*)slop_arena_alloc(arena, sizeof(V)); \
-        *stored = value; \
-        slop_map_put(arena, map, &key, stored); \
+        slop_map_put(arena, map, &key, &value, sizeof(V)); \
     } \
     \
     static inline bool Name##_has(Name* map, slop_string key) { \
-        return slop_map_get(map, &key) != NULL; \
+        return slop_map_has(map, &key); \
     }
 
 /* ============================================================
@@ -1143,7 +2097,7 @@ static inline slop_gmap_list _slop_map_values_raw(void* gmap_ptr, size_t value_s
 static inline slop_list_int _slop_map_keys_raw(void* gmap_ptr) {
     slop_gmap_t* m = (slop_gmap_t*)gmap_ptr;
     if (m->gmap_len == 0) {
-        return (slop_list_int){0, 0, NULL};
+        return (slop_list_int){ .len = 0, .cap = 0, .data = NULL, .arena = NULL };
     }
     int64_t* data = (int64_t*)malloc(m->gmap_len * sizeof(int64_t));
     size_t write_idx = 0;
@@ -1153,7 +2107,7 @@ static inline slop_list_int _slop_map_keys_raw(void* gmap_ptr) {
             data[write_idx++] = m->gmap_entries[idx].gmap_key;
         }
     }
-    return (slop_list_int){m->gmap_len, m->gmap_len, data};
+    return (slop_list_int){ .len = m->gmap_len, .cap = m->gmap_len, .data = data, .arena = NULL };
 }
 
 static inline slop_list_int map_keys(void* m) {
@@ -1180,7 +2134,7 @@ static inline slop_gmap_list _slop_take_raw(slop_gmap_list lst, int64_t n) {
     } \
     static inline ListName map_values_##V(void* m) { \
         slop_gmap_list raw = _slop_map_values_raw(m, sizeof(V)); \
-        return (ListName){(V*)raw.data, raw.len, raw.cap}; \
+        return (ListName){ .len = raw.len, .cap = raw.cap, .data = (V*)raw.data, .arena = NULL }; \
     } \
     static inline ListName take_##V(int64_t n, ListName lst) { \
         if ((size_t)n < lst.len) lst.len = (size_t)n; \
@@ -1205,7 +2159,7 @@ static inline slop_gmap_list _slop_take_raw(slop_gmap_list lst, int64_t n) {
 #define SLOP_MAP_VALUES_DEFINE(V, ListType) \
     static inline ListType map_values_##V(void* m) { \
         slop_gmap_list raw = _slop_map_values_raw(m, sizeof(V)); \
-        return (ListType){(V*)raw.data, raw.len, raw.cap}; \
+        return (ListType){ .len = raw.len, .cap = raw.cap, .data = (V*)raw.data, .arena = NULL }; \
     }
 
 #define SLOP_TAKE_DEFINE(V, ListType) \
@@ -1315,11 +2269,78 @@ SLOP_RESULT_DEFINE(void*, slop_error, slop_result_ptr)
 SLOP_RESULT_DEFINE(slop_string, slop_error, slop_result_string)
 
 /* ============================================================
+ * Files and the environment
+ *
+ * The few POSIX calls std/io and std/os need, in a form that builds on the
+ * Microsoft CRT too, with 64-bit offsets and sizes everywhere: on Windows
+ * long, and the default struct stat's st_size, are 32 bits, so ftell, fseek
+ * and stat lose a file past 2 GiB.
+ * ============================================================ */
+
+/* Whether a file or directory exists at path */
+static inline bool slop_file_exists(const char* path) {
+#ifdef _WIN32
+    return _access(path, 0) == 0;
+#else
+    return access(path, F_OK) == 0;
+#endif
+}
+
+/* The size of the file at path in bytes, or -1 when it can't be read */
+static inline int64_t slop_file_size(const char* path) {
+#ifdef _WIN32
+    struct _stat64 st;
+    if (_stat64(path, &st) != 0) return -1;
+#else
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+#endif
+    return (int64_t)st.st_size;
+}
+
+/* ftell with a 64-bit result: -1 on error */
+static inline int64_t slop_ftell64(void* file) {
+#ifdef _WIN32
+    return (int64_t)_ftelli64((FILE*)file);
+#else
+    return (int64_t)ftello((FILE*)file);
+#endif
+}
+
+/* fseek with a 64-bit offset: 0 on success */
+static inline int slop_fseek64(void* file, int64_t offset, int whence) {
+#ifdef _WIN32
+    return _fseeki64((FILE*)file, offset, whence);
+#else
+    return fseeko((FILE*)file, (off_t)offset, whence);
+#endif
+}
+
+/* Set an environment variable, replacing any value: 0 on success. The
+ * Microsoft CRT can't hold an empty value; setting one there removes the
+ * variable, as unsetting does. */
+static inline int slop_setenv(const char* name, const char* value) {
+#ifdef _WIN32
+    return _putenv_s(name, value) == 0 ? 0 : -1;
+#else
+    return setenv(name, value, 1);
+#endif
+}
+
+/* Remove an environment variable: 0 on success */
+static inline int slop_unsetenv(const char* name) {
+#ifdef _WIN32
+    return _putenv_s(name, "") == 0 ? 0 : -1;
+#else
+    return unsetenv(name);
+#endif
+}
+
+/* ============================================================
  * Time
  * ============================================================ */
 
 #ifdef _WIN32
-#include <windows.h>
 static inline int64_t slop_now_ms(void) {
     return (int64_t)GetTickCount64();
 }
@@ -1351,7 +2372,7 @@ static inline void sleep_ms(int64_t ms) {
 
 static inline slop_string slop_int_to_string(slop_arena* arena, int64_t n) {
     char buf[32];
-    int len = snprintf(buf, sizeof(buf), "%ld", (long)n);
+    int len = snprintf(buf, sizeof(buf), "%" PRId64, n);
     return slop_string_new_len(arena, buf, len);
 }
 

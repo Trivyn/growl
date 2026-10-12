@@ -12,7 +12,7 @@
 #include "slop_growl.h"
 #include "slop_strlib.h"
 #include <string.h>
-#include <slop_runtime.h>
+#include "../runtime/slop_runtime.h"
 
 typedef struct main_CliArgs main_CliArgs;
 

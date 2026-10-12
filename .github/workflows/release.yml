@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+  # Runs every build leg from a branch without publishing a release.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,11 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install SLOP 0.3.0
+      - name: Install SLOP 0.4.2
         if: runner.os == 'Linux'
         working-directory: ${{ runner.temp }}
         run: |
-          SLOP_VERSION=v0.3.0
+          SLOP_VERSION=v0.4.2
           SLOP_ARCHIVE="slop-${SLOP_VERSION}-linux-x64.tar.gz"
           SLOP_URL="https://github.com/slop-lang/slop/releases/download/${SLOP_VERSION}"
           curl -fsSLO "${SLOP_URL}/${SLOP_ARCHIVE}"
@@ -55,7 +57,8 @@ jobs:
 
       - name: Build release CLI
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' slop.toml | head -1)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION=${GITHUB_REF_NAME#v}; fi
           make release CC=${{ matrix.cc }} GROWL_VERSION="$VERSION"
 
       - name: Rename CLI binary
@@ -81,8 +84,69 @@ jobs:
           name: libgrowl-${{ matrix.platform }}
           path: libgrowl-${{ matrix.platform }}.zip
 
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # MinGW-w64 gcc builds the CLI and libgrowl; the generated C needs GNU
+      # extensions, which MSVC's cl.exe rejects.
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc make zip
+
+      # x86_64-pc-windows-msvc, where cc-rs compiles the C with clang-cl
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Run tests
+        shell: msys2 {0}
+        run: make test CC=gcc
+
+      - name: Vendor C sources into the Rust crate
+        shell: msys2 {0}
+        run: make crate-vendor
+
+      # Windows support in the Rust crate is preliminary; don't let it block
+      # the Windows CLI and library artifacts.
+      - name: Build and test Rust crate with slop-sys
+        working-directory: rust
+        continue-on-error: true
+        run: cargo test
+
+      - name: Build release CLI
+        shell: msys2 {0}
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' slop.toml | head -1)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION=${GITHUB_REF_NAME#v}; fi
+          make release CC=gcc GROWL_VERSION="$VERSION"
+          mv build/growl.exe growl-windows-x86_64.exe
+
+      - name: Build release library
+        shell: msys2 {0}
+        run: |
+          make clean
+          make lib CC=gcc CFLAGS="-O3 -Wall -Wno-unused-function -Wno-unused-variable -Wno-return-type -Wno-pointer-sign -DNDEBUG -DSLOP_ARENA_NO_CAP -DSLOP_INTERN_THREADSAFE -DSLOP_INTERN_BUCKET_COUNT=65536"
+
+      - name: Package library
+        shell: msys2 {0}
+        run: make dist PLATFORM=windows-x86_64
+
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: growl-windows-x86_64
+          path: growl-windows-x86_64.exe
+
+      - name: Upload library archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: libgrowl-windows-x86_64
+          path: libgrowl-windows-x86_64.zip
+
   release:
-    needs: build
+    needs: [build, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -97,6 +161,8 @@ jobs:
           cp artifacts/growl-macos-arm64/growl-macos-arm64 release-files/
           cp artifacts/libgrowl-linux-x86_64/libgrowl-linux-x86_64.zip release-files/
           cp artifacts/libgrowl-macos-arm64/libgrowl-macos-arm64.zip release-files/
+          cp artifacts/growl-windows-x86_64/growl-windows-x86_64.exe release-files/
+          cp artifacts/libgrowl-windows-x86_64/libgrowl-windows-x86_64.zip release-files/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -10,7 +10,12 @@ CFLAGS  ?= -O2 -Wall -Wno-unused-function -Wno-unused-variable \
            -DSLOP_INTERN_THREADSAFE \
            -DSLOP_INTERN_BUCKET_COUNT=65536 \
            -DGROWL_VERSION=\"$(GROWL_VERSION)\"
+# slop_runtime.h threads through pthreads on POSIX and Win32 on Windows.
+ifeq ($(OS),Windows_NT)
+LDFLAGS ?=
+else
 LDFLAGS ?= -lpthread
+endif
 AR      ?= ar
 
 CSRC    = csrc/src
@@ -115,7 +120,7 @@ dist:
 
 # --- Rust crate targets ---
 
-# These modules are provided by slop-std-sys v0.3.0 / slop-rdf-sys v0.4.0 (slop-sys).
+# These modules are provided by slop-std-sys v0.4.2 / slop-rdf-sys v0.5.1 (slop-sys).
 # The Rust crate must not vendor its own copy, or consumers linking both copies
 # will collide on duplicate symbols.
 SHARED_MODULES := common file index list rdf serialize_ttl strlib thread ttl vocab xsd

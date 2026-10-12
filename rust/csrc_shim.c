@@ -29,6 +29,18 @@ size_t growl_layout_sizeof_reasoner_config(void)    { return sizeof(types_Reason
 size_t growl_layout_offset_cfg_cancel_ptr(void)     { return offsetof(types_ReasonerConfig, cancel_ptr); }
 size_t growl_layout_sizeof_reasoner_success(void)   { return sizeof(types_ReasonerSuccess); }
 size_t growl_layout_offset_success_iterations(void) { return offsetof(types_ReasonerSuccess, iterations); }
+/* List headers are embedded by value everywhere (IndexedGraph.triples,
+ * InconsistencyReport.witnesses, by-value list returns), so a change to the
+ * SLOP_LIST_DECLARE header -- e.g. slop#278 adding an `arena` field -- shifts
+ * all of them. The InconsistencyReport size is the stride Rust walks
+ * `reason_inconsistent.data[i]` with. */
+size_t growl_layout_sizeof_list_rdf_term(void)      { return sizeof(slop_list_rdf_Term); }
+size_t growl_layout_sizeof_list_rdf_triple(void)    { return sizeof(slop_list_rdf_Triple); }
+size_t growl_layout_sizeof_list_report(void)        { return sizeof(slop_list_types_InconsistencyReport); }
+size_t growl_layout_offset_graph_index(void)        { return offsetof(index_IndexedGraph, index); }
+size_t growl_layout_sizeof_report(void)             { return sizeof(types_InconsistencyReport); }
+size_t growl_layout_sizeof_reasoner_result(void)    { return sizeof(types_ReasonerResult); }
+size_t growl_layout_offset_result_data(void)        { return offsetof(types_ReasonerResult, data); }
 
 slop_arena* growl_arena_new(size_t capacity) {
     slop_arena* a = (slop_arena*)malloc(sizeof(slop_arena));

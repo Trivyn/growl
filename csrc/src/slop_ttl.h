@@ -8,13 +8,16 @@
 #include "slop_common.h"
 #include "slop_file.h"
 #include "slop_strlib.h"
+#include <string.h>
 
 typedef struct ttl_PrefixBinding ttl_PrefixBinding;
 typedef struct ttl_PrefixMap ttl_PrefixMap;
 typedef struct ttl_BlankLabelBinding ttl_BlankLabelBinding;
+typedef struct ttl_BlankLabelTable ttl_BlankLabelTable;
 typedef struct ttl_GenBlankResult ttl_GenBlankResult;
 typedef struct ttl_TermResult ttl_TermResult;
 typedef struct ttl_StringResult ttl_StringResult;
+typedef struct ttl_StringScan ttl_StringScan;
 typedef struct ttl_EscapeResult ttl_EscapeResult;
 typedef struct ttl_TripleResult ttl_TripleResult;
 typedef struct ttl_TriplesResult ttl_TriplesResult;
@@ -27,8 +30,7 @@ typedef struct ttl_TtlParseContext ttl_TtlParseContext;
 typedef int64_t ttl_BlankNodeCounter;
 
 static inline ttl_BlankNodeCounter ttl_BlankNodeCounter_new(int64_t v) {
-SLOP_PRE(v >= 0, "ttl_BlankNodeCounter >= 0");
-return (ttl_BlankNodeCounter)v;
+return SLOP_RANGE(ttl_BlankNodeCounter, v, 1, 0, 0, 0, "BlankNodeCounter (Int 0 ..)");
 }
 
 #ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
@@ -81,10 +83,27 @@ typedef struct ttl_BlankLabelBinding ttl_BlankLabelBinding;
 SLOP_OPTION_DEFINE(ttl_BlankLabelBinding, slop_option_ttl_BlankLabelBinding)
 #endif
 
-#ifndef SLOP_LIST_TTL_BLANKLABELBINDING_DEFINED
-#define SLOP_LIST_TTL_BLANKLABELBINDING_DEFINED
-#define SLOP_LIST_TTL_BLANKLABELBINDING_IMPL_DEFINED
-SLOP_LIST_DEFINE(ttl_BlankLabelBinding, slop_list_ttl_BlankLabelBinding)
+struct ttl_BlankLabelTable {
+    slop_arena* arena;
+    slop_map* ids;
+};
+typedef struct ttl_BlankLabelTable ttl_BlankLabelTable;
+
+#ifndef SLOP_OPTION_TTL_BLANKLABELTABLE_DEFINED
+#define SLOP_OPTION_TTL_BLANKLABELTABLE_DEFINED
+SLOP_OPTION_DEFINE(ttl_BlankLabelTable, slop_option_ttl_BlankLabelTable)
+#endif
+
+struct ttl_StringScan {
+    int64_t end;
+    int64_t escapes;
+    common_ParseState state;
+};
+typedef struct ttl_StringScan ttl_StringScan;
+
+#ifndef SLOP_OPTION_TTL_STRINGSCAN_DEFINED
+#define SLOP_OPTION_TTL_STRINGSCAN_DEFINED
+SLOP_OPTION_DEFINE(ttl_StringScan, slop_option_ttl_StringScan)
 #endif
 
 typedef enum {
@@ -109,7 +128,7 @@ SLOP_OPTION_DEFINE(ttl_TtlFileError, slop_option_ttl_TtlFileError)
 struct ttl_TtlParseContext {
     ttl_PrefixMap prefixes;
     slop_option_string base_iri;
-    slop_list_ttl_BlankLabelBinding blank_labels;
+    ttl_BlankLabelTable blank_labels;
     ttl_BlankNodeCounter blank_counter;
     common_ParseState state;
 };
@@ -235,6 +254,11 @@ typedef struct { bool is_ok; union { ttl_StringResult ok; common_ParseError err;
 typedef struct { bool is_ok; union { ttl_TermTriplesResult ok; common_ParseError err; } data; } slop_result_ttl_TermTriplesResult_common_ParseError;
 #endif
 
+#ifndef SLOP_RESULT_TTL_STRINGSCAN_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_TTL_STRINGSCAN_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { ttl_StringScan ok; common_ParseError err; } data; } slop_result_ttl_StringScan_common_ParseError;
+#endif
+
 #ifndef SLOP_RESULT_TTL_ESCAPERESULT_COMMON_PARSEERROR_DEFINED
 #define SLOP_RESULT_TTL_ESCAPERESULT_COMMON_PARSEERROR_DEFINED
 typedef struct { bool is_ok; union { ttl_EscapeResult ok; common_ParseError err; } data; } slop_result_ttl_EscapeResult_common_ParseError;
@@ -293,7 +317,7 @@ typedef struct { bool is_ok; union { int64_t ok; ttl_TtlFileError err; } data; }
 ttl_PrefixMap ttl_make_prefix_map(slop_arena* arena);
 ttl_PrefixMap ttl_prefix_map_add(slop_arena* arena, ttl_PrefixMap pm, slop_string prefix, slop_string iri);
 slop_option_string ttl_prefix_map_lookup(ttl_PrefixMap pm, slop_string prefix);
-slop_option_int ttl_blank_label_lookup(slop_list_ttl_BlankLabelBinding labels, slop_string label);
+void ttl_blank_labels_add(slop_arena* arena, slop_map* ids, slop_string label, int64_t id);
 ttl_TtlParseContext ttl_make_ttl_context(slop_arena* arena, slop_string input);
 ttl_GenBlankResult ttl_context_gen_blank_id(slop_arena* arena, ttl_TtlParseContext ctx);
 ttl_TtlParseContext ttl_ctx_with_state(ttl_TtlParseContext ctx, common_ParseState state);
@@ -301,14 +325,20 @@ slop_string ttl_iri_string(rdf_Term t);
 slop_list_rdf_Triple ttl_list_push_triples(slop_arena* arena, slop_list_rdf_Triple dst, slop_list_rdf_Triple src);
 rdf_Graph ttl_graph_add_all(slop_arena* arena, rdf_Graph g, slop_list_rdf_Triple src);
 slop_option_string ttl_some_string(slop_string value);
+slop_string ttl_input_slice(slop_string input, int64_t start, int64_t len);
+common_ParseState ttl_scan_pn_chars(common_ParseState state);
+slop_string ttl_concat_base_slice(slop_arena* arena, slop_string base, slop_string input, int64_t start, int64_t len);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_iri_ref(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_StringResult_common_ParseError ttl_parse_iri_ref_string(slop_arena* arena, ttl_TtlParseContext ctx);
-common_ParseWhileResult ttl_parse_pn_local(slop_arena* arena, common_ParseState state);
+common_ParseState ttl_scan_pn_local(common_ParseState state);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_prefixed_name(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_StringResult_common_ParseError ttl_parse_prefixed_name_string(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TermTriplesResult_common_ParseError ttl_parse_blank_node_extended(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_blank_node(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_StringResult_common_ParseError ttl_parse_string_literal(slop_arena* arena, ttl_TtlParseContext ctx);
+uint8_t ttl_escape_value(uint8_t c);
+slop_result_ttl_StringScan_common_ParseError ttl_scan_string_body(slop_arena* arena, common_ParseState state, uint8_t q, uint8_t slop_long);
+slop_string ttl_decode_string_body(slop_arena* arena, slop_string input, int64_t start, int64_t end, int64_t escapes);
 slop_result_ttl_EscapeResult_common_ParseError ttl_parse_escape_sequence(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_literal(slop_arena* arena, ttl_TtlParseContext ctx);
 slop_result_ttl_TermResult_common_ParseError ttl_parse_numeric_literal(slop_arena* arena, ttl_TtlParseContext ctx);
@@ -330,6 +360,9 @@ int64_t ttl_emit_triples(slop_list_rdf_Triple triples, slop_closure_t callback);
 slop_result_ttl_StreamTriplesResult_common_ParseError ttl_parse_object_list_for_each_triple(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Term subject, rdf_Term predicate, slop_closure_t callback);
 slop_result_ttl_StreamTriplesResult_common_ParseError ttl_parse_predicate_object_list_for_each_triple(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Term subject, slop_closure_t callback);
 slop_result_rdf_Graph_common_ParseError ttl_parse_ttl_string(slop_arena* arena, slop_string input);
+void ttl_scratch_reset(slop_arena* scratch);
+slop_result_ttl_TtlParseContext_common_ParseError ttl_parse_directive_any(slop_arena* arena, ttl_TtlParseContext ctx);
+slop_result_ttl_StreamTriplesResult_common_ParseError ttl_parse_statement_for_each_triple(slop_arena* arena, ttl_TtlParseContext ctx, slop_closure_t callback);
 slop_result_int_common_ParseError ttl_parse_ttl_string_for_each_triple(slop_arena* arena, slop_string input, slop_closure_t callback);
 slop_result_rdf_Graph_ttl_TtlFileError ttl_parse_ttl_file(slop_arena* arena, slop_string path);
 slop_result_int_ttl_TtlFileError ttl_parse_ttl_file_for_each_triple(slop_arena* arena, slop_string path, slop_closure_t callback);
@@ -351,6 +384,11 @@ SLOP_OPTION_DEFINE(ttl_PrefixMap, slop_option_ttl_PrefixMap)
 SLOP_OPTION_DEFINE(ttl_BlankLabelBinding, slop_option_ttl_BlankLabelBinding)
 #endif
 
+#ifndef SLOP_OPTION_TTL_BLANKLABELTABLE_DEFINED
+#define SLOP_OPTION_TTL_BLANKLABELTABLE_DEFINED
+SLOP_OPTION_DEFINE(ttl_BlankLabelTable, slop_option_ttl_BlankLabelTable)
+#endif
+
 #ifndef SLOP_OPTION_TTL_GENBLANKRESULT_DEFINED
 #define SLOP_OPTION_TTL_GENBLANKRESULT_DEFINED
 SLOP_OPTION_DEFINE(ttl_GenBlankResult, slop_option_ttl_GenBlankResult)
@@ -364,6 +402,11 @@ SLOP_OPTION_DEFINE(ttl_TermResult, slop_option_ttl_TermResult)
 #ifndef SLOP_OPTION_TTL_STRINGRESULT_DEFINED
 #define SLOP_OPTION_TTL_STRINGRESULT_DEFINED
 SLOP_OPTION_DEFINE(ttl_StringResult, slop_option_ttl_StringResult)
+#endif
+
+#ifndef SLOP_OPTION_TTL_STRINGSCAN_DEFINED
+#define SLOP_OPTION_TTL_STRINGSCAN_DEFINED
+SLOP_OPTION_DEFINE(ttl_StringScan, slop_option_ttl_StringScan)
 #endif
 
 #ifndef SLOP_OPTION_TTL_ESCAPERESULT_DEFINED

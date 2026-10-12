@@ -16,7 +16,10 @@ fn main() {
     ];
 
     let mut build = cc::Build::new();
+    // The generated C uses GNU statement expressions and __auto_type, which
+    // MSVC's cl.exe rejects; clang-cl accepts them. CC still overrides this.
     build
+        .prefer_clang_cl_over_msvc(true)
         .include(runtime)
         .include(csrc)
         .include(&rdf_inc)
@@ -29,7 +32,11 @@ fn main() {
     build.file("csrc_shim.c");   // keeps growl_arena_* + growl_layout_* ABI probes
     build.compile("growl_c");
 
-    println!("cargo:rustc-link-lib=pthread");
+    // slop_runtime.h threads through pthreads on POSIX and Win32 on Windows.
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
+        println!("cargo:rustc-link-lib=pthread");
+    }
+    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=csrc_shim.c");
     for src in &sources { println!("cargo:rerun-if-changed={}", csrc.join(src).display()); }
     println!("cargo:rerun-if-changed={}", runtime.join("slop_runtime.h").display());
