@@ -20,7 +20,7 @@ The shared SLOP runtime, std and RDF modules come from the [`slop-std-sys`](http
 
 ```toml
 [dependencies]
-growl = "0.8"
+growl = "0.9"
 ```
 
 ## Quick Start
