@@ -41,6 +41,12 @@ jobs:
           echo "${SLOP_ROOT}/bin" >> "${GITHUB_PATH}"
           echo "SLOP_HOME=${SLOP_ROOT}" >> "${GITHUB_ENV}"
 
+      # slop.toml resolves rdf/index/vocab/... from a sibling ../slop-rdf; use
+      # the tag slop-rdf-sys vendors so the examples match the shipped C.
+      - name: Check out slop-rdf v0.5.1
+        if: runner.os == 'Linux'
+        run: git clone --depth 1 --branch v0.5.1 https://github.com/slop-lang/slop-rdf ../slop-rdf
+
       - name: Run SLOP @examples
         if: runner.os == 'Linux'
         run: make example-test
