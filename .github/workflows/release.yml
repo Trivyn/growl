@@ -26,11 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install SLOP 0.4.2
+      - name: Install SLOP 0.4.3
         if: runner.os == 'Linux'
         working-directory: ${{ runner.temp }}
         run: |
-          SLOP_VERSION=v0.4.2
+          SLOP_VERSION=v0.4.3
           SLOP_ARCHIVE="slop-${SLOP_VERSION}-linux-x64.tar.gz"
           SLOP_URL="https://github.com/slop-lang/slop/releases/download/${SLOP_VERSION}"
           curl -fsSLO "${SLOP_URL}/${SLOP_ARCHIVE}"
@@ -43,9 +43,9 @@ jobs:
 
       # slop.toml resolves rdf/index/vocab/... from a sibling ../slop-rdf; use
       # the tag slop-rdf-sys vendors so the examples match the shipped C.
-      - name: Check out slop-rdf v0.5.1
+      - name: Check out slop-rdf v0.5.2
         if: runner.os == 'Linux'
-        run: git clone --depth 1 --branch v0.5.1 https://github.com/slop-lang/slop-rdf ../slop-rdf
+        run: git clone --depth 1 --branch v0.5.2 https://github.com/slop-lang/slop-rdf ../slop-rdf
 
       - name: Run SLOP @examples
         if: runner.os == 'Linux'

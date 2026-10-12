@@ -1199,3 +1199,91 @@ fn cancel_from_another_thread() {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// RDF 1.2 quoted triple terms (issue #24)
+// ---------------------------------------------------------------------------
+
+/// `<<( ex:fido rdf:type ex:Dog )>>` built through the safe API.
+fn fido_is_dog() -> Term<'static> {
+    Term::Triple(Box::new(Triple {
+        subject: Term::Iri("http://example.org/fido"),
+        predicate: Term::Iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
+        object: Term::Iri("http://example.org/Dog"),
+    }))
+}
+
+#[test]
+fn quoted_triple_term_round_trips_through_c() {
+    let arena = Arena::new(1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+
+    let alice = Term::Iri("http://example.org/alice");
+    let says = Term::Iri("http://example.org/says");
+    graph.add(&alice, &says, &fido_is_dog());
+
+    let objects = graph.objects(arena.make_iri(&format!("{}alice", EX)), arena.make_iri(&format!("{}says", EX)));
+    assert_eq!(objects, vec![fido_is_dog()]);
+}
+
+#[test]
+fn quoted_triple_term_display() {
+    assert_eq!(
+        fido_is_dog().to_string(),
+        "<<( <http://example.org/fido> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Dog> )>>"
+    );
+    assert_eq!(OwnedTerm::from(fido_is_dog()).to_string(), fido_is_dog().to_string());
+}
+
+#[test]
+fn reasoning_infers_triples_about_quoted_triple_terms() {
+    // ex:assertedBy rdfs:domain ex:Claim, so prp-dom types the quoted triple:
+    // <<( fido a Dog )>> rdf:type ex:Claim.
+    let arena = Arena::new(4 * 1024 * 1024);
+    let mut graph = IndexedGraph::new(&arena);
+    let asserted_by = Term::Iri("http://example.org/assertedBy");
+    let claim = Term::Iri("http://example.org/Claim");
+    let domain = Term::Iri("http://www.w3.org/2000/01/rdf-schema#domain");
+    let a = Term::Iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+    graph.add(&asserted_by, &domain, &claim);
+    graph.add(&fido_is_dog(), &asserted_by, &Term::Iri("http://example.org/alice"));
+
+    match reason(&arena, &graph) {
+        ReasonerResult::Success { graph, .. } => {
+            let inferred = graph
+                .match_pattern(None, Some(term_to_raw(&arena, &a)), Some(term_to_raw(&arena, &claim)))
+                .into_iter()
+                .map(|t| t.subject)
+                .collect::<Vec<_>>();
+            assert_eq!(inferred, vec![fido_is_dog()]);
+        }
+        _ => panic!("expected a consistent result"),
+    }
+}
+
+#[test]
+fn reasoner_carries_owned_quoted_triple_terms() {
+    let mut reasoner = Reasoner::with_capacity(4 * 1024 * 1024);
+    let quoted = OwnedTerm::from(fido_is_dog());
+    let says = OwnedTerm::Iri(format!("{}says", EX));
+    let alice = OwnedTerm::Iri(format!("{}alice", EX));
+    reasoner.add_triple(&alice, &says, &quoted);
+
+    match reasoner.reason() {
+        OwnedReasonerResult::Success { triples, .. } => {
+            assert!(
+                triples.iter().any(|t| t.subject == alice && t.predicate == says && t.object == quoted),
+                "the quoted triple should come back unchanged"
+            );
+        }
+        _ => panic!("expected a consistent result"),
+    }
+}
+
+/// Raw FFI form of an IRI term, for the match_pattern API.
+fn term_to_raw(arena: &Arena, t: &Term) -> growl::ffi::RdfTerm {
+    match t {
+        Term::Iri(v) => arena.make_iri(v),
+        _ => unreachable!("only IRIs are used as match patterns here"),
+    }
+}
