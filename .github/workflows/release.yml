@@ -21,16 +21,16 @@ jobs:
             cc: gcc
           - os: macos-14
             platform: macos-arm64
-            cc: gcc-14
+            cc: clang
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install SLOP 0.4.3
+      - name: Install SLOP 0.5.0
         if: runner.os == 'Linux'
         working-directory: ${{ runner.temp }}
         run: |
-          SLOP_VERSION=v0.4.3
+          SLOP_VERSION=v0.5.0
           SLOP_ARCHIVE="slop-${SLOP_VERSION}-linux-x64.tar.gz"
           SLOP_URL="https://github.com/slop-lang/slop/releases/download/${SLOP_VERSION}"
           curl -fsSLO "${SLOP_URL}/${SLOP_ARCHIVE}"
@@ -43,17 +43,13 @@ jobs:
 
       # slop.toml resolves rdf/index/vocab/... from a sibling ../slop-rdf; use
       # the tag slop-rdf-sys vendors so the examples match the shipped C.
-      - name: Check out slop-rdf v0.5.2
+      - name: Check out slop-rdf v0.6.0
         if: runner.os == 'Linux'
-        run: git clone --depth 1 --branch v0.5.2 https://github.com/slop-lang/slop-rdf ../slop-rdf
+        run: git clone --depth 1 --branch v0.6.0 https://github.com/slop-lang/slop-rdf ../slop-rdf
 
       - name: Run SLOP @examples
         if: runner.os == 'Linux'
         run: make example-test
-
-      - name: Install GCC 14 (macOS)
-        if: runner.os == 'macOS'
-        run: brew install gcc@14
 
       - name: Run tests
         run: make test CC=${{ matrix.cc }}

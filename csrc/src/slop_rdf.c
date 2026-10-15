@@ -1,105 +1,105 @@
 #include "../runtime/slop_runtime.h"
 #include "slop_rdf.h"
 
-rdf_Term rdf_make_iri(slop_arena* arena, slop_string value);
-rdf_Term rdf_make_blank(slop_arena* arena, rdf_BlankNodeId id);
-rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_string datatype, slop_option_string lang);
-rdf_Term rdf_make_triple_term(slop_arena* arena, rdf_Triple t);
-rdf_TermKind rdf_term_kind(rdf_Term t);
-uint8_t rdf_iri_eq(rdf_IRI a, rdf_IRI b);
-uint8_t rdf_blank_eq(rdf_BlankNode a, rdf_BlankNode b);
+slop_rdf_rdf_Term rdf_make_iri(slop_arena* arena, slop_string value);
+slop_rdf_rdf_Term rdf_make_blank(slop_arena* arena, slop_rdf_rdf_BlankNodeId id);
+slop_rdf_rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_string datatype, slop_option_string lang);
+slop_rdf_rdf_Term rdf_make_triple_term(slop_arena* arena, slop_rdf_rdf_Triple t);
+slop_rdf_rdf_TermKind rdf_term_kind(slop_rdf_rdf_Term t);
+uint8_t rdf_iri_eq(slop_rdf_rdf_IRI a, slop_rdf_rdf_IRI b);
+uint8_t rdf_blank_eq(slop_rdf_rdf_BlankNode a, slop_rdf_rdf_BlankNode b);
 uint8_t rdf_option_string_eq(slop_option_string a, slop_option_string b);
-uint8_t rdf_literal_eq(rdf_Literal a, rdf_Literal b);
-uint8_t rdf_term_eq(rdf_Term a, rdf_Term b);
-rdf_Triple rdf_make_triple(slop_arena* arena, rdf_Term subject, rdf_Term predicate, rdf_Term object);
-rdf_Term rdf_triple_subject(rdf_Triple t);
-rdf_Term rdf_triple_predicate(rdf_Triple t);
-rdf_Term rdf_triple_object(rdf_Triple t);
-uint8_t rdf_triple_eq(rdf_Triple a, rdf_Triple b);
-rdf_Graph rdf_make_graph(slop_arena* arena);
-rdf_Graph rdf_graph_add(slop_arena* arena, rdf_Graph g, rdf_Triple t);
-rdf_Graph rdf_graph_add_unchecked(slop_arena* arena, rdf_Graph g, rdf_Triple t);
-rdf_Graph rdf_graph_remove(slop_arena* arena, rdf_Graph g, rdf_Triple t);
-rdf_GraphSize rdf_graph_size(rdf_Graph g);
-uint8_t rdf_graph_contains(rdf_Graph g, rdf_Triple t);
-rdf_Graph rdf_graph_match(slop_arena* arena, rdf_Graph g, slop_option_rdf_Term subject, slop_option_rdf_Term predicate, slop_option_rdf_Term object);
-void rdf_term_free(rdf_Term* t);
-void rdf_triple_free(rdf_Triple* t);
-void rdf_graph_free(rdf_Graph* g);
+uint8_t rdf_literal_eq(slop_rdf_rdf_Literal a, slop_rdf_rdf_Literal b);
+uint8_t rdf_term_eq(slop_rdf_rdf_Term a, slop_rdf_rdf_Term b);
+slop_rdf_rdf_Triple rdf_make_triple(slop_arena* arena, slop_rdf_rdf_Term subject, slop_rdf_rdf_Term predicate, slop_rdf_rdf_Term object);
+slop_rdf_rdf_Term rdf_triple_subject(slop_rdf_rdf_Triple t);
+slop_rdf_rdf_Term rdf_triple_predicate(slop_rdf_rdf_Triple t);
+slop_rdf_rdf_Term rdf_triple_object(slop_rdf_rdf_Triple t);
+uint8_t rdf_triple_eq(slop_rdf_rdf_Triple a, slop_rdf_rdf_Triple b);
+slop_rdf_rdf_Graph rdf_make_graph(slop_arena* arena);
+slop_rdf_rdf_Graph rdf_graph_add(slop_arena* arena, slop_rdf_rdf_Graph g, slop_rdf_rdf_Triple t);
+slop_rdf_rdf_Graph rdf_graph_add_unchecked(slop_arena* arena, slop_rdf_rdf_Graph g, slop_rdf_rdf_Triple t);
+slop_rdf_rdf_Graph rdf_graph_remove(slop_arena* arena, slop_rdf_rdf_Graph g, slop_rdf_rdf_Triple t);
+slop_rdf_rdf_GraphSize rdf_graph_size(slop_rdf_rdf_Graph g);
+uint8_t rdf_graph_contains(slop_rdf_rdf_Graph g, slop_rdf_rdf_Triple t);
+slop_rdf_rdf_Graph rdf_graph_match(slop_arena* arena, slop_rdf_rdf_Graph g, slop_option_slop_rdf_rdf_Term subject, slop_option_slop_rdf_rdf_Term predicate, slop_option_slop_rdf_rdf_Term object);
+void rdf_term_free(slop_rdf_rdf_Term* t);
+void rdf_triple_free(slop_rdf_rdf_Triple* t);
+void rdf_graph_free(slop_rdf_rdf_Graph* g);
 
-rdf_Term rdf_make_iri(slop_arena* arena, slop_string value) {
+slop_rdf_rdf_Term rdf_make_iri(slop_arena* arena, slop_string value) {
     SLOP_PRE(((string_len(value) > 0)), "(> (string-len value) 0)");
-    rdf_Term _retval = {0};
-    _retval = ((rdf_Term){ .tag = rdf_Term_term_iri, .data.term_iri = ((rdf_IRI){.value = value}) });
+    slop_rdf_rdf_Term _retval = {0};
+    _retval = ((slop_rdf_rdf_Term){ .tag = slop_rdf_rdf_Term_term_iri, .data.term_iri = ((slop_rdf_rdf_IRI){.value = value}) });
     goto _slop_post;
     _slop_post: ;
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_iri: { _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-iri _) true) (_ false))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case slop_rdf_rdf_Term_term_iri: { _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-iri _) true) (_ false))");
     return _retval;
 }
 
-rdf_Term rdf_make_blank(slop_arena* arena, rdf_BlankNodeId id) {
+slop_rdf_rdf_Term rdf_make_blank(slop_arena* arena, slop_rdf_rdf_BlankNodeId id) {
     SLOP_PRE(((id >= 0)), "(>= id 0)");
-    rdf_Term _retval = {0};
-    _retval = ((rdf_Term){ .tag = rdf_Term_term_blank, .data.term_blank = ((rdf_BlankNode){.id = id}) });
+    slop_rdf_rdf_Term _retval = {0};
+    _retval = ((slop_rdf_rdf_Term){ .tag = slop_rdf_rdf_Term_term_blank, .data.term_blank = ((slop_rdf_rdf_BlankNode){.id = id}) });
     goto _slop_post;
     _slop_post: ;
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_blank: { _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-blank _) true) (_ false))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case slop_rdf_rdf_Term_term_blank: { _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-blank _) true) (_ false))");
     return _retval;
 }
 
-rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_string datatype, slop_option_string lang) {
+slop_rdf_rdf_Term rdf_make_literal(slop_arena* arena, slop_string value, slop_option_string datatype, slop_option_string lang) {
     SLOP_PRE(((string_len(value) >= 0)), "(>= (string-len value) 0)");
-    rdf_Term _retval = {0};
-    _retval = ((rdf_Term){ .tag = rdf_Term_term_literal, .data.term_literal = ((rdf_Literal){.value = value, .datatype = datatype, .lang = lang}) });
+    slop_rdf_rdf_Term _retval = {0};
+    _retval = ((slop_rdf_rdf_Term){ .tag = slop_rdf_rdf_Term_term_literal, .data.term_literal = ((slop_rdf_rdf_Literal){.value = value, .datatype = datatype, .lang = lang}) });
     goto _slop_post;
     _slop_post: ;
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_literal: { _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-literal _) true) (_ false))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case slop_rdf_rdf_Term_term_literal: { _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-literal _) true) (_ false))");
     return _retval;
 }
 
-rdf_Term rdf_make_triple_term(slop_arena* arena, rdf_Triple t) {
-    rdf_Term _retval = {0};
+slop_rdf_rdf_Term rdf_make_triple_term(slop_arena* arena, slop_rdf_rdf_Triple t) {
+    slop_rdf_rdf_Term _retval = {0};
     {
-        __auto_type p = ((rdf_Triple*)(({ __auto_type _alloc = (rdf_Triple*)slop_arena_alloc(arena, sizeof(rdf_Triple)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; })));
+        __auto_type p = ((slop_rdf_rdf_Triple*)(({ __auto_type _alloc = (slop_rdf_rdf_Triple*)slop_arena_alloc(arena, sizeof(slop_rdf_rdf_Triple)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; })));
         p->subject = t.subject;
         p->predicate = t.predicate;
         p->object = t.object;
-        _retval = ((rdf_Term){ .tag = rdf_Term_term_triple, .data.term_triple = p });
+        _retval = ((slop_rdf_rdf_Term){ .tag = slop_rdf_rdf_Term_term_triple, .data.term_triple = p });
         goto _slop_post;
     }
     _slop_post: ;
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case rdf_Term_term_triple: { _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-triple _) true) (_ false))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; switch (_mv.tag) { case slop_rdf_rdf_Term_term_triple: { _mr = 1; break; } default: { _mr = 0; break; }  } _mr; })), "(match $result ((term-triple _) true) (_ false))");
     return _retval;
 }
 
-rdf_TermKind rdf_term_kind(rdf_Term t) {
+slop_rdf_rdf_TermKind rdf_term_kind(slop_rdf_rdf_Term t) {
     __auto_type _mv_0 = t;
     switch (_mv_0.tag) {
-        case rdf_Term_term_iri:
+        case slop_rdf_rdf_Term_term_iri:
         {
             __auto_type _ = _mv_0.data.term_iri;
-            return rdf_TermKind_iri;
+            return slop_rdf_rdf_TermKind_iri;
         }
-        case rdf_Term_term_blank:
+        case slop_rdf_rdf_Term_term_blank:
         {
             __auto_type _ = _mv_0.data.term_blank;
-            return rdf_TermKind_blank;
+            return slop_rdf_rdf_TermKind_blank;
         }
-        case rdf_Term_term_literal:
+        case slop_rdf_rdf_Term_term_literal:
         {
             __auto_type _ = _mv_0.data.term_literal;
-            return rdf_TermKind_literal;
+            return slop_rdf_rdf_TermKind_literal;
         }
-        case rdf_Term_term_triple:
+        case slop_rdf_rdf_Term_term_triple:
         {
             __auto_type _ = _mv_0.data.term_triple;
-            return rdf_TermKind_triple;
+            return slop_rdf_rdf_TermKind_triple;
         }
     }
     SLOP_UNREACHABLE();
 }
 
-uint8_t rdf_iri_eq(rdf_IRI a, rdf_IRI b) {
+uint8_t rdf_iri_eq(slop_rdf_rdf_IRI a, slop_rdf_rdf_IRI b) {
     uint8_t _retval = {0};
     _retval = string_eq(a.value, b.value);
     goto _slop_post;
@@ -108,7 +108,7 @@ uint8_t rdf_iri_eq(rdf_IRI a, rdf_IRI b) {
     return _retval;
 }
 
-uint8_t rdf_blank_eq(rdf_BlankNode a, rdf_BlankNode b) {
+uint8_t rdf_blank_eq(slop_rdf_rdf_BlankNode a, slop_rdf_rdf_BlankNode b) {
     uint8_t _retval = {0};
     _retval = (a.id == b.id);
     goto _slop_post;
@@ -142,7 +142,7 @@ uint8_t rdf_option_string_eq(slop_option_string a, slop_option_string b) {
     SLOP_UNREACHABLE();
 }
 
-uint8_t rdf_literal_eq(rdf_Literal a, rdf_Literal b) {
+uint8_t rdf_literal_eq(slop_rdf_rdf_Literal a, slop_rdf_rdf_Literal b) {
     uint8_t _retval = {0};
     _retval = (string_eq(a.value, b.value) && (rdf_option_string_eq(a.datatype, b.datatype) && rdf_option_string_eq(a.lang, b.lang)));
     goto _slop_post;
@@ -151,16 +151,16 @@ uint8_t rdf_literal_eq(rdf_Literal a, rdf_Literal b) {
     return _retval;
 }
 
-uint8_t rdf_term_eq(rdf_Term a, rdf_Term b) {
+uint8_t rdf_term_eq(slop_rdf_rdf_Term a, slop_rdf_rdf_Term b) {
     uint8_t _retval = {0};
     __auto_type _mv_4 = a;
     switch (_mv_4.tag) {
-        case rdf_Term_term_iri:
+        case slop_rdf_rdf_Term_term_iri:
         {
             __auto_type a_iri = _mv_4.data.term_iri;
             __auto_type _mv_5 = b;
             switch (_mv_5.tag) {
-                case rdf_Term_term_iri:
+                case slop_rdf_rdf_Term_term_iri:
                 {
                     __auto_type b_iri = _mv_5.data.term_iri;
                     _retval = rdf_iri_eq(a_iri, b_iri);
@@ -172,12 +172,12 @@ uint8_t rdf_term_eq(rdf_Term a, rdf_Term b) {
                 }
             }
         }
-        case rdf_Term_term_blank:
+        case slop_rdf_rdf_Term_term_blank:
         {
             __auto_type a_blank = _mv_4.data.term_blank;
             __auto_type _mv_6 = b;
             switch (_mv_6.tag) {
-                case rdf_Term_term_blank:
+                case slop_rdf_rdf_Term_term_blank:
                 {
                     __auto_type b_blank = _mv_6.data.term_blank;
                     _retval = rdf_blank_eq(a_blank, b_blank);
@@ -189,12 +189,12 @@ uint8_t rdf_term_eq(rdf_Term a, rdf_Term b) {
                 }
             }
         }
-        case rdf_Term_term_literal:
+        case slop_rdf_rdf_Term_term_literal:
         {
             __auto_type a_lit = _mv_4.data.term_literal;
             __auto_type _mv_7 = b;
             switch (_mv_7.tag) {
-                case rdf_Term_term_literal:
+                case slop_rdf_rdf_Term_term_literal:
                 {
                     __auto_type b_lit = _mv_7.data.term_literal;
                     _retval = rdf_literal_eq(a_lit, b_lit);
@@ -206,12 +206,12 @@ uint8_t rdf_term_eq(rdf_Term a, rdf_Term b) {
                 }
             }
         }
-        case rdf_Term_term_triple:
+        case slop_rdf_rdf_Term_term_triple:
         {
             __auto_type a_tt = _mv_4.data.term_triple;
             __auto_type _mv_8 = b;
             switch (_mv_8.tag) {
-                case rdf_Term_term_triple:
+                case slop_rdf_rdf_Term_term_triple:
                 {
                     __auto_type b_tt = _mv_8.data.term_triple;
                     _retval = rdf_triple_eq((*a_tt), (*b_tt));
@@ -226,21 +226,21 @@ uint8_t rdf_term_eq(rdf_Term a, rdf_Term b) {
     }
     SLOP_UNREACHABLE();
     _slop_post: ;
-    SLOP_POST(((_retval == ({ rdf_Term _eq_l_9 = (a); rdf_Term _eq_r_10 = (b); slop_eq_rdf_Term(&_eq_l_9, &_eq_r_10); }))), "(== $result (== a b))");
+    SLOP_POST(((_retval == ({ slop_rdf_rdf_Term _eq_l_9 = (a); slop_rdf_rdf_Term _eq_r_10 = (b); slop_eq_slop_rdf_rdf_Term(&_eq_l_9, &_eq_r_10); }))), "(== $result (== a b))");
     return _retval;
 }
 
-rdf_Triple rdf_make_triple(slop_arena* arena, rdf_Term subject, rdf_Term predicate, rdf_Term object) {
-    rdf_Triple _retval = {0};
-    _retval = ((rdf_Triple){.subject = subject, .predicate = predicate, .object = object});
+slop_rdf_rdf_Triple rdf_make_triple(slop_arena* arena, slop_rdf_rdf_Term subject, slop_rdf_rdf_Term predicate, slop_rdf_rdf_Term object) {
+    slop_rdf_rdf_Triple _retval = {0};
+    _retval = ((slop_rdf_rdf_Triple){.subject = subject, .predicate = predicate, .object = object});
     goto _slop_post;
     _slop_post: ;
     SLOP_POST((((rdf_term_eq(rdf_triple_subject(_retval), subject)) && (rdf_term_eq(rdf_triple_predicate(_retval), predicate)) && (rdf_term_eq(rdf_triple_object(_retval), object)))), "(and (term-eq (triple-subject $result) subject) (term-eq (triple-predicate $result) predicate) (term-eq (triple-object $result) object))");
     return _retval;
 }
 
-rdf_Term rdf_triple_subject(rdf_Triple t) {
-    rdf_Term _retval = {0};
+slop_rdf_rdf_Term rdf_triple_subject(slop_rdf_rdf_Triple t) {
+    slop_rdf_rdf_Term _retval = {0};
     _retval = t.subject;
     goto _slop_post;
     _slop_post: ;
@@ -248,8 +248,8 @@ rdf_Term rdf_triple_subject(rdf_Triple t) {
     return _retval;
 }
 
-rdf_Term rdf_triple_predicate(rdf_Triple t) {
-    rdf_Term _retval = {0};
+slop_rdf_rdf_Term rdf_triple_predicate(slop_rdf_rdf_Triple t) {
+    slop_rdf_rdf_Term _retval = {0};
     _retval = t.predicate;
     goto _slop_post;
     _slop_post: ;
@@ -257,8 +257,8 @@ rdf_Term rdf_triple_predicate(rdf_Triple t) {
     return _retval;
 }
 
-rdf_Term rdf_triple_object(rdf_Triple t) {
-    rdf_Term _retval = {0};
+slop_rdf_rdf_Term rdf_triple_object(slop_rdf_rdf_Triple t) {
+    slop_rdf_rdf_Term _retval = {0};
     _retval = t.object;
     goto _slop_post;
     _slop_post: ;
@@ -266,7 +266,7 @@ rdf_Term rdf_triple_object(rdf_Triple t) {
     return _retval;
 }
 
-uint8_t rdf_triple_eq(rdf_Triple a, rdf_Triple b) {
+uint8_t rdf_triple_eq(slop_rdf_rdf_Triple a, slop_rdf_rdf_Triple b) {
     uint8_t _retval = {0};
     _retval = (rdf_term_eq(a.subject, b.subject) && (rdf_term_eq(a.predicate, b.predicate) && rdf_term_eq(a.object, b.object)));
     goto _slop_post;
@@ -275,22 +275,22 @@ uint8_t rdf_triple_eq(rdf_Triple a, rdf_Triple b) {
     return _retval;
 }
 
-rdf_Graph rdf_make_graph(slop_arena* arena) {
-    rdf_Graph _retval = {0};
-    _retval = ((rdf_Graph){.triples = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena }), .size = 0});
+slop_rdf_rdf_Graph rdf_make_graph(slop_arena* arena) {
+    slop_rdf_rdf_Graph _retval = {0};
+    _retval = ((slop_rdf_rdf_Graph){.triples = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena }), .size = 0});
     goto _slop_post;
     _slop_post: ;
     SLOP_POST(((rdf_graph_size(_retval) == 0)), "(== (graph-size $result) 0)");
     return _retval;
 }
 
-rdf_Graph rdf_graph_add(slop_arena* arena, rdf_Graph g, rdf_Triple t) {
-    rdf_Graph _retval = {0};
+slop_rdf_rdf_Graph rdf_graph_add(slop_arena* arena, slop_rdf_rdf_Graph g, slop_rdf_rdf_Triple t) {
+    slop_rdf_rdf_Graph _retval = {0};
     if (rdf_graph_contains(g, t)) {
         _retval = g;
         goto _slop_post;
     } else {
-        _retval = ((rdf_Graph){.triples = ({ ({ __auto_type _lst_p = &(g.triples); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); g.triples; }), .size = ((rdf_GraphSize)((g.size + 1)))});
+        _retval = ((slop_rdf_rdf_Graph){.triples = ({ ({ __auto_type _lst_p = &(g.triples); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); g.triples; }), .size = ((slop_rdf_rdf_GraphSize)((g.size + 1)))});
         goto _slop_post;
     }
     _slop_post: ;
@@ -299,17 +299,17 @@ rdf_Graph rdf_graph_add(slop_arena* arena, rdf_Graph g, rdf_Triple t) {
     return _retval;
 }
 
-rdf_Graph rdf_graph_add_unchecked(slop_arena* arena, rdf_Graph g, rdf_Triple t) {
-    rdf_Graph _retval = {0};
-    _retval = ((rdf_Graph){.triples = ({ ({ __auto_type _lst_p = &(g.triples); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); g.triples; }), .size = ((rdf_GraphSize)((g.size + 1)))});
+slop_rdf_rdf_Graph rdf_graph_add_unchecked(slop_arena* arena, slop_rdf_rdf_Graph g, slop_rdf_rdf_Triple t) {
+    slop_rdf_rdf_Graph _retval = {0};
+    _retval = ((slop_rdf_rdf_Graph){.triples = ({ ({ __auto_type _lst_p = &(g.triples); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); g.triples; }), .size = ((slop_rdf_rdf_GraphSize)((g.size + 1)))});
     goto _slop_post;
     _slop_post: ;
     SLOP_POST(((rdf_graph_size(_retval) == (rdf_graph_size(g) + 1))), "(== (graph-size $result) (+ (graph-size g) 1))");
     return _retval;
 }
 
-rdf_Graph rdf_graph_remove(slop_arena* arena, rdf_Graph g, rdf_Triple t) {
-    rdf_Graph _retval = {0};
+slop_rdf_rdf_Graph rdf_graph_remove(slop_arena* arena, slop_rdf_rdf_Graph g, slop_rdf_rdf_Triple t) {
+    slop_rdf_rdf_Graph _retval = {0};
     {
         __auto_type result = rdf_make_graph(arena);
         {
@@ -330,8 +330,8 @@ rdf_Graph rdf_graph_remove(slop_arena* arena, rdf_Graph g, rdf_Triple t) {
     return _retval;
 }
 
-rdf_GraphSize rdf_graph_size(rdf_Graph g) {
-    rdf_GraphSize _retval = {0};
+slop_rdf_rdf_GraphSize rdf_graph_size(slop_rdf_rdf_Graph g) {
+    slop_rdf_rdf_GraphSize _retval = {0};
     _retval = g.size;
     goto _slop_post;
     _slop_post: ;
@@ -340,7 +340,7 @@ rdf_GraphSize rdf_graph_size(rdf_Graph g) {
     return _retval;
 }
 
-uint8_t rdf_graph_contains(rdf_Graph g, rdf_Triple t) {
+uint8_t rdf_graph_contains(slop_rdf_rdf_Graph g, slop_rdf_rdf_Triple t) {
     {
         uint8_t found = 0;
         {
@@ -356,8 +356,8 @@ uint8_t rdf_graph_contains(rdf_Graph g, rdf_Triple t) {
     }
 }
 
-rdf_Graph rdf_graph_match(slop_arena* arena, rdf_Graph g, slop_option_rdf_Term subject, slop_option_rdf_Term predicate, slop_option_rdf_Term object) {
-    rdf_Graph _retval = {0};
+slop_rdf_rdf_Graph rdf_graph_match(slop_arena* arena, slop_rdf_rdf_Graph g, slop_option_slop_rdf_rdf_Term subject, slop_option_slop_rdf_rdf_Term predicate, slop_option_slop_rdf_rdf_Term object) {
+    slop_rdf_rdf_Graph _retval = {0};
     {
         __auto_type result = rdf_make_graph(arena);
         {
@@ -386,26 +386,26 @@ rdf_Graph rdf_graph_match(slop_arena* arena, rdf_Graph g, slop_option_rdf_Term s
     return _retval;
 }
 
-void rdf_term_free(rdf_Term* t) {
+void rdf_term_free(slop_rdf_rdf_Term* t) {
     SLOP_PRE(((t != NULL)), "(!= t nil)");
     __auto_type _mv_11 = (*t);
     switch (_mv_11.tag) {
-        case rdf_Term_term_iri:
+        case slop_rdf_rdf_Term_term_iri:
         {
             __auto_type _ = _mv_11.data.term_iri;
             break;
         }
-        case rdf_Term_term_blank:
+        case slop_rdf_rdf_Term_term_blank:
         {
             __auto_type _ = _mv_11.data.term_blank;
             break;
         }
-        case rdf_Term_term_literal:
+        case slop_rdf_rdf_Term_term_literal:
         {
             __auto_type _ = _mv_11.data.term_literal;
             break;
         }
-        case rdf_Term_term_triple:
+        case slop_rdf_rdf_Term_term_triple:
         {
             __auto_type _ = _mv_11.data.term_triple;
             break;
@@ -413,14 +413,14 @@ void rdf_term_free(rdf_Term* t) {
     }
 }
 
-void rdf_triple_free(rdf_Triple* t) {
+void rdf_triple_free(slop_rdf_rdf_Triple* t) {
     SLOP_PRE(((t != NULL)), "(!= t nil)");
     rdf_term_free((&(*t).subject));
     rdf_term_free((&(*t).predicate));
     rdf_term_free((&(*t).object));
 }
 
-void rdf_graph_free(rdf_Graph* g) {
+void rdf_graph_free(slop_rdf_rdf_Graph* g) {
     SLOP_PRE(((g != NULL)), "(!= g nil)");
     {
         __auto_type _coll = (*g).triples;

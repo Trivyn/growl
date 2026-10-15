@@ -1,16 +1,16 @@
 #include "../runtime/slop_runtime.h"
 #include "slop_types.h"
 
-types_Delta types_make_delta(slop_arena* arena, int64_t iteration);
-types_Delta types_delta_add(slop_arena* arena, types_Delta d, rdf_Triple t);
-types_Delta types_delta_merge(slop_arena* arena, types_Delta d1, types_Delta d2);
-uint8_t types_delta_is_empty(types_Delta d);
-uint8_t types_all_triples_have_predicate(slop_list_rdf_Triple triples, slop_string pred_iri);
+growl_types_Delta growl_types_make_delta(slop_arena* arena, int64_t iteration);
+growl_types_Delta growl_types_delta_add(slop_arena* arena, growl_types_Delta d, slop_rdf_rdf_Triple t);
+growl_types_Delta growl_types_delta_merge(slop_arena* arena, growl_types_Delta d1, growl_types_Delta d2);
+uint8_t growl_types_delta_is_empty(growl_types_Delta d);
+uint8_t growl_types_all_triples_have_predicate(slop_list_slop_rdf_rdf_Triple triples, slop_string pred_iri);
 
-types_Delta types_make_delta(slop_arena* arena, int64_t iteration) {
+growl_types_Delta growl_types_make_delta(slop_arena* arena, int64_t iteration) {
     SLOP_PRE(((iteration >= 0)), "(>= iteration 0)");
-    types_Delta _retval = {0};
-    _retval = ((types_Delta){.triples = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena }), .seen = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Triple, slop_hash_rdf_Triple, slop_eq_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); }), .by_predicate = ({ static const slop_map_desc _d = SLOP_MAP_DESC(rdf_Term, slop_hash_rdf_Term, slop_eq_rdf_Term, SLOP_KEY_HASHED, slop_map*); slop_map_new_ptr(arena, 0, &_d); }), .iteration = iteration});
+    growl_types_Delta _retval = {0};
+    _retval = ((growl_types_Delta){.triples = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena }), .seen = ({ static const slop_map_desc _d = SLOP_SET_DESC(slop_rdf_rdf_Triple, slop_hash_slop_rdf_rdf_Triple, slop_eq_slop_rdf_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); }), .by_predicate = ({ static const slop_map_desc _d = SLOP_MAP_DESC(slop_rdf_rdf_Term, slop_hash_slop_rdf_rdf_Term, slop_eq_slop_rdf_rdf_Term, SLOP_KEY_HASHED, slop_map*); slop_map_new_ptr(arena, 0, &_d); }), .iteration = iteration});
     goto _slop_post;
     _slop_post: ;
     SLOP_POST(((_retval.iteration == iteration)), "(== (. $result iteration) iteration)");
@@ -18,15 +18,15 @@ types_Delta types_make_delta(slop_arena* arena, int64_t iteration) {
     return _retval;
 }
 
-types_Delta types_delta_add(slop_arena* arena, types_Delta d, rdf_Triple t) {
+growl_types_Delta growl_types_delta_add(slop_arena* arena, growl_types_Delta d, slop_rdf_rdf_Triple t) {
     SLOP_PRE(((d.iteration >= 0)), "(>= (. d iteration) 0)");
-    types_Delta _retval = {0};
+    growl_types_Delta _retval = {0};
     if (slop_map_has(d.seen, &(t))) {
         _retval = d;
         goto _slop_post;
     } else {
-        ({ slop_map_put(NULL, d.seen, &(t), NULL, 0); });
-        ({ __auto_type _lst_p = &(d.triples); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+        (void)(({ slop_map_put(NULL, d.seen, &(t), NULL, 0); }));
+        (void)(({ __auto_type _lst_p = &(d.triples); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         {
             __auto_type pred = rdf_triple_predicate(t);
             __auto_type pred_map = d.by_predicate;
@@ -36,7 +36,7 @@ types_Delta types_delta_add(slop_arena* arena, types_Delta d, rdf_Triple t) {
                 ({ slop_map_put(NULL, pred_set, &(t), NULL, 0); });
             } else if (!_mv_115.has_value) {
                 {
-                    __auto_type new_set = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Triple, slop_hash_rdf_Triple, slop_eq_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
+                    __auto_type new_set = ({ static const slop_map_desc _d = SLOP_SET_DESC(slop_rdf_rdf_Triple, slop_hash_slop_rdf_rdf_Triple, slop_eq_slop_rdf_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
                     ({ slop_map_put(NULL, new_set, &(t), NULL, 0); });
                     ({ slop_map* _val = new_set; slop_map_put(NULL, pred_map, &(pred), &_val, sizeof(_val)); });
                 }
@@ -50,16 +50,16 @@ types_Delta types_delta_add(slop_arena* arena, types_Delta d, rdf_Triple t) {
     return _retval;
 }
 
-types_Delta types_delta_merge(slop_arena* arena, types_Delta d1, types_Delta d2) {
+growl_types_Delta growl_types_delta_merge(slop_arena* arena, growl_types_Delta d1, growl_types_Delta d2) {
     SLOP_PRE(((d1.iteration == d2.iteration)), "(== (. d1 iteration) (. d2 iteration))");
-    types_Delta _retval = {0};
+    growl_types_Delta _retval = {0};
     {
         __auto_type result = d1;
         {
             __auto_type _coll = d2.triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
-                result = types_delta_add(arena, result, t);
+                result = growl_types_delta_add(arena, result, t);
             }
         }
         _retval = result;
@@ -70,7 +70,7 @@ types_Delta types_delta_merge(slop_arena* arena, types_Delta d1, types_Delta d2)
     return _retval;
 }
 
-uint8_t types_delta_is_empty(types_Delta d) {
+uint8_t growl_types_delta_is_empty(growl_types_Delta d) {
     uint8_t _retval = {0};
     _retval = (((int64_t)((d.triples).len)) == 0);
     goto _slop_post;
@@ -79,7 +79,7 @@ uint8_t types_delta_is_empty(types_Delta d) {
     return _retval;
 }
 
-uint8_t types_all_triples_have_predicate(slop_list_rdf_Triple triples, slop_string pred_iri) {
+uint8_t growl_types_all_triples_have_predicate(slop_list_slop_rdf_rdf_Triple triples, slop_string pred_iri) {
     uint8_t _retval = {0};
     {
         uint8_t result = 1;
@@ -91,7 +91,7 @@ uint8_t types_all_triples_have_predicate(slop_list_rdf_Triple triples, slop_stri
                     __auto_type pred = rdf_triple_predicate(t);
                     __auto_type _mv_119 = pred;
                     switch (_mv_119.tag) {
-                        case rdf_Term_term_iri:
+                        case slop_rdf_rdf_Term_term_iri:
                         {
                             __auto_type iri = _mv_119.data.term_iri;
                             if (!(string_eq(iri.value, pred_iri))) {

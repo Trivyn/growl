@@ -2,6 +2,11 @@
 #define SLOP_ttl_H
 
 #include "../runtime/slop_runtime.h"
+#ifndef SLOP_RUNTIME_ABI
+#error "this module was generated for SLOP runtime ABI 2026-1 (SLOP_RUNTIME_ABI 202601), but slop_runtime.h predates runtime ABI versioning: use the slop_runtime.h of the SLOP release that generated this code"
+#elif SLOP_RUNTIME_ABI != 202601
+#error "this module was generated for SLOP runtime ABI 2026-1 (SLOP_RUNTIME_ABI 202601), which this slop_runtime.h does not provide (SLOP_RUNTIME_ABI differs): regenerate the C with the SLOP release that matches the runtime, or use the slop_runtime.h of the release that generated it"
+#endif
 #include <stdint.h>
 #include <stdbool.h>
 #include "slop_rdf.h"
@@ -10,448 +15,450 @@
 #include "slop_strlib.h"
 #include <string.h>
 
-typedef struct ttl_PrefixBinding ttl_PrefixBinding;
-typedef struct ttl_PrefixMap ttl_PrefixMap;
-typedef struct ttl_BlankLabelBinding ttl_BlankLabelBinding;
-typedef struct ttl_BlankLabelTable ttl_BlankLabelTable;
-typedef struct ttl_GenBlankResult ttl_GenBlankResult;
-typedef struct ttl_TermResult ttl_TermResult;
-typedef struct ttl_StringResult ttl_StringResult;
-typedef struct ttl_StringScan ttl_StringScan;
-typedef struct ttl_EscapeResult ttl_EscapeResult;
-typedef struct ttl_TripleResult ttl_TripleResult;
-typedef struct ttl_TriplesResult ttl_TriplesResult;
-typedef struct ttl_GraphTriplesResult ttl_GraphTriplesResult;
-typedef struct ttl_StreamTriplesResult ttl_StreamTriplesResult;
-typedef struct ttl_TermTriplesResult ttl_TermTriplesResult;
-typedef struct ttl_TtlFileError ttl_TtlFileError;
-typedef struct ttl_TtlParseContext ttl_TtlParseContext;
+typedef struct slop_rdf_ttl_PrefixBinding slop_rdf_ttl_PrefixBinding;
+typedef struct slop_rdf_ttl_PrefixMap slop_rdf_ttl_PrefixMap;
+typedef struct slop_rdf_ttl_BlankLabelBinding slop_rdf_ttl_BlankLabelBinding;
+typedef struct slop_rdf_ttl_BlankLabelTable slop_rdf_ttl_BlankLabelTable;
+typedef struct slop_rdf_ttl_GenBlankResult slop_rdf_ttl_GenBlankResult;
+typedef struct slop_rdf_ttl_TermResult slop_rdf_ttl_TermResult;
+typedef struct slop_rdf_ttl_StringResult slop_rdf_ttl_StringResult;
+typedef struct slop_rdf_ttl_StringScan slop_rdf_ttl_StringScan;
+typedef struct slop_rdf_ttl_EscapeResult slop_rdf_ttl_EscapeResult;
+typedef struct slop_rdf_ttl_TripleResult slop_rdf_ttl_TripleResult;
+typedef struct slop_rdf_ttl_TriplesResult slop_rdf_ttl_TriplesResult;
+typedef struct slop_rdf_ttl_GraphTriplesResult slop_rdf_ttl_GraphTriplesResult;
+typedef struct slop_rdf_ttl_StreamTriplesResult slop_rdf_ttl_StreamTriplesResult;
+typedef struct slop_rdf_ttl_TermTriplesResult slop_rdf_ttl_TermTriplesResult;
+typedef struct slop_rdf_ttl_TtlFileError slop_rdf_ttl_TtlFileError;
+typedef struct slop_rdf_ttl_TtlParseContext slop_rdf_ttl_TtlParseContext;
 
-typedef int64_t ttl_BlankNodeCounter;
+typedef int64_t slop_rdf_ttl_BlankNodeCounter;
 
-static inline ttl_BlankNodeCounter ttl_BlankNodeCounter_new(int64_t v) {
-return SLOP_RANGE(ttl_BlankNodeCounter, v, 1, 0, 0, 0, "BlankNodeCounter (Int 0 ..)");
+static inline slop_rdf_ttl_BlankNodeCounter slop_rdf_ttl_BlankNodeCounter_new(int64_t v) {
+return SLOP_RANGE(slop_rdf_ttl_BlankNodeCounter, v, 1, 0, 0, 0, "BlankNodeCounter (Int 0 ..)");
 }
 
-#ifndef SLOP_LIST_RDF_TRIPLE_DEFINED
-#define SLOP_LIST_RDF_TRIPLE_DEFINED
-#define SLOP_LIST_RDF_TRIPLE_IMPL_DEFINED
-SLOP_LIST_DEFINE(rdf_Triple, slop_list_rdf_Triple)
+#ifndef SLOP_LIST_SLOP_RDF_RDF_TRIPLE_DEFINED
+#define SLOP_LIST_SLOP_RDF_RDF_TRIPLE_DEFINED
+#define SLOP_LIST_SLOP_RDF_RDF_TRIPLE_IMPL_DEFINED
+SLOP_LIST_DEFINE(slop_rdf_rdf_Triple, slop_list_slop_rdf_rdf_Triple)
 #endif
 
-#ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
-#define SLOP_OPTION_RDF_TRIPLE_DEFINED
-SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
+#ifndef SLOP_OPTION_SLOP_RDF_RDF_TRIPLE_DEFINED
+#define SLOP_OPTION_SLOP_RDF_RDF_TRIPLE_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_rdf_Triple, slop_option_slop_rdf_rdf_Triple)
 #endif
 
-struct ttl_PrefixBinding {
+struct slop_rdf_ttl_PrefixBinding {
     slop_string prefix;
     slop_string iri;
 };
-typedef struct ttl_PrefixBinding ttl_PrefixBinding;
+typedef struct slop_rdf_ttl_PrefixBinding slop_rdf_ttl_PrefixBinding;
 
-#ifndef SLOP_OPTION_TTL_PREFIXBINDING_DEFINED
-#define SLOP_OPTION_TTL_PREFIXBINDING_DEFINED
-SLOP_OPTION_DEFINE(ttl_PrefixBinding, slop_option_ttl_PrefixBinding)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_PREFIXBINDING_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_PREFIXBINDING_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_PrefixBinding, slop_option_slop_rdf_ttl_PrefixBinding)
 #endif
 
-#ifndef SLOP_LIST_TTL_PREFIXBINDING_DEFINED
-#define SLOP_LIST_TTL_PREFIXBINDING_DEFINED
-#define SLOP_LIST_TTL_PREFIXBINDING_IMPL_DEFINED
-SLOP_LIST_DEFINE(ttl_PrefixBinding, slop_list_ttl_PrefixBinding)
+#ifndef SLOP_LIST_SLOP_RDF_TTL_PREFIXBINDING_DEFINED
+#define SLOP_LIST_SLOP_RDF_TTL_PREFIXBINDING_DEFINED
+#define SLOP_LIST_SLOP_RDF_TTL_PREFIXBINDING_IMPL_DEFINED
+SLOP_LIST_DEFINE(slop_rdf_ttl_PrefixBinding, slop_list_slop_rdf_ttl_PrefixBinding)
 #endif
 
-struct ttl_PrefixMap {
-    slop_list_ttl_PrefixBinding bindings;
+struct slop_rdf_ttl_PrefixMap {
+    slop_list_slop_rdf_ttl_PrefixBinding bindings;
     int64_t count;
 };
-typedef struct ttl_PrefixMap ttl_PrefixMap;
+typedef struct slop_rdf_ttl_PrefixMap slop_rdf_ttl_PrefixMap;
 
-#ifndef SLOP_OPTION_TTL_PREFIXMAP_DEFINED
-#define SLOP_OPTION_TTL_PREFIXMAP_DEFINED
-SLOP_OPTION_DEFINE(ttl_PrefixMap, slop_option_ttl_PrefixMap)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_PREFIXMAP_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_PREFIXMAP_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_PrefixMap, slop_option_slop_rdf_ttl_PrefixMap)
 #endif
 
-struct ttl_BlankLabelBinding {
+struct slop_rdf_ttl_BlankLabelBinding {
     slop_string label;
     int64_t id;
 };
-typedef struct ttl_BlankLabelBinding ttl_BlankLabelBinding;
+typedef struct slop_rdf_ttl_BlankLabelBinding slop_rdf_ttl_BlankLabelBinding;
 
-#ifndef SLOP_OPTION_TTL_BLANKLABELBINDING_DEFINED
-#define SLOP_OPTION_TTL_BLANKLABELBINDING_DEFINED
-SLOP_OPTION_DEFINE(ttl_BlankLabelBinding, slop_option_ttl_BlankLabelBinding)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_BLANKLABELBINDING_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_BLANKLABELBINDING_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_BlankLabelBinding, slop_option_slop_rdf_ttl_BlankLabelBinding)
 #endif
 
-struct ttl_BlankLabelTable {
+struct slop_rdf_ttl_BlankLabelTable {
     slop_arena* arena;
     slop_map* ids;
 };
-typedef struct ttl_BlankLabelTable ttl_BlankLabelTable;
+typedef struct slop_rdf_ttl_BlankLabelTable slop_rdf_ttl_BlankLabelTable;
 
-#ifndef SLOP_OPTION_TTL_BLANKLABELTABLE_DEFINED
-#define SLOP_OPTION_TTL_BLANKLABELTABLE_DEFINED
-SLOP_OPTION_DEFINE(ttl_BlankLabelTable, slop_option_ttl_BlankLabelTable)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_BLANKLABELTABLE_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_BLANKLABELTABLE_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_BlankLabelTable, slop_option_slop_rdf_ttl_BlankLabelTable)
 #endif
 
-struct ttl_StringScan {
+struct slop_rdf_ttl_StringScan {
     int64_t end;
     int64_t escapes;
-    common_ParseState state;
+    slop_rdf_common_ParseState state;
 };
-typedef struct ttl_StringScan ttl_StringScan;
+typedef struct slop_rdf_ttl_StringScan slop_rdf_ttl_StringScan;
 
-#ifndef SLOP_OPTION_TTL_STRINGSCAN_DEFINED
-#define SLOP_OPTION_TTL_STRINGSCAN_DEFINED
-SLOP_OPTION_DEFINE(ttl_StringScan, slop_option_ttl_StringScan)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_STRINGSCAN_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_STRINGSCAN_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_StringScan, slop_option_slop_rdf_ttl_StringScan)
 #endif
 
 typedef enum {
-    ttl_TtlFileError_parse_error,
-    ttl_TtlFileError_file_error
-} ttl_TtlFileError_tag;
+    slop_rdf_ttl_TtlFileError_parse_error,
+    slop_rdf_ttl_TtlFileError_file_error
+} slop_rdf_ttl_TtlFileError_tag;
 
-struct ttl_TtlFileError {
-    ttl_TtlFileError_tag tag;
+struct slop_rdf_ttl_TtlFileError {
+    slop_rdf_ttl_TtlFileError_tag tag;
     union {
-        common_ParseError parse_error;
-        file_FileError file_error;
+        slop_rdf_common_ParseError parse_error;
+        std_file_FileError file_error;
     } data;
 };
-typedef struct ttl_TtlFileError ttl_TtlFileError;
+typedef struct slop_rdf_ttl_TtlFileError slop_rdf_ttl_TtlFileError;
 
-#ifndef SLOP_OPTION_TTL_TTLFILEERROR_DEFINED
-#define SLOP_OPTION_TTL_TTLFILEERROR_DEFINED
-SLOP_OPTION_DEFINE(ttl_TtlFileError, slop_option_ttl_TtlFileError)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TTLFILEERROR_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TTLFILEERROR_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TtlFileError, slop_option_slop_rdf_ttl_TtlFileError)
 #endif
 
-struct ttl_TtlParseContext {
-    ttl_PrefixMap prefixes;
+struct slop_rdf_ttl_TtlParseContext {
+    slop_rdf_ttl_PrefixMap prefixes;
     slop_option_string base_iri;
-    ttl_BlankLabelTable blank_labels;
-    ttl_BlankNodeCounter blank_counter;
-    common_ParseState state;
+    slop_rdf_ttl_BlankLabelTable blank_labels;
+    slop_rdf_ttl_BlankNodeCounter blank_counter;
+    slop_rdf_common_ParseState state;
 };
-typedef struct ttl_TtlParseContext ttl_TtlParseContext;
+typedef struct slop_rdf_ttl_TtlParseContext slop_rdf_ttl_TtlParseContext;
 
-#ifndef SLOP_OPTION_TTL_TTLPARSECONTEXT_DEFINED
-#define SLOP_OPTION_TTL_TTLPARSECONTEXT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TtlParseContext, slop_option_ttl_TtlParseContext)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TTLPARSECONTEXT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TTLPARSECONTEXT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TtlParseContext, slop_option_slop_rdf_ttl_TtlParseContext)
 #endif
 
-struct ttl_GenBlankResult {
+struct slop_rdf_ttl_GenBlankResult {
     int64_t id;
-    ttl_TtlParseContext ctx;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_GenBlankResult ttl_GenBlankResult;
+typedef struct slop_rdf_ttl_GenBlankResult slop_rdf_ttl_GenBlankResult;
 
-#ifndef SLOP_OPTION_TTL_GENBLANKRESULT_DEFINED
-#define SLOP_OPTION_TTL_GENBLANKRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_GenBlankResult, slop_option_ttl_GenBlankResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_GENBLANKRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_GENBLANKRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_GenBlankResult, slop_option_slop_rdf_ttl_GenBlankResult)
 #endif
 
-struct ttl_TermResult {
-    rdf_Term term;
-    ttl_TtlParseContext ctx;
+struct slop_rdf_ttl_TermResult {
+    slop_rdf_rdf_Term term;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_TermResult ttl_TermResult;
+typedef struct slop_rdf_ttl_TermResult slop_rdf_ttl_TermResult;
 
-#ifndef SLOP_OPTION_TTL_TERMRESULT_DEFINED
-#define SLOP_OPTION_TTL_TERMRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TermResult, slop_option_ttl_TermResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TERMRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TERMRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TermResult, slop_option_slop_rdf_ttl_TermResult)
 #endif
 
-struct ttl_StringResult {
+struct slop_rdf_ttl_StringResult {
     slop_string value;
-    ttl_TtlParseContext ctx;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_StringResult ttl_StringResult;
+typedef struct slop_rdf_ttl_StringResult slop_rdf_ttl_StringResult;
 
-#ifndef SLOP_OPTION_TTL_STRINGRESULT_DEFINED
-#define SLOP_OPTION_TTL_STRINGRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_StringResult, slop_option_ttl_StringResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_STRINGRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_STRINGRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_StringResult, slop_option_slop_rdf_ttl_StringResult)
 #endif
 
-struct ttl_EscapeResult {
+struct slop_rdf_ttl_EscapeResult {
     uint8_t slop_char;
-    ttl_TtlParseContext ctx;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_EscapeResult ttl_EscapeResult;
+typedef struct slop_rdf_ttl_EscapeResult slop_rdf_ttl_EscapeResult;
 
-#ifndef SLOP_OPTION_TTL_ESCAPERESULT_DEFINED
-#define SLOP_OPTION_TTL_ESCAPERESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_EscapeResult, slop_option_ttl_EscapeResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_ESCAPERESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_ESCAPERESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_EscapeResult, slop_option_slop_rdf_ttl_EscapeResult)
 #endif
 
-struct ttl_TripleResult {
-    rdf_Triple triple;
-    ttl_TtlParseContext ctx;
+struct slop_rdf_ttl_TripleResult {
+    slop_rdf_rdf_Triple triple;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_TripleResult ttl_TripleResult;
+typedef struct slop_rdf_ttl_TripleResult slop_rdf_ttl_TripleResult;
 
-#ifndef SLOP_OPTION_TTL_TRIPLERESULT_DEFINED
-#define SLOP_OPTION_TTL_TRIPLERESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TripleResult, slop_option_ttl_TripleResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TRIPLERESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TRIPLERESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TripleResult, slop_option_slop_rdf_ttl_TripleResult)
 #endif
 
-struct ttl_TriplesResult {
-    slop_list_rdf_Triple triples;
-    ttl_TtlParseContext ctx;
+struct slop_rdf_ttl_TriplesResult {
+    slop_list_slop_rdf_rdf_Triple triples;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_TriplesResult ttl_TriplesResult;
+typedef struct slop_rdf_ttl_TriplesResult slop_rdf_ttl_TriplesResult;
 
-#ifndef SLOP_OPTION_TTL_TRIPLESRESULT_DEFINED
-#define SLOP_OPTION_TTL_TRIPLESRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TriplesResult, slop_option_ttl_TriplesResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TRIPLESRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TRIPLESRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TriplesResult, slop_option_slop_rdf_ttl_TriplesResult)
 #endif
 
-struct ttl_GraphTriplesResult {
-    rdf_Graph graph;
-    ttl_TtlParseContext ctx;
+struct slop_rdf_ttl_GraphTriplesResult {
+    slop_rdf_rdf_Graph graph;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_GraphTriplesResult ttl_GraphTriplesResult;
+typedef struct slop_rdf_ttl_GraphTriplesResult slop_rdf_ttl_GraphTriplesResult;
 
-#ifndef SLOP_OPTION_TTL_GRAPHTRIPLESRESULT_DEFINED
-#define SLOP_OPTION_TTL_GRAPHTRIPLESRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_GraphTriplesResult, slop_option_ttl_GraphTriplesResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_GRAPHTRIPLESRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_GRAPHTRIPLESRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_GraphTriplesResult, slop_option_slop_rdf_ttl_GraphTriplesResult)
 #endif
 
-struct ttl_StreamTriplesResult {
+struct slop_rdf_ttl_StreamTriplesResult {
     int64_t count;
-    ttl_TtlParseContext ctx;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_StreamTriplesResult ttl_StreamTriplesResult;
+typedef struct slop_rdf_ttl_StreamTriplesResult slop_rdf_ttl_StreamTriplesResult;
 
-#ifndef SLOP_OPTION_TTL_STREAMTRIPLESRESULT_DEFINED
-#define SLOP_OPTION_TTL_STREAMTRIPLESRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_StreamTriplesResult, slop_option_ttl_StreamTriplesResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_STREAMTRIPLESRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_STREAMTRIPLESRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_StreamTriplesResult, slop_option_slop_rdf_ttl_StreamTriplesResult)
 #endif
 
-struct ttl_TermTriplesResult {
-    rdf_Term term;
-    slop_list_rdf_Triple extra_triples;
-    ttl_TtlParseContext ctx;
+struct slop_rdf_ttl_TermTriplesResult {
+    slop_rdf_rdf_Term term;
+    slop_list_slop_rdf_rdf_Triple extra_triples;
+    slop_rdf_ttl_TtlParseContext ctx;
 };
-typedef struct ttl_TermTriplesResult ttl_TermTriplesResult;
+typedef struct slop_rdf_ttl_TermTriplesResult slop_rdf_ttl_TermTriplesResult;
 
-#ifndef SLOP_OPTION_TTL_TERMTRIPLESRESULT_DEFINED
-#define SLOP_OPTION_TTL_TERMTRIPLESRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TermTriplesResult, slop_option_ttl_TermTriplesResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TERMTRIPLESRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TERMTRIPLESRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TermTriplesResult, slop_option_slop_rdf_ttl_TermTriplesResult)
 #endif
 
-#ifndef SLOP_RESULT_TTL_TERMRESULT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_TERMRESULT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_TermResult ok; common_ParseError err; } data; } slop_result_ttl_TermResult_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_TERMRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_TERMRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_TermResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_STRINGRESULT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_STRINGRESULT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_StringResult ok; common_ParseError err; } data; } slop_result_ttl_StringResult_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_STRINGRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_STRINGRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_StringResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_TERMTRIPLESRESULT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_TERMTRIPLESRESULT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_TermTriplesResult ok; common_ParseError err; } data; } slop_result_ttl_TermTriplesResult_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_TERMTRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_TERMTRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_TermTriplesResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_STRINGSCAN_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_STRINGSCAN_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_StringScan ok; common_ParseError err; } data; } slop_result_ttl_StringScan_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_STRINGSCAN_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_STRINGSCAN_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_StringScan ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_ESCAPERESULT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_ESCAPERESULT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_EscapeResult ok; common_ParseError err; } data; } slop_result_ttl_EscapeResult_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_ESCAPERESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_ESCAPERESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_EscapeResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_EscapeResult_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_COMMON_PARSESTATE_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_COMMON_PARSESTATE_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { common_ParseState ok; common_ParseError err; } data; } slop_result_common_ParseState_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_COMMON_PARSESTATE_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_COMMON_PARSESTATE_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_common_ParseState ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_common_ParseState_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_TTLPARSECONTEXT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_TTLPARSECONTEXT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_TtlParseContext ok; common_ParseError err; } data; } slop_result_ttl_TtlParseContext_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_TTLPARSECONTEXT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_TTLPARSECONTEXT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_TtlParseContext ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_TtlParseContext_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_TRIPLERESULT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_TRIPLERESULT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_TripleResult ok; common_ParseError err; } data; } slop_result_ttl_TripleResult_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_TRIPLERESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_TRIPLERESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_TripleResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_TripleResult_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_TRIPLESRESULT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_TRIPLESRESULT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_TriplesResult ok; common_ParseError err; } data; } slop_result_ttl_TriplesResult_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_TRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_TRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_TriplesResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_TriplesResult_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_GRAPHTRIPLESRESULT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_GRAPHTRIPLESRESULT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_GraphTriplesResult ok; common_ParseError err; } data; } slop_result_ttl_GraphTriplesResult_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_GRAPHTRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_GRAPHTRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_GraphTriplesResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_GraphTriplesResult_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_TTL_STREAMTRIPLESRESULT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_TTL_STREAMTRIPLESRESULT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { ttl_StreamTriplesResult ok; common_ParseError err; } data; } slop_result_ttl_StreamTriplesResult_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_STREAMTRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_STREAMTRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_StreamTriplesResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_RDF_GRAPH_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_RDF_GRAPH_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { rdf_Graph ok; common_ParseError err; } data; } slop_result_rdf_Graph_common_ParseError;
+#ifndef SLOP_RESULT_SLOP_RDF_RDF_GRAPH_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_RDF_GRAPH_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_rdf_Graph ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_rdf_Graph_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_INT_COMMON_PARSEERROR_DEFINED
-#define SLOP_RESULT_INT_COMMON_PARSEERROR_DEFINED
-typedef struct { bool is_ok; union { int64_t ok; common_ParseError err; } data; } slop_result_int_common_ParseError;
+#ifndef SLOP_RESULT_INT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_INT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { int64_t ok; slop_rdf_common_ParseError err; } data; } slop_result_int_slop_rdf_common_ParseError;
 #endif
 
-#ifndef SLOP_RESULT_RDF_GRAPH_TTL_TTLFILEERROR_DEFINED
-#define SLOP_RESULT_RDF_GRAPH_TTL_TTLFILEERROR_DEFINED
-typedef struct { bool is_ok; union { rdf_Graph ok; ttl_TtlFileError err; } data; } slop_result_rdf_Graph_ttl_TtlFileError;
+#ifndef SLOP_RESULT_SLOP_RDF_RDF_GRAPH_SLOP_RDF_TTL_TTLFILEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_RDF_GRAPH_SLOP_RDF_TTL_TTLFILEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_rdf_Graph ok; slop_rdf_ttl_TtlFileError err; } data; } slop_result_slop_rdf_rdf_Graph_slop_rdf_ttl_TtlFileError;
 #endif
 
-#ifndef SLOP_RESULT_INT_TTL_TTLFILEERROR_DEFINED
-#define SLOP_RESULT_INT_TTL_TTLFILEERROR_DEFINED
-typedef struct { bool is_ok; union { int64_t ok; ttl_TtlFileError err; } data; } slop_result_int_ttl_TtlFileError;
+#ifndef SLOP_RESULT_INT_SLOP_RDF_TTL_TTLFILEERROR_DEFINED
+#define SLOP_RESULT_INT_SLOP_RDF_TTL_TTLFILEERROR_DEFINED
+typedef struct { bool is_ok; union { int64_t ok; slop_rdf_ttl_TtlFileError err; } data; } slop_result_int_slop_rdf_ttl_TtlFileError;
 #endif
 
-ttl_PrefixMap ttl_make_prefix_map(slop_arena* arena);
-ttl_PrefixMap ttl_prefix_map_add(slop_arena* arena, ttl_PrefixMap pm, slop_string prefix, slop_string iri);
-slop_option_string ttl_prefix_map_lookup(ttl_PrefixMap pm, slop_string prefix);
-void ttl_blank_labels_add(slop_arena* arena, slop_map* ids, slop_string label, int64_t id);
-ttl_TtlParseContext ttl_make_ttl_context(slop_arena* arena, slop_string input);
-ttl_GenBlankResult ttl_context_gen_blank_id(slop_arena* arena, ttl_TtlParseContext ctx);
-ttl_TtlParseContext ttl_ctx_with_state(ttl_TtlParseContext ctx, common_ParseState state);
-slop_string ttl_iri_string(rdf_Term t);
-slop_list_rdf_Triple ttl_list_push_triples(slop_arena* arena, slop_list_rdf_Triple dst, slop_list_rdf_Triple src);
-rdf_Graph ttl_graph_add_all(slop_arena* arena, rdf_Graph g, slop_list_rdf_Triple src);
-slop_option_string ttl_some_string(slop_string value);
-slop_string ttl_input_slice(slop_string input, int64_t start, int64_t len);
-common_ParseState ttl_scan_pn_chars(common_ParseState state);
-slop_string ttl_concat_base_slice(slop_arena* arena, slop_string base, slop_string input, int64_t start, int64_t len);
-slop_result_ttl_TermResult_common_ParseError ttl_parse_iri_ref(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_StringResult_common_ParseError ttl_parse_iri_ref_string(slop_arena* arena, ttl_TtlParseContext ctx);
-common_ParseState ttl_scan_pn_local(common_ParseState state);
-slop_result_ttl_TermResult_common_ParseError ttl_parse_prefixed_name(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_StringResult_common_ParseError ttl_parse_prefixed_name_string(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TermTriplesResult_common_ParseError ttl_parse_blank_node_extended(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TermResult_common_ParseError ttl_parse_blank_node(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_StringResult_common_ParseError ttl_parse_string_literal(slop_arena* arena, ttl_TtlParseContext ctx);
-uint8_t ttl_escape_value(uint8_t c);
-slop_result_ttl_StringScan_common_ParseError ttl_scan_string_body(slop_arena* arena, common_ParseState state, uint8_t q, uint8_t slop_long);
-slop_string ttl_decode_string_body(slop_arena* arena, slop_string input, int64_t start, int64_t end, int64_t escapes);
-slop_result_ttl_EscapeResult_common_ParseError ttl_parse_escape_sequence(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TermResult_common_ParseError ttl_parse_literal(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TermResult_common_ParseError ttl_parse_numeric_literal(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TermResult_common_ParseError ttl_parse_boolean_literal(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TermResult_common_ParseError ttl_parse_term(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TermTriplesResult_common_ParseError ttl_parse_collection(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_common_ParseState_common_ParseError ttl_expect_triple_term_close(slop_arena* arena, common_ParseState state);
-slop_result_ttl_TermTriplesResult_common_ParseError ttl_parse_triple_term(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TermTriplesResult_common_ParseError ttl_parse_term_extended(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TtlParseContext_common_ParseError ttl_parse_directive(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TtlParseContext_common_ParseError ttl_parse_sparql_prefix(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TripleResult_common_ParseError ttl_parse_triple(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_TriplesResult_common_ParseError ttl_parse_predicate_object_list(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Term subject);
-slop_result_ttl_TriplesResult_common_ParseError ttl_parse_annotation(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Triple base_triple);
-slop_result_ttl_TriplesResult_common_ParseError ttl_parse_object_list(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Term subject, rdf_Term predicate);
-slop_result_ttl_GraphTriplesResult_common_ParseError ttl_parse_object_list_into_graph(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Graph g, rdf_Term subject, rdf_Term predicate);
-slop_result_ttl_GraphTriplesResult_common_ParseError ttl_parse_predicate_object_list_into_graph(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Graph g, rdf_Term subject);
-int64_t ttl_emit_triples(slop_list_rdf_Triple triples, slop_closure_t callback);
-slop_result_ttl_StreamTriplesResult_common_ParseError ttl_parse_object_list_for_each_triple(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Term subject, rdf_Term predicate, slop_closure_t callback);
-slop_result_ttl_StreamTriplesResult_common_ParseError ttl_parse_predicate_object_list_for_each_triple(slop_arena* arena, ttl_TtlParseContext ctx, rdf_Term subject, slop_closure_t callback);
-slop_result_rdf_Graph_common_ParseError ttl_parse_ttl_string(slop_arena* arena, slop_string input);
-void ttl_scratch_reset(slop_arena* scratch);
-slop_result_ttl_TtlParseContext_common_ParseError ttl_parse_directive_any(slop_arena* arena, ttl_TtlParseContext ctx);
-slop_result_ttl_StreamTriplesResult_common_ParseError ttl_parse_statement_for_each_triple(slop_arena* arena, ttl_TtlParseContext ctx, slop_closure_t callback);
-slop_result_int_common_ParseError ttl_parse_ttl_string_for_each_triple(slop_arena* arena, slop_string input, slop_closure_t callback);
-slop_result_rdf_Graph_ttl_TtlFileError ttl_parse_ttl_file(slop_arena* arena, slop_string path);
-slop_result_int_ttl_TtlFileError ttl_parse_ttl_file_for_each_triple(slop_arena* arena, slop_string path, slop_closure_t callback);
-uint8_t ttl_is_pn_chars_base(uint8_t c);
-uint8_t ttl_is_pn_chars(uint8_t c);
+slop_rdf_ttl_PrefixMap slop_rdf_ttl_make_prefix_map(slop_arena* arena);
+slop_rdf_ttl_PrefixMap slop_rdf_ttl_prefix_map_add(slop_arena* arena, slop_rdf_ttl_PrefixMap pm, slop_string prefix, slop_string iri);
+slop_option_string slop_rdf_ttl_prefix_map_lookup(slop_rdf_ttl_PrefixMap pm, slop_string prefix);
+void slop_rdf_ttl_blank_labels_add(slop_arena* arena, slop_map* ids, slop_string label, int64_t id);
+slop_rdf_ttl_TtlParseContext slop_rdf_ttl_make_ttl_context(slop_arena* arena, slop_string input);
+slop_rdf_ttl_GenBlankResult slop_rdf_ttl_context_gen_blank_id(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_rdf_ttl_TtlParseContext slop_rdf_ttl_ctx_with_state(slop_rdf_ttl_TtlParseContext ctx, slop_rdf_common_ParseState state);
+slop_string slop_rdf_ttl_iri_string(slop_rdf_rdf_Term t);
+slop_list_slop_rdf_rdf_Triple slop_rdf_ttl_list_push_triples(slop_arena* arena, slop_list_slop_rdf_rdf_Triple dst, slop_list_slop_rdf_rdf_Triple src);
+slop_rdf_rdf_Graph slop_rdf_ttl_graph_add_all(slop_arena* arena, slop_rdf_rdf_Graph g, slop_list_slop_rdf_rdf_Triple src);
+slop_option_string slop_rdf_ttl_some_string(slop_string value);
+slop_string slop_rdf_ttl_input_slice(slop_string input, int64_t start, int64_t len);
+slop_rdf_common_ParseState slop_rdf_ttl_scan_pn_name(slop_rdf_common_ParseState state);
+slop_rdf_common_ParseWhileResult slop_rdf_ttl_parse_pn_name(slop_arena* arena, slop_rdf_common_ParseState state);
+slop_string slop_rdf_ttl_concat_base_slice(slop_arena* arena, slop_string base, slop_string input, int64_t start, int64_t len);
+slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_iri_ref(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_iri_ref_string(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_rdf_common_ParseState slop_rdf_ttl_scan_pn_local(slop_rdf_common_ParseState state);
+slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_prefixed_name(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_prefixed_name_string(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_blank_node_extended(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_blank_node(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_string_literal(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+uint8_t slop_rdf_ttl_escape_value(uint8_t c);
+slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError slop_rdf_ttl_scan_string_body(slop_arena* arena, slop_rdf_common_ParseState state, uint8_t q, uint8_t slop_long);
+slop_string slop_rdf_ttl_decode_string_body(slop_arena* arena, slop_string input, int64_t start, int64_t end, int64_t escapes);
+slop_result_slop_rdf_ttl_EscapeResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_escape_sequence(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_literal(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_numeric_literal(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_boolean_literal(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_term(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_collection(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_common_ParseState_slop_rdf_common_ParseError slop_rdf_ttl_expect_triple_term_close(slop_arena* arena, slop_rdf_common_ParseState state);
+slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_triple_term(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_term_extended(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_subject(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TtlParseContext_slop_rdf_common_ParseError slop_rdf_ttl_parse_directive(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TtlParseContext_slop_rdf_common_ParseError slop_rdf_ttl_parse_sparql_prefix(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TripleResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_triple(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_TriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_predicate_object_list(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx, slop_rdf_rdf_Term subject);
+slop_result_slop_rdf_ttl_TriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_annotation(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx, slop_rdf_rdf_Triple base_triple);
+slop_result_slop_rdf_ttl_TriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_object_list(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx, slop_rdf_rdf_Term subject, slop_rdf_rdf_Term predicate);
+slop_result_slop_rdf_ttl_GraphTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_object_list_into_graph(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx, slop_rdf_rdf_Graph g, slop_rdf_rdf_Term subject, slop_rdf_rdf_Term predicate);
+slop_result_slop_rdf_ttl_GraphTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_predicate_object_list_into_graph(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx, slop_rdf_rdf_Graph g, slop_rdf_rdf_Term subject);
+int64_t slop_rdf_ttl_emit_triples(slop_list_slop_rdf_rdf_Triple triples, slop_closure_t callback);
+slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_object_list_for_each_triple(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx, slop_rdf_rdf_Term subject, slop_rdf_rdf_Term predicate, slop_closure_t callback);
+slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_predicate_object_list_for_each_triple(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx, slop_rdf_rdf_Term subject, slop_closure_t callback);
+slop_result_slop_rdf_rdf_Graph_slop_rdf_common_ParseError slop_rdf_ttl_parse_ttl_string(slop_arena* arena, slop_string input);
+void slop_rdf_ttl_scratch_reset(slop_arena* scratch);
+slop_result_slop_rdf_ttl_TtlParseContext_slop_rdf_common_ParseError slop_rdf_ttl_parse_directive_any(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
+slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_statement_for_each_triple(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx, slop_closure_t callback);
+slop_result_int_slop_rdf_common_ParseError slop_rdf_ttl_parse_ttl_string_for_each_triple(slop_arena* arena, slop_string input, slop_closure_t callback);
+slop_result_slop_rdf_rdf_Graph_slop_rdf_ttl_TtlFileError slop_rdf_ttl_parse_ttl_file(slop_arena* arena, slop_string path);
+slop_result_int_slop_rdf_ttl_TtlFileError slop_rdf_ttl_parse_ttl_file_for_each_triple(slop_arena* arena, slop_string path, slop_closure_t callback);
+uint8_t slop_rdf_ttl_is_pn_chars_base(uint8_t c);
+uint8_t slop_rdf_ttl_is_pn_chars(uint8_t c);
 
-#ifndef SLOP_OPTION_TTL_PREFIXBINDING_DEFINED
-#define SLOP_OPTION_TTL_PREFIXBINDING_DEFINED
-SLOP_OPTION_DEFINE(ttl_PrefixBinding, slop_option_ttl_PrefixBinding)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_PREFIXBINDING_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_PREFIXBINDING_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_PrefixBinding, slop_option_slop_rdf_ttl_PrefixBinding)
 #endif
 
-#ifndef SLOP_OPTION_TTL_PREFIXMAP_DEFINED
-#define SLOP_OPTION_TTL_PREFIXMAP_DEFINED
-SLOP_OPTION_DEFINE(ttl_PrefixMap, slop_option_ttl_PrefixMap)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_PREFIXMAP_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_PREFIXMAP_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_PrefixMap, slop_option_slop_rdf_ttl_PrefixMap)
 #endif
 
-#ifndef SLOP_OPTION_TTL_BLANKLABELBINDING_DEFINED
-#define SLOP_OPTION_TTL_BLANKLABELBINDING_DEFINED
-SLOP_OPTION_DEFINE(ttl_BlankLabelBinding, slop_option_ttl_BlankLabelBinding)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_BLANKLABELBINDING_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_BLANKLABELBINDING_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_BlankLabelBinding, slop_option_slop_rdf_ttl_BlankLabelBinding)
 #endif
 
-#ifndef SLOP_OPTION_TTL_BLANKLABELTABLE_DEFINED
-#define SLOP_OPTION_TTL_BLANKLABELTABLE_DEFINED
-SLOP_OPTION_DEFINE(ttl_BlankLabelTable, slop_option_ttl_BlankLabelTable)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_BLANKLABELTABLE_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_BLANKLABELTABLE_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_BlankLabelTable, slop_option_slop_rdf_ttl_BlankLabelTable)
 #endif
 
-#ifndef SLOP_OPTION_TTL_GENBLANKRESULT_DEFINED
-#define SLOP_OPTION_TTL_GENBLANKRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_GenBlankResult, slop_option_ttl_GenBlankResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_GENBLANKRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_GENBLANKRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_GenBlankResult, slop_option_slop_rdf_ttl_GenBlankResult)
 #endif
 
-#ifndef SLOP_OPTION_TTL_TERMRESULT_DEFINED
-#define SLOP_OPTION_TTL_TERMRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TermResult, slop_option_ttl_TermResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TERMRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TERMRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TermResult, slop_option_slop_rdf_ttl_TermResult)
 #endif
 
-#ifndef SLOP_OPTION_TTL_STRINGRESULT_DEFINED
-#define SLOP_OPTION_TTL_STRINGRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_StringResult, slop_option_ttl_StringResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_STRINGRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_STRINGRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_StringResult, slop_option_slop_rdf_ttl_StringResult)
 #endif
 
-#ifndef SLOP_OPTION_TTL_STRINGSCAN_DEFINED
-#define SLOP_OPTION_TTL_STRINGSCAN_DEFINED
-SLOP_OPTION_DEFINE(ttl_StringScan, slop_option_ttl_StringScan)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_STRINGSCAN_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_STRINGSCAN_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_StringScan, slop_option_slop_rdf_ttl_StringScan)
 #endif
 
-#ifndef SLOP_OPTION_TTL_ESCAPERESULT_DEFINED
-#define SLOP_OPTION_TTL_ESCAPERESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_EscapeResult, slop_option_ttl_EscapeResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_ESCAPERESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_ESCAPERESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_EscapeResult, slop_option_slop_rdf_ttl_EscapeResult)
 #endif
 
-#ifndef SLOP_OPTION_TTL_TRIPLERESULT_DEFINED
-#define SLOP_OPTION_TTL_TRIPLERESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TripleResult, slop_option_ttl_TripleResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TRIPLERESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TRIPLERESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TripleResult, slop_option_slop_rdf_ttl_TripleResult)
 #endif
 
-#ifndef SLOP_OPTION_RDF_TRIPLE_DEFINED
-#define SLOP_OPTION_RDF_TRIPLE_DEFINED
-SLOP_OPTION_DEFINE(rdf_Triple, slop_option_rdf_Triple)
+#ifndef SLOP_OPTION_SLOP_RDF_RDF_TRIPLE_DEFINED
+#define SLOP_OPTION_SLOP_RDF_RDF_TRIPLE_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_rdf_Triple, slop_option_slop_rdf_rdf_Triple)
 #endif
 
-#ifndef SLOP_OPTION_TTL_TRIPLESRESULT_DEFINED
-#define SLOP_OPTION_TTL_TRIPLESRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TriplesResult, slop_option_ttl_TriplesResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TRIPLESRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TRIPLESRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TriplesResult, slop_option_slop_rdf_ttl_TriplesResult)
 #endif
 
-#ifndef SLOP_OPTION_TTL_GRAPHTRIPLESRESULT_DEFINED
-#define SLOP_OPTION_TTL_GRAPHTRIPLESRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_GraphTriplesResult, slop_option_ttl_GraphTriplesResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_GRAPHTRIPLESRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_GRAPHTRIPLESRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_GraphTriplesResult, slop_option_slop_rdf_ttl_GraphTriplesResult)
 #endif
 
-#ifndef SLOP_OPTION_TTL_STREAMTRIPLESRESULT_DEFINED
-#define SLOP_OPTION_TTL_STREAMTRIPLESRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_StreamTriplesResult, slop_option_ttl_StreamTriplesResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_STREAMTRIPLESRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_STREAMTRIPLESRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_StreamTriplesResult, slop_option_slop_rdf_ttl_StreamTriplesResult)
 #endif
 
-#ifndef SLOP_OPTION_TTL_TERMTRIPLESRESULT_DEFINED
-#define SLOP_OPTION_TTL_TERMTRIPLESRESULT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TermTriplesResult, slop_option_ttl_TermTriplesResult)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TERMTRIPLESRESULT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TERMTRIPLESRESULT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TermTriplesResult, slop_option_slop_rdf_ttl_TermTriplesResult)
 #endif
 
-#ifndef SLOP_OPTION_TTL_TTLFILEERROR_DEFINED
-#define SLOP_OPTION_TTL_TTLFILEERROR_DEFINED
-SLOP_OPTION_DEFINE(ttl_TtlFileError, slop_option_ttl_TtlFileError)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TTLFILEERROR_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TTLFILEERROR_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TtlFileError, slop_option_slop_rdf_ttl_TtlFileError)
 #endif
 
-#ifndef SLOP_OPTION_TTL_TTLPARSECONTEXT_DEFINED
-#define SLOP_OPTION_TTL_TTLPARSECONTEXT_DEFINED
-SLOP_OPTION_DEFINE(ttl_TtlParseContext, slop_option_ttl_TtlParseContext)
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_TTLPARSECONTEXT_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_TTLPARSECONTEXT_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_TtlParseContext, slop_option_slop_rdf_ttl_TtlParseContext)
 #endif
 
 

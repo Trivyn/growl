@@ -20,34 +20,34 @@
  * `ReasonerSuccess.iterations`) were read at the wrong offset across the FFI
  * boundary and `graph.size()` returned a garbage pointer.
  */
-size_t growl_layout_sizeof_triple_index(void)       { return sizeof(index_TripleIndex); }
-size_t growl_layout_sizeof_indexed_graph(void)      { return sizeof(index_IndexedGraph); }
-size_t growl_layout_offset_graph_size(void)         { return offsetof(index_IndexedGraph, size); }
-size_t growl_layout_sizeof_rdf_term(void)           { return sizeof(rdf_Term); }
-size_t growl_layout_sizeof_rdf_triple(void)         { return sizeof(rdf_Triple); }
-size_t growl_layout_sizeof_reasoner_config(void)    { return sizeof(types_ReasonerConfig); }
-size_t growl_layout_offset_cfg_cancel_ptr(void)     { return offsetof(types_ReasonerConfig, cancel_ptr); }
-size_t growl_layout_sizeof_reasoner_success(void)   { return sizeof(types_ReasonerSuccess); }
-size_t growl_layout_offset_success_iterations(void) { return offsetof(types_ReasonerSuccess, iterations); }
+size_t growl_layout_sizeof_triple_index(void)       { return sizeof(slop_rdf_index_TripleIndex); }
+size_t growl_layout_sizeof_indexed_graph(void)      { return sizeof(slop_rdf_index_IndexedGraph); }
+size_t growl_layout_offset_graph_size(void)         { return offsetof(slop_rdf_index_IndexedGraph, size); }
+size_t growl_layout_sizeof_rdf_term(void)           { return sizeof(slop_rdf_rdf_Term); }
+size_t growl_layout_sizeof_rdf_triple(void)         { return sizeof(slop_rdf_rdf_Triple); }
+size_t growl_layout_sizeof_reasoner_config(void)    { return sizeof(growl_types_ReasonerConfig); }
+size_t growl_layout_offset_cfg_cancel_ptr(void)     { return offsetof(growl_types_ReasonerConfig, cancel_ptr); }
+size_t growl_layout_sizeof_reasoner_success(void)   { return sizeof(growl_types_ReasonerSuccess); }
+size_t growl_layout_offset_success_iterations(void) { return offsetof(growl_types_ReasonerSuccess, iterations); }
 /* List headers are embedded by value everywhere (IndexedGraph.triples,
  * InconsistencyReport.witnesses, by-value list returns), so a change to the
  * SLOP_LIST_DECLARE header -- e.g. slop#278 adding an `arena` field -- shifts
  * all of them. The InconsistencyReport size is the stride Rust walks
  * `reason_inconsistent.data[i]` with. */
-size_t growl_layout_sizeof_list_rdf_term(void)      { return sizeof(slop_list_rdf_Term); }
-size_t growl_layout_sizeof_list_rdf_triple(void)    { return sizeof(slop_list_rdf_Triple); }
-size_t growl_layout_sizeof_list_report(void)        { return sizeof(slop_list_types_InconsistencyReport); }
-size_t growl_layout_offset_graph_index(void)        { return offsetof(index_IndexedGraph, index); }
-size_t growl_layout_sizeof_report(void)             { return sizeof(types_InconsistencyReport); }
-size_t growl_layout_sizeof_reasoner_result(void)    { return sizeof(types_ReasonerResult); }
-size_t growl_layout_offset_result_data(void)        { return offsetof(types_ReasonerResult, data); }
+size_t growl_layout_sizeof_list_rdf_term(void)      { return sizeof(slop_list_slop_rdf_rdf_Term); }
+size_t growl_layout_sizeof_list_rdf_triple(void)    { return sizeof(slop_list_slop_rdf_rdf_Triple); }
+size_t growl_layout_sizeof_list_report(void)        { return sizeof(slop_list_growl_types_InconsistencyReport); }
+size_t growl_layout_offset_graph_index(void)        { return offsetof(slop_rdf_index_IndexedGraph, index); }
+size_t growl_layout_sizeof_report(void)             { return sizeof(growl_types_InconsistencyReport); }
+size_t growl_layout_sizeof_reasoner_result(void)    { return sizeof(growl_types_ReasonerResult); }
+size_t growl_layout_offset_result_data(void)        { return offsetof(growl_types_ReasonerResult, data); }
 
-/* rdf_Term tag values, mirrored by ffi::RdfTermTag. A C tag Rust has no variant
+/* slop_rdf_rdf_Term tag values, mirrored by ffi::RdfTermTag. A C tag Rust has no variant
  * for is UB the moment Rust reads the term (issue #24: RDF 1.2 term_triple). */
-size_t growl_layout_tag_term_iri(void)              { return rdf_Term_term_iri; }
-size_t growl_layout_tag_term_blank(void)            { return rdf_Term_term_blank; }
-size_t growl_layout_tag_term_literal(void)          { return rdf_Term_term_literal; }
-size_t growl_layout_tag_term_triple(void)           { return rdf_Term_term_triple; }
+size_t growl_layout_tag_term_iri(void)              { return slop_rdf_rdf_Term_term_iri; }
+size_t growl_layout_tag_term_blank(void)            { return slop_rdf_rdf_Term_term_blank; }
+size_t growl_layout_tag_term_literal(void)          { return slop_rdf_rdf_Term_term_literal; }
+size_t growl_layout_tag_term_triple(void)           { return slop_rdf_rdf_Term_term_triple; }
 
 /* The variant count. C enums carry no count, so this switch names every tag
  * and -Wswitch is an error here: a tag added in slop-rdf fails the build
@@ -55,12 +55,12 @@ size_t growl_layout_tag_term_triple(void)           { return rdf_Term_term_tripl
 #pragma GCC diagnostic push
 #pragma GCC diagnostic error "-Wswitch"
 size_t growl_layout_tag_count(void) {
-    rdf_Term_tag tag = rdf_Term_term_iri;
+    slop_rdf_rdf_Term_tag tag = slop_rdf_rdf_Term_term_iri;
     switch (tag) {
-        case rdf_Term_term_iri:
-        case rdf_Term_term_blank:
-        case rdf_Term_term_literal:
-        case rdf_Term_term_triple:
+        case slop_rdf_rdf_Term_term_iri:
+        case slop_rdf_rdf_Term_term_blank:
+        case slop_rdf_rdf_Term_term_literal:
+        case slop_rdf_rdf_Term_term_triple:
             break;
     }
     return 4;
