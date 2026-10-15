@@ -26,11 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install SLOP 0.5.0
+      - name: Install SLOP 0.5.1
         if: runner.os == 'Linux'
         working-directory: ${{ runner.temp }}
         run: |
-          SLOP_VERSION=v0.5.0
+          SLOP_VERSION=v0.5.1
           SLOP_ARCHIVE="slop-${SLOP_VERSION}-linux-x64.tar.gz"
           SLOP_URL="https://github.com/slop-lang/slop/releases/download/${SLOP_VERSION}"
           curl -fsSLO "${SLOP_URL}/${SLOP_ARCHIVE}"
