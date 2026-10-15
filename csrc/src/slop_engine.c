@@ -1,92 +1,92 @@
 #include "../runtime/slop_runtime.h"
 #include "slop_engine.h"
 
-void engine_print_ms(slop_arena* arena, int64_t ms);
-slop_list_rdf_Term engine_collect_declared_properties(slop_arena* arena, index_IndexedGraph g);
-uint8_t engine_iri_matches_ns(rdf_Term term, slop_string ns);
-engine_ValidateInjection engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose, slop_string validate_ns);
-slop_string engine_resolve_blank_class(slop_arena* arena, int64_t blank_id, slop_list_rdf_Term class_map);
-slop_string engine_resolve_blank_prop(slop_arena* arena, int64_t blank_id, slop_list_rdf_Term prop_map);
-slop_string engine_build_enriched_reason(slop_arena* arena, slop_string class_name, slop_string prop_name, slop_string original_reason, slop_string detail);
-types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types_InconsistencyReport report, index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_rdf_Term class_map, slop_list_rdf_Term prop_map);
-slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena, index_IndexedGraph g, index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_rdf_Term class_map, slop_list_rdf_Term prop_map);
-types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial);
-types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g);
-slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred);
-index_IndexedGraph engine_schema_materialize_fast(slop_arena* arena, index_IndexedGraph g);
-index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config);
-slop_result_types_EngineState_types_InconsistencyReport engine_engine_run_iteration(slop_arena* arena, types_EngineState state);
-slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config);
-slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_sequential(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config);
-slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_parallel(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config);
-index_IndexedGraph engine_merge_into_graph(slop_arena* arena, index_IndexedGraph g, types_Delta d);
-slop_list_thread_int_ptr engine_spawn_rule_workers(slop_arena* arena, index_IndexedGraph g, types_Delta delta, slop_chan_engine_WorkerMessage* result_chan, slop_arena* arena_cax_infer, slop_arena* arena_cax_check, slop_arena* arena_prp_char, slop_arena* arena_prp_chain, slop_arena* arena_prp_check, slop_arena* arena_eq_infer, slop_arena* arena_eq_check, slop_arena* arena_cls_set, slop_arena* arena_cls_ind, uint8_t verbose, uint8_t fast, uint8_t validate, uint8_t enrich);
-slop_result_types_Delta_types_InconsistencyReport engine_collect_worker_results(slop_arena* arena, slop_chan_engine_WorkerMessage* result_chan, slop_list_thread_int_ptr workers, int64_t next_iter);
+void growl_engine_print_ms(slop_arena* arena, int64_t ms);
+slop_list_slop_rdf_rdf_Term growl_engine_collect_declared_properties(slop_arena* arena, slop_rdf_index_IndexedGraph g);
+uint8_t growl_engine_iri_matches_ns(slop_rdf_rdf_Term term, slop_string ns);
+growl_engine_ValidateInjection growl_engine_inject_validate_instances(slop_arena* arena, slop_rdf_index_IndexedGraph g, uint8_t verbose, slop_string validate_ns);
+slop_string growl_engine_resolve_blank_class(slop_arena* arena, int64_t blank_id, slop_list_slop_rdf_rdf_Term class_map);
+slop_string growl_engine_resolve_blank_prop(slop_arena* arena, int64_t blank_id, slop_list_slop_rdf_rdf_Term prop_map);
+slop_string growl_engine_build_enriched_reason(slop_arena* arena, slop_string class_name, slop_string prop_name, slop_string original_reason, slop_string detail);
+growl_types_InconsistencyReport growl_engine_enrich_validate_report(slop_arena* arena, growl_types_InconsistencyReport report, slop_rdf_index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_slop_rdf_rdf_Term class_map, slop_list_slop_rdf_rdf_Term prop_map);
+slop_list_growl_types_InconsistencyReport growl_engine_validate_check_all(slop_arena* arena, slop_rdf_index_IndexedGraph g, slop_rdf_index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_slop_rdf_rdf_Term class_map, slop_list_slop_rdf_rdf_Term prop_map);
+growl_types_ReasonerResult growl_engine_engine_run(slop_arena* arena, growl_types_ReasonerConfig config, slop_rdf_index_IndexedGraph initial);
+growl_types_Delta growl_engine_make_initial_delta(slop_arena* arena, slop_rdf_index_IndexedGraph g);
+slop_list_slop_rdf_rdf_Triple growl_engine_compute_tc(slop_arena* arena, slop_rdf_index_IndexedGraph g, slop_rdf_rdf_Term pred);
+slop_rdf_index_IndexedGraph growl_engine_schema_materialize_fast(slop_arena* arena, slop_rdf_index_IndexedGraph g);
+slop_rdf_index_IndexedGraph growl_engine_schema_materialize(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, growl_types_ReasonerConfig config);
+slop_result_growl_types_EngineState_growl_types_InconsistencyReport growl_engine_engine_run_iteration(slop_arena* arena, growl_types_EngineState state);
+slop_result_growl_types_Delta_growl_types_InconsistencyReport growl_engine_apply_all_rules(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, growl_types_ReasonerConfig config);
+slop_result_growl_types_Delta_growl_types_InconsistencyReport growl_engine_apply_all_rules_sequential(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, growl_types_ReasonerConfig config);
+slop_result_growl_types_Delta_growl_types_InconsistencyReport growl_engine_apply_all_rules_parallel(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, growl_types_ReasonerConfig config);
+slop_rdf_index_IndexedGraph growl_engine_merge_into_graph(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta d);
+slop_list_thread_int_ptr growl_engine_spawn_rule_workers(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, slop_chan_growl_engine_WorkerMessage* result_chan, slop_arena* arena_cax_infer, slop_arena* arena_cax_check, slop_arena* arena_prp_char, slop_arena* arena_prp_chain, slop_arena* arena_prp_check, slop_arena* arena_eq_infer, slop_arena* arena_eq_check, slop_arena* arena_cls_set, slop_arena* arena_cls_ind, uint8_t verbose, uint8_t fast, uint8_t validate, uint8_t enrich);
+slop_result_growl_types_Delta_growl_types_InconsistencyReport growl_engine_collect_worker_results(slop_arena* arena, slop_chan_growl_engine_WorkerMessage* result_chan, slop_list_thread_int_ptr workers, int64_t next_iter);
 
-typedef struct { slop_arena* arena_cax_infer; int64_t next_iter; index_IndexedGraph g; types_Delta delta; uint8_t verbose; slop_chan_engine_WorkerMessage* result_chan; } engine__lambda_430_env_t;
+typedef struct { slop_arena* arena_cax_infer; int64_t next_iter; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; uint8_t verbose; slop_chan_growl_engine_WorkerMessage* result_chan; } growl_engine__lambda_430_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_430(engine__lambda_430_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = types_make_delta(_env->arena_cax_infer, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1389:57")); ({ __auto_type _coll = cax_cax_sco(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cax_cax_eqc1(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cax_cax_eqc2(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  cax-infer: "); engine_print_ms(_env->arena_cax_infer, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_430(growl_engine__lambda_430_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = growl_types_make_delta(_env->arena_cax_infer, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1389:57")); ({ __auto_type _coll = growl_cax_cax_sco(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cax_cax_eqc1(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cax_cax_eqc2(_env->arena_cax_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cax_infer, result, t); (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  cax-infer: "); growl_engine_print_ms(_env->arena_cax_infer, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-typedef struct { slop_arena* arena_cax_check; index_IndexedGraph g; types_Delta delta; slop_chan_engine_WorkerMessage* result_chan; uint8_t verbose; } engine__lambda_431_env_t;
+typedef struct { slop_arena* arena_cax_check; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; slop_chan_growl_engine_WorkerMessage* result_chan; uint8_t verbose; } growl_engine__lambda_431_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_431(engine__lambda_431_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); ({ __auto_type _mv = cax_cax_dw(_env->arena_cax_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = cax_cax_adc(_env->arena_cax_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  cax-check: "); engine_print_ms(_env->arena_cax_check, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_431(growl_engine__lambda_431_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); ({ __auto_type _mv = growl_cax_cax_dw(_env->arena_cax_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_cax_cax_adc(_env->arena_cax_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  cax-check: "); growl_engine_print_ms(_env->arena_cax_check, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-typedef struct { slop_arena* arena_prp_char; int64_t next_iter; index_IndexedGraph g; types_Delta delta; uint8_t enrich; uint8_t verbose; slop_chan_engine_WorkerMessage* result_chan; } engine__lambda_432_env_t;
+typedef struct { slop_arena* arena_prp_char; int64_t next_iter; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; uint8_t enrich; uint8_t verbose; slop_chan_growl_engine_WorkerMessage* result_chan; } growl_engine__lambda_432_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_432(engine__lambda_432_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = types_make_delta(_env->arena_prp_char, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1422:56")); ({ __auto_type _coll = prp_prp_dom(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = prp_prp_rng(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->enrich)) ? ({ ({ ({ __auto_type _coll = prp_prp_fp(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = prp_prp_ifp(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); ({ __auto_type _coll = prp_prp_symp(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = prp_prp_trp(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  prp-char: "); engine_print_ms(_env->arena_prp_char, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_432(growl_engine__lambda_432_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = growl_types_make_delta(_env->arena_prp_char, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1422:56")); ({ __auto_type _coll = growl_prp_prp_dom(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_prp_prp_rng(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->enrich)) ? ({ ({ ({ __auto_type _coll = growl_prp_prp_fp(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_prp_prp_ifp(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); ({ __auto_type _coll = growl_prp_prp_symp(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_prp_prp_trp(_env->arena_prp_char, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_char, result, t); (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  prp-char: "); growl_engine_print_ms(_env->arena_prp_char, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-typedef struct { slop_arena* arena_prp_chain; int64_t next_iter; index_IndexedGraph g; types_Delta delta; uint8_t enrich; uint8_t verbose; slop_chan_engine_WorkerMessage* result_chan; } engine__lambda_433_env_t;
+typedef struct { slop_arena* arena_prp_chain; int64_t next_iter; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; uint8_t enrich; uint8_t verbose; slop_chan_growl_engine_WorkerMessage* result_chan; } growl_engine__lambda_433_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_433(engine__lambda_433_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = types_make_delta(_env->arena_prp_chain, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1446:57")); ({ __auto_type _coll = prp_prp_spo1(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = prp_prp_spo2(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = prp_prp_eqp1(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = prp_prp_eqp2(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = prp_prp_inv1(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = prp_prp_inv2(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->enrich)) ? ({ ({ __auto_type _coll = prp_prp_key(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); 0; }) : ({ (void)0; }))); (void)(((_env->verbose) ? ({ ({ printf("%s", "  prp-chain: "); engine_print_ms(_env->arena_prp_chain, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_433(growl_engine__lambda_433_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = growl_types_make_delta(_env->arena_prp_chain, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1446:57")); ({ __auto_type _coll = growl_prp_prp_spo1(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_prp_prp_spo2(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_prp_prp_eqp1(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_prp_prp_eqp2(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_prp_prp_inv1(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_prp_prp_inv2(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->enrich)) ? ({ ({ __auto_type _coll = growl_prp_prp_key(_env->arena_prp_chain, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_prp_chain, result, t); (void)0; }); } (void)0; }); 0; }) : ({ (void)0; }))); (void)(((_env->verbose) ? ({ ({ printf("%s", "  prp-chain: "); growl_engine_print_ms(_env->arena_prp_chain, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-typedef struct { slop_arena* arena_prp_check; index_IndexedGraph g; types_Delta delta; slop_chan_engine_WorkerMessage* result_chan; uint8_t verbose; } engine__lambda_434_env_t;
+typedef struct { slop_arena* arena_prp_check; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; slop_chan_growl_engine_WorkerMessage* result_chan; uint8_t verbose; } growl_engine__lambda_434_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_434(engine__lambda_434_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); ({ __auto_type _mv = prp_prp_asyp(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = prp_prp_irp(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = prp_prp_pdw(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = prp_prp_adp(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = prp_prp_npa1(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = prp_prp_npa2(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  prp-check: "); engine_print_ms(_env->arena_prp_check, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_434(growl_engine__lambda_434_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); ({ __auto_type _mv = growl_prp_prp_asyp(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_prp_prp_irp(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_prp_prp_pdw(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_prp_prp_adp(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_prp_prp_npa1(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_prp_prp_npa2(_env->arena_prp_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  prp-check: "); growl_engine_print_ms(_env->arena_prp_check, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-typedef struct { slop_arena* arena_eq_infer; int64_t next_iter; index_IndexedGraph g; types_Delta delta; uint8_t verbose; slop_chan_engine_WorkerMessage* result_chan; } engine__lambda_435_env_t;
+typedef struct { slop_arena* arena_eq_infer; int64_t next_iter; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; uint8_t verbose; slop_chan_growl_engine_WorkerMessage* result_chan; } growl_engine__lambda_435_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_435(engine__lambda_435_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = types_make_delta(_env->arena_eq_infer, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1502:58")); ({ __auto_type _coll = eq_eq_sym(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = eq_eq_trans(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = eq_eq_rep_s(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = eq_eq_rep_p(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = eq_eq_rep_o(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  eq-infer: "); engine_print_ms(_env->arena_eq_infer, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_435(growl_engine__lambda_435_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = growl_types_make_delta(_env->arena_eq_infer, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1502:58")); ({ __auto_type _coll = growl_eq_eq_sym(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_eq_eq_trans(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_eq_eq_rep_s(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_eq_eq_rep_p(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_eq_eq_rep_o(_env->arena_eq_infer, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_eq_infer, result, t); (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  eq-infer: "); growl_engine_print_ms(_env->arena_eq_infer, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-typedef struct { slop_arena* arena_eq_check; index_IndexedGraph g; types_Delta delta; slop_chan_engine_WorkerMessage* result_chan; uint8_t verbose; } engine__lambda_436_env_t;
+typedef struct { slop_arena* arena_eq_check; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; slop_chan_growl_engine_WorkerMessage* result_chan; uint8_t verbose; } growl_engine__lambda_436_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_436(engine__lambda_436_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); ({ __auto_type _mv = eq_eq_diff1(_env->arena_eq_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = eq_eq_diff2(_env->arena_eq_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = eq_eq_diff3(_env->arena_eq_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  eq-check: "); engine_print_ms(_env->arena_eq_check, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_436(growl_engine__lambda_436_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); ({ __auto_type _mv = growl_eq_eq_diff1(_env->arena_eq_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_eq_eq_diff2(_env->arena_eq_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_eq_eq_diff3(_env->arena_eq_check, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  eq-check: "); growl_engine_print_ms(_env->arena_eq_check, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-typedef struct { slop_arena* arena_cls_set; int64_t next_iter; index_IndexedGraph g; types_Delta delta; uint8_t verbose; slop_chan_engine_WorkerMessage* result_chan; } engine__lambda_437_env_t;
+typedef struct { slop_arena* arena_cls_set; int64_t next_iter; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; uint8_t verbose; slop_chan_growl_engine_WorkerMessage* result_chan; } growl_engine__lambda_437_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_437(engine__lambda_437_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = types_make_delta(_env->arena_cls_set, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1543:57")); ({ __auto_type _coll = cls_cls_int1(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_int2(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_uni(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_svf1(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_svf2(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_avf(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  cls-set: "); engine_print_ms(_env->arena_cls_set, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_437(growl_engine__lambda_437_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = growl_types_make_delta(_env->arena_cls_set, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1543:57")); ({ __auto_type _coll = growl_cls_cls_int1(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_int2(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_uni(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_svf1(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_svf2(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_avf(_env->arena_cls_set, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_set, result, t); (void)0; }); } (void)0; }); (void)(((_env->verbose) ? ({ ({ printf("%s", "  cls-set: "); growl_engine_print_ms(_env->arena_cls_set, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-typedef struct { slop_arena* arena_cls_ind; int64_t next_iter; index_IndexedGraph g; types_Delta delta; uint8_t fast; uint8_t validate; slop_chan_engine_WorkerMessage* result_chan; uint8_t verbose; } engine__lambda_438_env_t;
+typedef struct { slop_arena* arena_cls_ind; int64_t next_iter; slop_rdf_index_IndexedGraph g; growl_types_Delta delta; uint8_t fast; uint8_t validate; slop_chan_growl_engine_WorkerMessage* result_chan; uint8_t verbose; } growl_engine__lambda_438_env_t;
 
-static slop_result_void_thread_ChanError engine__lambda_438(engine__lambda_438_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = types_make_delta(_env->arena_cls_ind, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1566:55")); ({ __auto_type _coll = cls_cls_hv1(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_hv2(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->fast)) ? ({ ({ (void)(((!(_env->validate)) ? ({ ({ ({ __auto_type _mv = cls_cls_maxc1(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); ({ __auto_type _coll = cls_cls_maxc2(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->validate)) ? ({ ({ ({ __auto_type _mv = cls_cls_maxqc1(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = cls_cls_maxqc2(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); ({ __auto_type _coll = cls_cls_maxqc3(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_maxqc4(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); ({ __auto_type _coll = cls_cls_oo(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->validate)) ? ({ ({ ({ __auto_type _mv = cls_cls_nothing2(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = cls_cls_com(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); (void)(((_env->verbose) ? ({ ({ printf("%s", "  cls-ind: "); engine_print_ms(_env->arena_cls_ind, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_engine_WorkerMessage(_env->result_chan, ((engine_WorkerMessage){ .tag = engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
+static slop_result_void_std_thread_ChanError growl_engine__lambda_438(growl_engine__lambda_438_env_t* _env) { return ({ __auto_type t0 = slop_now_ms(); __auto_type result = growl_types_make_delta(_env->arena_cls_ind, SLOP_RANGE(int64_t, _env->next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1566:55")); ({ __auto_type _coll = growl_cls_cls_hv1(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_hv2(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->fast)) ? ({ ({ (void)(((!(_env->validate)) ? ({ ({ ({ __auto_type _mv = growl_cls_cls_maxc1(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); ({ __auto_type _coll = growl_cls_cls_maxc2(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->validate)) ? ({ ({ ({ __auto_type _mv = growl_cls_cls_maxqc1(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_cls_cls_maxqc2(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); ({ __auto_type _coll = growl_cls_cls_maxqc3(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_maxqc4(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); ({ __auto_type _coll = growl_cls_cls_oo(_env->arena_cls_ind, _env->g, _env->delta); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ result = growl_types_delta_add(_env->arena_cls_ind, result, t); (void)0; }); } (void)0; }); (void)(((!(_env->validate)) ? ({ ({ ({ __auto_type _mv = growl_cls_cls_nothing2(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ __auto_type _mv = growl_cls_cls_com(_env->arena_cls_ind, _env->g, _env->delta); if (_mv.has_value) { __auto_type report = _mv.value; ({ thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_inconsistent, .data.msg_inconsistent = report })); ({ (void)0; }); }); } else { ({ (void)0; }); } (void)0; }); } (void)0; }); }); 0; }) : ({ (void)0; }))); (void)(((_env->verbose) ? ({ ({ printf("%s", "  cls-ind: "); growl_engine_print_ms(_env->arena_cls_ind, (slop_now_ms() - t0)); printf("%s\n", ""); }); 0; }) : ({ (void)0; }))); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_delta, .data.msg_delta = result })); thread_send_slop_chan_growl_engine_WorkerMessage(_env->result_chan, ((growl_engine_WorkerMessage){ .tag = growl_engine_WorkerMessage_msg_done, .data.msg_done = 0 })); }); }
 
-void engine_print_ms(slop_arena* arena, int64_t ms) {
+void growl_engine_print_ms(slop_arena* arena, int64_t ms) {
     printf("%.*s", (int)(int_to_string(arena, ms)).len, (int_to_string(arena, ms)).data);
     printf("%s", "ms");
 }
 
-slop_list_rdf_Term engine_collect_declared_properties(slop_arena* arena, index_IndexedGraph g) {
+slop_list_slop_rdf_rdf_Term growl_engine_collect_declared_properties(slop_arena* arena, slop_rdf_index_IndexedGraph g) {
     {
-        __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
-        slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
-        __auto_type seen = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Term, slop_hash_rdf_Term, slop_eq_rdf_Term, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
-        __auto_type result = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
-        __auto_type meta_types = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_OBJECT_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_DATATYPE_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_RDF_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_FUNCTIONAL_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_INVERSE_FUNCTIONAL_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_TRANSITIVE_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_SYMMETRIC_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_ASYMMETRIC_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_REFLEXIVE_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, vocab_OWL_IRREFLEXIVE_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+        __auto_type type_pred = rdf_make_iri(arena, slop_rdf_vocab_RDF_TYPE);
+        slop_option_slop_rdf_rdf_Term no_term = (slop_option_slop_rdf_rdf_Term){.has_value = false};
+        __auto_type seen = ({ static const slop_map_desc _d = SLOP_SET_DESC(slop_rdf_rdf_Term, slop_hash_slop_rdf_rdf_Term, slop_eq_slop_rdf_rdf_Term, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
+        __auto_type result = ((slop_list_slop_rdf_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+        __auto_type meta_types = ((slop_list_slop_rdf_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_OBJECT_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_DATATYPE_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_RDF_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_FUNCTIONAL_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_INVERSE_FUNCTIONAL_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_TRANSITIVE_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_SYMMETRIC_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_ASYMMETRIC_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_REFLEXIVE_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(meta_types); __auto_type _item = (rdf_make_iri(arena, slop_rdf_vocab_OWL_IRREFLEXIVE_PROPERTY)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         {
             __auto_type _coll = meta_types;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type mt = _coll.data[_i];
                 {
-                    __auto_type matches = rdf_indexed_graph_match(arena, g, no_term, (slop_option_rdf_Term){.has_value = 1, .value = type_pred}, (slop_option_rdf_Term){.has_value = 1, .value = mt});
+                    __auto_type matches = rdf_indexed_graph_match(arena, g, no_term, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = type_pred}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = mt});
                     {
                         __auto_type _coll = matches;
                         for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -94,8 +94,8 @@ slop_list_rdf_Term engine_collect_declared_properties(slop_arena* arena, index_I
                             {
                                 __auto_type prop = rdf_triple_subject(t);
                                 if (!(slop_map_has(seen, &(prop)))) {
-                                    ({ slop_map_put(NULL, seen, &(prop), NULL, 0); });
-                                    ({ __auto_type _lst_p = &(result); __auto_type _item = (prop); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                    (void)(({ slop_map_put(NULL, seen, &(prop), NULL, 0); }));
+                                    (void)(({ __auto_type _lst_p = &(result); __auto_type _item = (prop); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
                                 }
                             }
                         }
@@ -107,16 +107,16 @@ slop_list_rdf_Term engine_collect_declared_properties(slop_arena* arena, index_I
     }
 }
 
-uint8_t engine_iri_matches_ns(rdf_Term term, slop_string ns) {
+uint8_t growl_engine_iri_matches_ns(slop_rdf_rdf_Term term, slop_string ns) {
     __auto_type _mv_384 = term;
     switch (_mv_384.tag) {
-        case rdf_Term_term_iri:
+        case slop_rdf_rdf_Term_term_iri:
         {
             __auto_type iri = _mv_384.data.term_iri;
             if (ns.len == 0) {
                 return 1;
             } else {
-                return strlib_starts_with(iri.value, ns);
+                return std_strlib_starts_with(iri.value, ns);
             }
         }
         default: {
@@ -125,27 +125,27 @@ uint8_t engine_iri_matches_ns(rdf_Term term, slop_string ns) {
     }
 }
 
-engine_ValidateInjection engine_inject_validate_instances(slop_arena* arena, index_IndexedGraph g, uint8_t verbose, slop_string validate_ns) {
+growl_engine_ValidateInjection growl_engine_inject_validate_instances(slop_arena* arena, slop_rdf_index_IndexedGraph g, uint8_t verbose, slop_string validate_ns) {
     {
-        __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
-        __auto_type class_type = rdf_make_iri(arena, vocab_OWL_CLASS);
-        slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
-        __auto_type class_triples = rdf_indexed_graph_match(arena, g, no_term, (slop_option_rdf_Term){.has_value = 1, .value = type_pred}, (slop_option_rdf_Term){.has_value = 1, .value = class_type});
+        __auto_type type_pred = rdf_make_iri(arena, slop_rdf_vocab_RDF_TYPE);
+        __auto_type class_type = rdf_make_iri(arena, slop_rdf_vocab_OWL_CLASS);
+        slop_option_slop_rdf_rdf_Term no_term = (slop_option_slop_rdf_rdf_Term){.has_value = false};
+        __auto_type class_triples = rdf_indexed_graph_match(arena, g, no_term, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = type_pred}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = class_type});
         __auto_type result = g;
         int64_t count = 0;
-        __auto_type class_map = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+        __auto_type class_map = ((slop_list_slop_rdf_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
         {
             __auto_type _coll = class_triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
                 {
                     __auto_type cls = rdf_triple_subject(t);
-                    if (engine_iri_matches_ns(cls, validate_ns)) {
+                    if (growl_engine_iri_matches_ns(cls, validate_ns)) {
                         {
-                            __auto_type synthetic = rdf_make_blank(arena, SLOP_RANGE(rdf_BlankNodeId, (10000000 + count), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:142:50"));
+                            __auto_type synthetic = rdf_make_blank(arena, SLOP_RANGE(slop_rdf_rdf_BlankNodeId, (10000000 + count), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:142:50"));
                             __auto_type type_triple = rdf_make_triple(arena, synthetic, type_pred, cls);
                             result = rdf_indexed_graph_add(arena, result, type_triple);
-                            ({ __auto_type _lst_p = &(class_map); __auto_type _item = (cls); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                            (void)(({ __auto_type _lst_p = &(class_map); __auto_type _item = (cls); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
                             count = (count + 1);
                         }
                     }
@@ -158,20 +158,20 @@ engine_ValidateInjection engine_inject_validate_instances(slop_arena* arena, ind
             printf("%s\n", " synthetic class instances");
         }
         {
-            __auto_type props = engine_collect_declared_properties(arena, g);
+            __auto_type props = growl_engine_collect_declared_properties(arena, g);
             int64_t prop_count = 0;
-            __auto_type prop_map = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+            __auto_type prop_map = ((slop_list_slop_rdf_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
             {
                 __auto_type _coll = props;
                 for (size_t _i = 0; _i < _coll.len; _i++) {
                     __auto_type p = _coll.data[_i];
-                    if (engine_iri_matches_ns(p, validate_ns)) {
+                    if (growl_engine_iri_matches_ns(p, validate_ns)) {
                         {
-                            __auto_type subj_blank = rdf_make_blank(arena, SLOP_RANGE(rdf_BlankNodeId, (20000000 + prop_count), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:159:51"));
-                            __auto_type obj_blank = rdf_make_blank(arena, SLOP_RANGE(rdf_BlankNodeId, (30000000 + prop_count), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:160:50"));
+                            __auto_type subj_blank = rdf_make_blank(arena, SLOP_RANGE(slop_rdf_rdf_BlankNodeId, (20000000 + prop_count), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:159:51"));
+                            __auto_type obj_blank = rdf_make_blank(arena, SLOP_RANGE(slop_rdf_rdf_BlankNodeId, (30000000 + prop_count), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:160:50"));
                             __auto_type prop_triple = rdf_make_triple(arena, subj_blank, p, obj_blank);
                             result = rdf_indexed_graph_add(arena, result, prop_triple);
-                            ({ __auto_type _lst_p = &(prop_map); __auto_type _item = (p); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                            (void)(({ __auto_type _lst_p = &(prop_map); __auto_type _item = (p); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
                             prop_count = (prop_count + 1);
                         }
                     }
@@ -182,21 +182,21 @@ engine_ValidateInjection engine_inject_validate_instances(slop_arena* arena, ind
                 printf("%.*s", (int)(int_to_string(arena, prop_count)).len, (int_to_string(arena, prop_count)).data);
                 printf("%s\n", " synthetic property usages");
             }
-            return ((engine_ValidateInjection){.graph = result, .class_map = class_map, .prop_map = prop_map});
+            return ((growl_engine_ValidateInjection){.graph = result, .class_map = class_map, .prop_map = prop_map});
         }
     }
 }
 
-slop_string engine_resolve_blank_class(slop_arena* arena, int64_t blank_id, slop_list_rdf_Term class_map) {
+slop_string growl_engine_resolve_blank_class(slop_arena* arena, int64_t blank_id, slop_list_slop_rdf_rdf_Term class_map) {
     if ((blank_id >= 10000000) && (blank_id < 20000000)) {
         {
             __auto_type class_index = (blank_id - 10000000);
-            __auto_type _mv_385 = ({ __auto_type _lst = class_map; size_t _idx = (size_t)class_index; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+            __auto_type _mv_385 = ({ __auto_type _lst = class_map; size_t _idx = (size_t)class_index; slop_option_slop_rdf_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
             if (_mv_385.has_value) {
                 __auto_type cls = _mv_385.value;
                 __auto_type _mv_386 = cls;
                 switch (_mv_386.tag) {
-                    case rdf_Term_term_iri:
+                    case slop_rdf_rdf_Term_term_iri:
                     {
                         __auto_type iri = _mv_386.data.term_iri;
                         return iri.value;
@@ -215,16 +215,16 @@ slop_string engine_resolve_blank_class(slop_arena* arena, int64_t blank_id, slop
     }
 }
 
-slop_string engine_resolve_blank_prop(slop_arena* arena, int64_t blank_id, slop_list_rdf_Term prop_map) {
+slop_string growl_engine_resolve_blank_prop(slop_arena* arena, int64_t blank_id, slop_list_slop_rdf_rdf_Term prop_map) {
     if ((blank_id >= 20000000) && (blank_id < 40000000)) {
         {
             __auto_type prop_index = (((blank_id < 30000000)) ? (blank_id - 20000000) : (blank_id - 30000000));
-            __auto_type _mv_387 = ({ __auto_type _lst = prop_map; size_t _idx = (size_t)prop_index; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+            __auto_type _mv_387 = ({ __auto_type _lst = prop_map; size_t _idx = (size_t)prop_index; slop_option_slop_rdf_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
             if (_mv_387.has_value) {
                 __auto_type prop = _mv_387.value;
                 __auto_type _mv_388 = prop;
                 switch (_mv_388.tag) {
-                    case rdf_Term_term_iri:
+                    case slop_rdf_rdf_Term_term_iri:
                     {
                         __auto_type iri = _mv_388.data.term_iri;
                         return iri.value;
@@ -243,7 +243,7 @@ slop_string engine_resolve_blank_prop(slop_arena* arena, int64_t blank_id, slop_
     }
 }
 
-slop_string engine_build_enriched_reason(slop_arena* arena, slop_string class_name, slop_string prop_name, slop_string original_reason, slop_string detail) {
+slop_string growl_engine_build_enriched_reason(slop_arena* arena, slop_string class_name, slop_string prop_name, slop_string original_reason, slop_string detail) {
     {
         __auto_type reason_suffix = (((string_len(detail) > 0)) ? string_concat(arena, original_reason, string_concat(arena, SLOP_STR(": "), detail)) : original_reason);
         if (string_len(class_name) > 0) {
@@ -258,12 +258,12 @@ slop_string engine_build_enriched_reason(slop_arena* arena, slop_string class_na
     }
 }
 
-types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types_InconsistencyReport report, index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_rdf_Term class_map, slop_list_rdf_Term prop_map) {
+growl_types_InconsistencyReport growl_engine_enrich_validate_report(slop_arena* arena, growl_types_InconsistencyReport report, slop_rdf_index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_slop_rdf_rdf_Term class_map, slop_list_slop_rdf_rdf_Term prop_map) {
     {
         __auto_type witnesses = report.witnesses;
         __auto_type original_reason = report.reason;
-        if (strlib_starts_with(original_reason, SLOP_STR("cax-dw"))) {
-            __auto_type _mv_389 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)2; slop_option_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+        if (std_strlib_starts_with(original_reason, SLOP_STR("cax-dw"))) {
+            __auto_type _mv_389 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)2; slop_option_slop_rdf_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
             if (_mv_389.has_value) {
                 __auto_type dj_witness = _mv_389.value;
                 {
@@ -271,68 +271,68 @@ types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types
                     __auto_type class_b = rdf_triple_object(dj_witness);
                     __auto_type _mv_390 = class_a;
                     switch (_mv_390.tag) {
-                        case rdf_Term_term_iri:
+                        case slop_rdf_rdf_Term_term_iri:
                         {
                             __auto_type iri_a = _mv_390.data.term_iri;
                             __auto_type _mv_391 = class_b;
                             switch (_mv_391.tag) {
-                                case rdf_Term_term_iri:
+                                case slop_rdf_rdf_Term_term_iri:
                                 {
                                     __auto_type iri_b = _mv_391.data.term_iri;
                                     {
                                         __auto_type detail = string_concat(arena, iri_a.value, string_concat(arena, SLOP_STR(" disjointWith "), iri_b.value));
-                                        __auto_type _mv_392 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)0; slop_option_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                        __auto_type _mv_392 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)0; slop_option_slop_rdf_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                                         if (_mv_392.has_value) {
                                             __auto_type first_witness = _mv_392.value;
                                             {
                                                 __auto_type subj = rdf_triple_subject(first_witness);
                                                 __auto_type _mv_393 = subj;
                                                 switch (_mv_393.tag) {
-                                                    case rdf_Term_term_blank:
+                                                    case slop_rdf_rdf_Term_term_blank:
                                                     {
                                                         __auto_type bnode = _mv_393.data.term_blank;
                                                         {
-                                                            __auto_type class_name = engine_resolve_blank_class(arena, bnode.id, class_map);
-                                                            __auto_type prop_name = engine_resolve_blank_prop(arena, bnode.id, prop_map);
-                                                            __auto_type enriched = engine_build_enriched_reason(arena, class_name, prop_name, original_reason, detail);
+                                                            __auto_type class_name = growl_engine_resolve_blank_class(arena, bnode.id, class_map);
+                                                            __auto_type prop_name = growl_engine_resolve_blank_prop(arena, bnode.id, prop_map);
+                                                            __auto_type enriched = growl_engine_build_enriched_reason(arena, class_name, prop_name, original_reason, detail);
                                                             if (string_len(prop_name) > 0) {
                                                                 {
                                                                     __auto_type blank_id = bnode.id;
                                                                     __auto_type prop_index = (((blank_id < 30000000)) ? (blank_id - 20000000) : (blank_id - 30000000));
                                                                     int64_t domain_count = 0;
-                                                                    __auto_type _mv_394 = ({ __auto_type _lst = prop_map; size_t _idx = (size_t)prop_index; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                                                    __auto_type _mv_394 = ({ __auto_type _lst = prop_map; size_t _idx = (size_t)prop_index; slop_option_slop_rdf_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                                                                     if (_mv_394.has_value) {
                                                                         __auto_type prop_term = _mv_394.value;
                                                                         {
-                                                                            __auto_type domain_pred = rdf_make_iri(arena, vocab_RDFS_DOMAIN);
-                                                                            slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
-                                                                            __auto_type domains = rdf_indexed_graph_match(arena, pre_inject_graph, (slop_option_rdf_Term){.has_value = 1, .value = prop_term}, (slop_option_rdf_Term){.has_value = 1, .value = domain_pred}, no_term);
+                                                                            __auto_type domain_pred = rdf_make_iri(arena, slop_rdf_vocab_RDFS_DOMAIN);
+                                                                            slop_option_slop_rdf_rdf_Term no_term = (slop_option_slop_rdf_rdf_Term){.has_value = false};
+                                                                            __auto_type domains = rdf_indexed_graph_match(arena, pre_inject_graph, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = prop_term}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = domain_pred}, no_term);
                                                                             domain_count = ((int64_t)((domains).len));
                                                                         }
                                                                     } else if (!_mv_394.has_value) {
                                                                     }
                                                                     {
                                                                         __auto_type final_reason = (((domain_count > 1)) ? string_concat(arena, enriched, string_concat(arena, SLOP_STR("\n  Note: "), string_concat(arena, prop_name, string_concat(arena, SLOP_STR(" has "), string_concat(arena, int_to_string(arena, domain_count), SLOP_STR(" rdfs:domain declarations (OWL treats multiple domains as intersection, not union).\n  Consider using owl:unionOf if union semantics were intended.")))))) : enriched);
-                                                                        return ((types_InconsistencyReport){.reason = final_reason, .witnesses = witnesses});
+                                                                        return ((growl_types_InconsistencyReport){.reason = final_reason, .witnesses = witnesses});
                                                                     }
                                                                 }
                                                             } else {
-                                                                return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                                return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                                             }
                                                         }
                                                     }
                                                     default: {
                                                         {
-                                                            __auto_type enriched = engine_build_enriched_reason(arena, SLOP_STR(""), SLOP_STR(""), original_reason, detail);
-                                                            return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                            __auto_type enriched = growl_engine_build_enriched_reason(arena, SLOP_STR(""), SLOP_STR(""), original_reason, detail);
+                                                            return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                                         }
                                                     }
                                                 }
                                             }
                                         } else if (!_mv_392.has_value) {
                                             {
-                                                __auto_type enriched = engine_build_enriched_reason(arena, SLOP_STR(""), SLOP_STR(""), original_reason, detail);
-                                                return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                __auto_type enriched = growl_engine_build_enriched_reason(arena, SLOP_STR(""), SLOP_STR(""), original_reason, detail);
+                                                return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                             }
                                         }
                                         SLOP_UNREACHABLE();
@@ -353,11 +353,11 @@ types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types
             }
             SLOP_UNREACHABLE();
         } else {
-            if (strlib_starts_with(original_reason, SLOP_STR("cax-adc"))) {
-                __auto_type _mv_395 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)0; slop_option_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+            if (std_strlib_starts_with(original_reason, SLOP_STR("cax-adc"))) {
+                __auto_type _mv_395 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)0; slop_option_slop_rdf_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                 if (_mv_395.has_value) {
                     __auto_type w0 = _mv_395.value;
-                    __auto_type _mv_396 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)1; slop_option_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                    __auto_type _mv_396 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)1; slop_option_slop_rdf_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                     if (_mv_396.has_value) {
                         __auto_type w1 = _mv_396.value;
                         {
@@ -366,32 +366,32 @@ types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types
                             __auto_type subj = rdf_triple_subject(w0);
                             __auto_type _mv_397 = class_a;
                             switch (_mv_397.tag) {
-                                case rdf_Term_term_iri:
+                                case slop_rdf_rdf_Term_term_iri:
                                 {
                                     __auto_type iri_a = _mv_397.data.term_iri;
                                     __auto_type _mv_398 = class_b;
                                     switch (_mv_398.tag) {
-                                        case rdf_Term_term_iri:
+                                        case slop_rdf_rdf_Term_term_iri:
                                         {
                                             __auto_type iri_b = _mv_398.data.term_iri;
                                             {
                                                 __auto_type detail = string_concat(arena, iri_a.value, string_concat(arena, SLOP_STR(" disjointWith "), string_concat(arena, iri_b.value, SLOP_STR(" (via AllDisjointClasses)"))));
                                                 __auto_type _mv_399 = subj;
                                                 switch (_mv_399.tag) {
-                                                    case rdf_Term_term_blank:
+                                                    case slop_rdf_rdf_Term_term_blank:
                                                     {
                                                         __auto_type bnode = _mv_399.data.term_blank;
                                                         {
-                                                            __auto_type class_name = engine_resolve_blank_class(arena, bnode.id, class_map);
-                                                            __auto_type prop_name = engine_resolve_blank_prop(arena, bnode.id, prop_map);
-                                                            __auto_type enriched = engine_build_enriched_reason(arena, class_name, prop_name, original_reason, detail);
-                                                            return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                            __auto_type class_name = growl_engine_resolve_blank_class(arena, bnode.id, class_map);
+                                                            __auto_type prop_name = growl_engine_resolve_blank_prop(arena, bnode.id, prop_map);
+                                                            __auto_type enriched = growl_engine_build_enriched_reason(arena, class_name, prop_name, original_reason, detail);
+                                                            return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                                         }
                                                     }
                                                     default: {
                                                         {
-                                                            __auto_type enriched = engine_build_enriched_reason(arena, SLOP_STR(""), SLOP_STR(""), original_reason, detail);
-                                                            return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                            __auto_type enriched = growl_engine_build_enriched_reason(arena, SLOP_STR(""), SLOP_STR(""), original_reason, detail);
+                                                            return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                                         }
                                                     }
                                                 }
@@ -416,54 +416,54 @@ types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types
                 }
                 SLOP_UNREACHABLE();
             } else {
-                __auto_type _mv_400 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)0; slop_option_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                __auto_type _mv_400 = ({ __auto_type _lst = witnesses; size_t _idx = (size_t)0; slop_option_slop_rdf_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                 if (_mv_400.has_value) {
                     __auto_type first_witness = _mv_400.value;
                     {
                         __auto_type subj = rdf_triple_subject(first_witness);
                         __auto_type _mv_401 = subj;
                         switch (_mv_401.tag) {
-                            case rdf_Term_term_blank:
+                            case slop_rdf_rdf_Term_term_blank:
                             {
                                 __auto_type bnode = _mv_401.data.term_blank;
                                 {
-                                    __auto_type class_name = engine_resolve_blank_class(arena, bnode.id, class_map);
-                                    __auto_type prop_name = engine_resolve_blank_prop(arena, bnode.id, prop_map);
+                                    __auto_type class_name = growl_engine_resolve_blank_class(arena, bnode.id, class_map);
+                                    __auto_type prop_name = growl_engine_resolve_blank_prop(arena, bnode.id, prop_map);
                                     if (string_len(class_name) > 0) {
                                         {
-                                            __auto_type enriched = engine_build_enriched_reason(arena, class_name, SLOP_STR(""), original_reason, SLOP_STR(""));
-                                            return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                            __auto_type enriched = growl_engine_build_enriched_reason(arena, class_name, SLOP_STR(""), original_reason, SLOP_STR(""));
+                                            return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                         }
                                     } else {
                                         if (string_len(prop_name) > 0) {
                                             {
                                                 __auto_type witness_pred = rdf_triple_predicate(first_witness);
-                                                __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
+                                                __auto_type type_pred = rdf_make_iri(arena, slop_rdf_vocab_RDF_TYPE);
                                                 if (rdf_term_eq(witness_pred, type_pred)) {
                                                     {
                                                         __auto_type blank_id = bnode.id;
                                                         __auto_type prop_index = (((blank_id < 30000000)) ? (blank_id - 20000000) : (blank_id - 30000000));
-                                                        __auto_type _mv_402 = ({ __auto_type _lst = prop_map; size_t _idx = (size_t)prop_index; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                                        __auto_type _mv_402 = ({ __auto_type _lst = prop_map; size_t _idx = (size_t)prop_index; slop_option_slop_rdf_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                                                         if (_mv_402.has_value) {
                                                             __auto_type prop = _mv_402.value;
                                                             {
-                                                                __auto_type domain_or_range_pred = rdf_make_iri(arena, (((blank_id < 30000000)) ? vocab_RDFS_DOMAIN : vocab_RDFS_RANGE));
-                                                                slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
-                                                                __auto_type class_triples = rdf_indexed_graph_match(arena, pre_inject_graph, (slop_option_rdf_Term){.has_value = 1, .value = prop}, (slop_option_rdf_Term){.has_value = 1, .value = domain_or_range_pred}, no_term);
-                                                                __auto_type _mv_403 = ({ __auto_type _lst = class_triples; size_t _idx = (size_t)0; slop_option_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                                                __auto_type domain_or_range_pred = rdf_make_iri(arena, (((blank_id < 30000000)) ? slop_rdf_vocab_RDFS_DOMAIN : slop_rdf_vocab_RDFS_RANGE));
+                                                                slop_option_slop_rdf_rdf_Term no_term = (slop_option_slop_rdf_rdf_Term){.has_value = false};
+                                                                __auto_type class_triples = rdf_indexed_graph_match(arena, pre_inject_graph, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = prop}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = domain_or_range_pred}, no_term);
+                                                                __auto_type _mv_403 = ({ __auto_type _lst = class_triples; size_t _idx = (size_t)0; slop_option_slop_rdf_rdf_Triple _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                                                                 if (_mv_403.has_value) {
                                                                     __auto_type class_triple = _mv_403.value;
                                                                     {
                                                                         __auto_type cls = rdf_triple_object(class_triple);
-                                                                        if (engine_iri_matches_ns(cls, validate_ns)) {
+                                                                        if (growl_engine_iri_matches_ns(cls, validate_ns)) {
                                                                             __auto_type _mv_404 = cls;
                                                                             switch (_mv_404.tag) {
-                                                                                case rdf_Term_term_iri:
+                                                                                case slop_rdf_rdf_Term_term_iri:
                                                                                 {
                                                                                     __auto_type iri = _mv_404.data.term_iri;
                                                                                     {
-                                                                                        __auto_type enriched = engine_build_enriched_reason(arena, iri.value, SLOP_STR(""), original_reason, SLOP_STR(""));
-                                                                                        return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                                                        __auto_type enriched = growl_engine_build_enriched_reason(arena, iri.value, SLOP_STR(""), original_reason, SLOP_STR(""));
+                                                                                        return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                                                                     }
                                                                                 }
                                                                                 default: {
@@ -472,15 +472,15 @@ types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types
                                                                             }
                                                                         } else {
                                                                             {
-                                                                                __auto_type enriched = engine_build_enriched_reason(arena, SLOP_STR(""), prop_name, original_reason, SLOP_STR(""));
-                                                                                return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                                                __auto_type enriched = growl_engine_build_enriched_reason(arena, SLOP_STR(""), prop_name, original_reason, SLOP_STR(""));
+                                                                                return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                                                             }
                                                                         }
                                                                     }
                                                                 } else if (!_mv_403.has_value) {
                                                                     {
-                                                                        __auto_type enriched = engine_build_enriched_reason(arena, SLOP_STR(""), prop_name, original_reason, SLOP_STR(""));
-                                                                        return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                                        __auto_type enriched = growl_engine_build_enriched_reason(arena, SLOP_STR(""), prop_name, original_reason, SLOP_STR(""));
+                                                                        return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                                                     }
                                                                 }
                                                                 SLOP_UNREACHABLE();
@@ -492,8 +492,8 @@ types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types
                                                     }
                                                 } else {
                                                     {
-                                                        __auto_type enriched = engine_build_enriched_reason(arena, SLOP_STR(""), prop_name, original_reason, SLOP_STR(""));
-                                                        return ((types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
+                                                        __auto_type enriched = growl_engine_build_enriched_reason(arena, SLOP_STR(""), prop_name, original_reason, SLOP_STR(""));
+                                                        return ((growl_types_InconsistencyReport){.reason = enriched, .witnesses = witnesses});
                                                     }
                                                 }
                                             }
@@ -517,29 +517,29 @@ types_InconsistencyReport engine_enrich_validate_report(slop_arena* arena, types
     }
 }
 
-slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena, index_IndexedGraph g, index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_rdf_Term class_map, slop_list_rdf_Term prop_map) {
+slop_list_growl_types_InconsistencyReport growl_engine_validate_check_all(slop_arena* arena, slop_rdf_index_IndexedGraph g, slop_rdf_index_IndexedGraph pre_inject_graph, slop_string validate_ns, slop_list_slop_rdf_rdf_Term class_map, slop_list_slop_rdf_rdf_Term prop_map) {
     {
-        __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
-        __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE);
-        __auto_type nothing_class = rdf_make_iri(arena, vocab_OWL_NOTHING);
-        __auto_type disjoint_pred = rdf_make_iri(arena, vocab_OWL_DISJOINT_WITH);
-        __auto_type complement_pred = rdf_make_iri(arena, vocab_OWL_COMPLEMENT_OF);
-        __auto_type asymm_type = rdf_make_iri(arena, vocab_OWL_ASYMMETRIC_PROPERTY);
-        __auto_type pdw_pred = rdf_make_iri(arena, vocab_OWL_PROPERTY_DISJOINT_WITH);
-        __auto_type adc_class = rdf_make_iri(arena, vocab_OWL_ALL_DISJOINT_CLASSES);
-        __auto_type members_pred = rdf_make_iri(arena, vocab_OWL_MEMBERS);
-        slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
+        __auto_type reports = ((slop_list_growl_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+        __auto_type type_pred = rdf_make_iri(arena, slop_rdf_vocab_RDF_TYPE);
+        __auto_type nothing_class = rdf_make_iri(arena, slop_rdf_vocab_OWL_NOTHING);
+        __auto_type disjoint_pred = rdf_make_iri(arena, slop_rdf_vocab_OWL_DISJOINT_WITH);
+        __auto_type complement_pred = rdf_make_iri(arena, slop_rdf_vocab_OWL_COMPLEMENT_OF);
+        __auto_type asymm_type = rdf_make_iri(arena, slop_rdf_vocab_OWL_ASYMMETRIC_PROPERTY);
+        __auto_type pdw_pred = rdf_make_iri(arena, slop_rdf_vocab_OWL_PROPERTY_DISJOINT_WITH);
+        __auto_type adc_class = rdf_make_iri(arena, slop_rdf_vocab_OWL_ALL_DISJOINT_CLASSES);
+        __auto_type members_pred = rdf_make_iri(arena, slop_rdf_vocab_OWL_MEMBERS);
+        slop_option_slop_rdf_rdf_Term no_term = (slop_option_slop_rdf_rdf_Term){.has_value = false};
         {
             int64_t i = 0;
             __auto_type class_count = ((int64_t)((class_map).len));
             while (i < class_count) {
-                __auto_type _mv_405 = ({ __auto_type _lst = class_map; size_t _idx = (size_t)i; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                __auto_type _mv_405 = ({ __auto_type _lst = class_map; size_t _idx = (size_t)i; slop_option_slop_rdf_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                 if (_mv_405.has_value) {
                     __auto_type cls = _mv_405.value;
                     {
                         __auto_type blank_id = (10000000 + i);
-                        __auto_type blank = rdf_make_blank(arena, SLOP_RANGE(rdf_BlankNodeId, blank_id, 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:419:46"));
-                        __auto_type types = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = blank}, (slop_option_rdf_Term){.has_value = 1, .value = type_pred}, no_term);
+                        __auto_type blank = rdf_make_blank(arena, SLOP_RANGE(slop_rdf_rdf_BlankNodeId, blank_id, 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:419:46"));
+                        __auto_type types = rdf_indexed_graph_match(arena, g, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = blank}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = type_pred}, no_term);
                         uint8_t found = 0;
                         if (!(found)) {
                             {
@@ -549,8 +549,8 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                     if (!(found) && rdf_term_eq(tt.object, nothing_class)) {
                                         found = 1;
                                         {
-                                            __auto_type raw_report = ((types_InconsistencyReport){.reason = SLOP_STR("cls-nothing2: individual is member of owl:Nothing"), .witnesses = ({ __auto_type wl = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena }); ({ __auto_type _lst_p = &(wl); __auto_type _item = (tt); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); wl; })});
-                                            ({ __auto_type _lst_p = &(reports); __auto_type _item = (engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                            __auto_type raw_report = ((growl_types_InconsistencyReport){.reason = SLOP_STR("cls-nothing2: individual is member of owl:Nothing"), .witnesses = ({ __auto_type wl = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena }); ({ __auto_type _lst_p = &(wl); __auto_type _item = (tt); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }); wl; })});
+                                            ({ __auto_type _lst_p = &(reports); __auto_type _item = (growl_engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                         }
                                     }
                                 }
@@ -564,7 +564,7 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                     if (!(found)) {
                                         {
                                             __auto_type cls_type = tt.object;
-                                            __auto_type dj_triples = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = cls_type}, (slop_option_rdf_Term){.has_value = 1, .value = disjoint_pred}, no_term);
+                                            __auto_type dj_triples = rdf_indexed_graph_match(arena, g, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = cls_type}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = disjoint_pred}, no_term);
                                             {
                                                 __auto_type _coll = dj_triples;
                                                 for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -577,13 +577,13 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                                                 found = 1;
                                                                 {
                                                                     __auto_type witness_type_other = rdf_make_triple(arena, blank, type_pred, other_cls);
-                                                                    __auto_type wl = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                                                                    __auto_type wl = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                                                                     ({ __auto_type _lst_p = &(wl); __auto_type _item = (tt); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                     ({ __auto_type _lst_p = &(wl); __auto_type _item = (witness_type_other); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                     ({ __auto_type _lst_p = &(wl); __auto_type _item = (dj); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                     {
-                                                                        __auto_type raw_report = ((types_InconsistencyReport){.reason = SLOP_STR("cax-dw: disjoint classes have common individual"), .witnesses = wl});
-                                                                        ({ __auto_type _lst_p = &(reports); __auto_type _item = (engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                                                        __auto_type raw_report = ((growl_types_InconsistencyReport){.reason = SLOP_STR("cax-dw: disjoint classes have common individual"), .witnesses = wl});
+                                                                        ({ __auto_type _lst_p = &(reports); __auto_type _item = (growl_engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                     }
                                                                 }
                                                             }
@@ -604,7 +604,7 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                     if (!(found)) {
                                         {
                                             __auto_type cls_type = tt.object;
-                                            __auto_type comp_triples = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = cls_type}, (slop_option_rdf_Term){.has_value = 1, .value = complement_pred}, no_term);
+                                            __auto_type comp_triples = rdf_indexed_graph_match(arena, g, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = cls_type}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = complement_pred}, no_term);
                                             {
                                                 __auto_type _coll = comp_triples;
                                                 for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -616,12 +616,12 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                                             if (rdf_indexed_graph_contains(g, type_check_triple)) {
                                                                 found = 1;
                                                                 {
-                                                                    __auto_type wl = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                                                                    __auto_type wl = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                                                                     ({ __auto_type _lst_p = &(wl); __auto_type _item = (tt); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                     ({ __auto_type _lst_p = &(wl); __auto_type _item = (rdf_make_triple(arena, blank, type_pred, comp_cls)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                     {
-                                                                        __auto_type raw_report = ((types_InconsistencyReport){.reason = SLOP_STR("cls-com: individual is member of class and its complement"), .witnesses = wl});
-                                                                        ({ __auto_type _lst_p = &(reports); __auto_type _item = (engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                                                        __auto_type raw_report = ((growl_types_InconsistencyReport){.reason = SLOP_STR("cls-com: individual is member of class and its complement"), .witnesses = wl});
+                                                                        ({ __auto_type _lst_p = &(reports); __auto_type _item = (growl_engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                     }
                                                                 }
                                                             }
@@ -636,7 +636,7 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                         }
                         if (!(found)) {
                             {
-                                __auto_type adc_triples = rdf_indexed_graph_match(arena, g, no_term, (slop_option_rdf_Term){.has_value = 1, .value = type_pred}, (slop_option_rdf_Term){.has_value = 1, .value = adc_class});
+                                __auto_type adc_triples = rdf_indexed_graph_match(arena, g, no_term, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = type_pred}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = adc_class});
                                 {
                                     __auto_type _coll = adc_triples;
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -644,7 +644,7 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                         if (!(found)) {
                                             {
                                                 __auto_type adc_node = adc_triple.subject;
-                                                __auto_type m_triples = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = adc_node}, (slop_option_rdf_Term){.has_value = 1, .value = members_pred}, no_term);
+                                                __auto_type m_triples = rdf_indexed_graph_match(arena, g, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = adc_node}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = members_pred}, no_term);
                                                 {
                                                     __auto_type _coll = m_triples;
                                                     for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -671,13 +671,13 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                                                                                     if (rdf_indexed_graph_contains(g, tb)) {
                                                                                                         found = 1;
                                                                                                         {
-                                                                                                            __auto_type wl = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                                                                                                            __auto_type wl = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                                                                                                             ({ __auto_type _lst_p = &(wl); __auto_type _item = (ta); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                                                             ({ __auto_type _lst_p = &(wl); __auto_type _item = (tb); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                                                             ({ __auto_type _lst_p = &(wl); __auto_type _item = (adc_triple); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                                                             {
-                                                                                                                __auto_type raw_report = ((types_InconsistencyReport){.reason = SLOP_STR("cax-adc: individual is instance of two classes in AllDisjointClasses"), .witnesses = wl});
-                                                                                                                ({ __auto_type _lst_p = &(reports); __auto_type _item = (engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                                                                                                __auto_type raw_report = ((growl_types_InconsistencyReport){.reason = SLOP_STR("cax-adc: individual is instance of two classes in AllDisjointClasses"), .witnesses = wl});
+                                                                                                                ({ __auto_type _lst_p = &(reports); __auto_type _item = (growl_engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                                                                             }
                                                                                                         }
                                                                                                     }
@@ -710,12 +710,12 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
             int64_t j = 0;
             __auto_type prop_count = ((int64_t)((prop_map).len));
             while (j < prop_count) {
-                __auto_type _mv_406 = ({ __auto_type _lst = prop_map; size_t _idx = (size_t)j; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                __auto_type _mv_406 = ({ __auto_type _lst = prop_map; size_t _idx = (size_t)j; slop_option_slop_rdf_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                 if (_mv_406.has_value) {
                     __auto_type prop = _mv_406.value;
                     {
-                        __auto_type subj_blank = rdf_make_blank(arena, SLOP_RANGE(rdf_BlankNodeId, (20000000 + j), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:526:51"));
-                        __auto_type obj_blank = rdf_make_blank(arena, SLOP_RANGE(rdf_BlankNodeId, (30000000 + j), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:527:50"));
+                        __auto_type subj_blank = rdf_make_blank(arena, SLOP_RANGE(slop_rdf_rdf_BlankNodeId, (20000000 + j), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:526:51"));
+                        __auto_type obj_blank = rdf_make_blank(arena, SLOP_RANGE(slop_rdf_rdf_BlankNodeId, (30000000 + j), 1, 0, 0, 0, "BlankNodeId (Int 0 ..) at engine.slop:527:50"));
                         uint8_t found = 0;
                         if (!(found)) {
                             {
@@ -726,12 +726,12 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                         if (rdf_indexed_graph_contains(g, reverse_triple)) {
                                             found = 1;
                                             {
-                                                __auto_type wl = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                                                __auto_type wl = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                                                 ({ __auto_type _lst_p = &(wl); __auto_type _item = (rdf_make_triple(arena, subj_blank, prop, obj_blank)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                 ({ __auto_type _lst_p = &(wl); __auto_type _item = (reverse_triple); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                 {
-                                                    __auto_type raw_report = ((types_InconsistencyReport){.reason = SLOP_STR("prp-asyp: asymmetric property used symmetrically"), .witnesses = wl});
-                                                    ({ __auto_type _lst_p = &(reports); __auto_type _item = (engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                                    __auto_type raw_report = ((growl_types_InconsistencyReport){.reason = SLOP_STR("prp-asyp: asymmetric property used symmetrically"), .witnesses = wl});
+                                                    ({ __auto_type _lst_p = &(reports); __auto_type _item = (growl_engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                 }
                                             }
                                         }
@@ -741,7 +741,7 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                         }
                         if (!(found)) {
                             {
-                                __auto_type pdw_triples = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = prop}, (slop_option_rdf_Term){.has_value = 1, .value = pdw_pred}, no_term);
+                                __auto_type pdw_triples = rdf_indexed_graph_match(arena, g, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = prop}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = pdw_pred}, no_term);
                                 {
                                     __auto_type _coll = pdw_triples;
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -753,13 +753,13 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
                                                 if (rdf_indexed_graph_contains(g, other_triple)) {
                                                     found = 1;
                                                     {
-                                                        __auto_type wl = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                                                        __auto_type wl = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                                                         ({ __auto_type _lst_p = &(wl); __auto_type _item = (rdf_make_triple(arena, subj_blank, prop, obj_blank)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                         ({ __auto_type _lst_p = &(wl); __auto_type _item = (other_triple); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                         ({ __auto_type _lst_p = &(wl); __auto_type _item = (pdw); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                         {
-                                                            __auto_type raw_report = ((types_InconsistencyReport){.reason = SLOP_STR("prp-pdw: property disjoint with another property used on same individuals"), .witnesses = wl});
-                                                            ({ __auto_type _lst_p = &(reports); __auto_type _item = (engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                                            __auto_type raw_report = ((growl_types_InconsistencyReport){.reason = SLOP_STR("prp-pdw: property disjoint with another property used on same individuals"), .witnesses = wl});
+                                                            ({ __auto_type _lst_p = &(reports); __auto_type _item = (growl_engine_enrich_validate_report(arena, raw_report, pre_inject_graph, validate_ns, class_map, prop_map)); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                                         }
                                                     }
                                                 }
@@ -779,40 +779,40 @@ slop_list_types_InconsistencyReport engine_validate_check_all(slop_arena* arena,
     }
 }
 
-types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig config, index_IndexedGraph initial) {
+growl_types_ReasonerResult growl_engine_engine_run(slop_arena* arena, growl_types_ReasonerConfig config, slop_rdf_index_IndexedGraph initial) {
     SLOP_PRE(((config.worker_count >= 1)), "(>= (. config worker-count) 1)");
     SLOP_PRE(((config.max_iterations >= 1)), "(>= (. config max-iterations) 1)");
     SLOP_PRE(((rdf_indexed_graph_size(initial) >= 0)), "(>= (indexed-graph-size initial) 0)");
-    types_ReasonerResult _retval = {0};
+    growl_types_ReasonerResult _retval = {0};
     {
         __auto_type init_delta_arena = ({ slop_arena* _new_arena = malloc(sizeof(slop_arena)); if (!_new_arena) { fprintf(stderr, "SLOP: arena-new malloc failed\n"); abort(); } *_new_arena = slop_arena_new(4194304); _new_arena; });
         __auto_type initial_size = rdf_indexed_graph_size(initial);
-        __auto_type initial_delta = engine_make_initial_delta(init_delta_arena, initial);
-        __auto_type materialized_graph = ((config.enrich) ? initial : ((config.fast) ? engine_schema_materialize_fast(arena, initial) : engine_schema_materialize(arena, initial, engine_make_initial_delta(init_delta_arena, initial), config)));
-        __auto_type dt_graph = (((config.fast || config.enrich)) ? materialized_graph : ({ __auto_type mg = materialized_graph; ({ __auto_type _coll = dt_dt_type1(arena, mg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ mg = rdf_indexed_graph_add(arena, mg, t); (void)0; }); } (void)0; }); mg; }));
-        __auto_type complete_graph = (((!(config.fast) && config.complete)) ? ({ __auto_type cg = dt_graph; ({ __auto_type _coll = prp_prp_ap(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_thing(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = cls_cls_nothing1(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = dt_dt_type2(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } (void)0; }); ({ __auto_type thing = rdf_make_iri(arena, vocab_OWL_THING); __auto_type nothing = rdf_make_iri(arena, vocab_OWL_NOTHING); __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF); __auto_type equiv_pred = rdf_make_iri(arena, vocab_OWL_EQUIVALENT_CLASS); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, thing, subclass_pred, thing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, thing, equiv_pred, thing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, subclass_pred, nothing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, equiv_pred, nothing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, subclass_pred, thing)); (void)0; }); }); ({ __auto_type same_as = rdf_make_iri(arena, vocab_OWL_SAME_AS); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, same_as, same_as, same_as)); (void)0; }); }); ({ __auto_type type_pred = rdf_make_iri(arena, vocab_RDF_TYPE); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, rdf_make_iri(arena, vocab_OWL_DIFFERENT_FROM), type_pred, rdf_make_iri(arena, vocab_OWL_SYMMETRIC_PROPERTY))); (void)0; }); }); cg; }) : dt_graph);
-        __auto_type validate_injection = ((config.validate) ? engine_inject_validate_instances(arena, complete_graph, config.verbose, config.validate_ns) : ((engine_ValidateInjection){.graph = complete_graph, .class_map = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena }), .prop_map = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena })}));
+        __auto_type initial_delta = growl_engine_make_initial_delta(init_delta_arena, initial);
+        __auto_type materialized_graph = ((config.enrich) ? initial : ((config.fast) ? growl_engine_schema_materialize_fast(arena, initial) : growl_engine_schema_materialize(arena, initial, growl_engine_make_initial_delta(init_delta_arena, initial), config)));
+        __auto_type dt_graph = (((config.fast || config.enrich)) ? materialized_graph : ({ __auto_type mg = materialized_graph; ({ __auto_type _coll = growl_dt_dt_type1(arena, mg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ mg = rdf_indexed_graph_add(arena, mg, t); (void)0; }); } (void)0; }); mg; }));
+        __auto_type complete_graph = (((!(config.fast) && config.complete)) ? ({ __auto_type cg = dt_graph; ({ __auto_type _coll = growl_prp_prp_ap(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_thing(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_cls_cls_nothing1(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } (void)0; }); ({ __auto_type _coll = growl_dt_dt_type2(arena, cg); for (size_t _i = 0; _i < _coll.len; _i++) { __auto_type t = _coll.data[_i]; ({ cg = rdf_indexed_graph_add(arena, cg, t); (void)0; }); } (void)0; }); ({ __auto_type thing = rdf_make_iri(arena, slop_rdf_vocab_OWL_THING); __auto_type nothing = rdf_make_iri(arena, slop_rdf_vocab_OWL_NOTHING); __auto_type subclass_pred = rdf_make_iri(arena, slop_rdf_vocab_RDFS_SUBCLASS_OF); __auto_type equiv_pred = rdf_make_iri(arena, slop_rdf_vocab_OWL_EQUIVALENT_CLASS); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, thing, subclass_pred, thing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, thing, equiv_pred, thing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, subclass_pred, nothing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, equiv_pred, nothing)); (void)0; }); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, nothing, subclass_pred, thing)); (void)0; }); }); ({ __auto_type same_as = rdf_make_iri(arena, slop_rdf_vocab_OWL_SAME_AS); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, same_as, same_as, same_as)); (void)0; }); }); ({ __auto_type type_pred = rdf_make_iri(arena, slop_rdf_vocab_RDF_TYPE); ({ cg = rdf_indexed_graph_add(arena, cg, rdf_make_triple(arena, rdf_make_iri(arena, slop_rdf_vocab_OWL_DIFFERENT_FROM), type_pred, rdf_make_iri(arena, slop_rdf_vocab_OWL_SYMMETRIC_PROPERTY))); (void)0; }); }); cg; }) : dt_graph);
+        __auto_type validate_injection = ((config.validate) ? growl_engine_inject_validate_instances(arena, complete_graph, config.verbose, config.validate_ns) : ((growl_engine_ValidateInjection){.graph = complete_graph, .class_map = ((slop_list_slop_rdf_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena }), .prop_map = ((slop_list_slop_rdf_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena })}));
         __auto_type validate_graph = validate_injection.graph;
         __auto_type validate_class_map = validate_injection.class_map;
         __auto_type validate_prop_map = validate_injection.prop_map;
-        __auto_type fixpoint_delta = ((config.validate) ? engine_make_initial_delta(init_delta_arena, validate_graph) : initial_delta);
-        __auto_type state = ((types_EngineState){.graph = validate_graph, .delta = fixpoint_delta, .iteration = 0, .config = config});
+        __auto_type fixpoint_delta = ((config.validate) ? growl_engine_make_initial_delta(init_delta_arena, validate_graph) : initial_delta);
+        __auto_type state = ((growl_types_EngineState){.graph = validate_graph, .delta = fixpoint_delta, .iteration = 0, .config = config});
         uint8_t done = 0;
         uint8_t cancelled = 0;
-        slop_option_types_InconsistencyReport inconsistency = (slop_option_types_InconsistencyReport){.has_value = false};
-        slop_option_types_InconsistencyReport dt_report = (slop_option_types_InconsistencyReport){.has_value = false};
+        slop_option_growl_types_InconsistencyReport inconsistency = (slop_option_growl_types_InconsistencyReport){.has_value = false};
+        slop_option_growl_types_InconsistencyReport dt_report = (slop_option_growl_types_InconsistencyReport){.has_value = false};
         if (!(config.fast) && !(config.enrich)) {
-            __auto_type _mv_407 = dt_dt_not_type(arena, state.graph);
+            __auto_type _mv_407 = growl_dt_dt_not_type(arena, state.graph);
             if (_mv_407.has_value) {
                 __auto_type report = _mv_407.value;
                 if (config.validate) {
-                    dt_report = (slop_option_types_InconsistencyReport){.has_value = 1, .value = report};
+                    dt_report = (slop_option_growl_types_InconsistencyReport){.has_value = 1, .value = report};
                 } else {
                     ({ slop_arena_free(init_delta_arena); free(init_delta_arena); });
                     {
-                        __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                        __auto_type reports = ((slop_list_growl_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                         ({ __auto_type _lst_p = &(reports); __auto_type _item = (report); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                        _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
+                        _retval = ((growl_types_ReasonerResult){ .tag = growl_types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
                         goto _slop_post;
                     }
                 }
@@ -841,23 +841,23 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                     printf("%.*s", (int)(int_to_string(arena, ((int64_t)((state.delta.triples).len)))).len, (int_to_string(arena, ((int64_t)((state.delta.triples).len)))).data);
                     printf("%s\n", "");
                 }
-                __auto_type _mv_408 = engine_engine_run_iteration(arena, state);
+                __auto_type _mv_408 = growl_engine_engine_run_iteration(arena, state);
                 if (_mv_408.is_ok) {
                     __auto_type new_state = _mv_408.data.ok;
                     state = new_state;
-                    if (types_delta_is_empty(new_state.delta)) {
+                    if (growl_types_delta_is_empty(new_state.delta)) {
                         done = 1;
                     }
                 } else if (!_mv_408.is_ok) {
                     __auto_type report = _mv_408.data.err;
                     done = 1;
-                    inconsistency = (slop_option_types_InconsistencyReport){.has_value = 1, .value = report};
+                    inconsistency = (slop_option_growl_types_InconsistencyReport){.has_value = 1, .value = report};
                 }
             }
         }
-        ({ slop_arena_free(init_delta_arena); free(init_delta_arena); });
+        (void)(({ slop_arena_free(init_delta_arena); free(init_delta_arena); }));
         if (cancelled) {
-            _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_cancelled, .data.reason_cancelled = ((types_ReasonerSuccess){.graph = state.graph, .inferred_count = SLOP_RANGE(int64_t, (rdf_indexed_graph_size(state.graph) - initial_size), 1, 0, 0, 0, "(Int 0 ..) at engine.slop:740:27"), .iterations = state.iteration}) });
+            _retval = ((growl_types_ReasonerResult){ .tag = growl_types_ReasonerResult_reason_cancelled, .data.reason_cancelled = ((growl_types_ReasonerSuccess){.graph = state.graph, .inferred_count = SLOP_RANGE(int64_t, (rdf_indexed_graph_size(state.graph) - initial_size), 1, 0, 0, 0, "(Int 0 ..) at engine.slop:740:27"), .iterations = state.iteration}) });
             goto _slop_post;
         } else {
             if (config.validate) {
@@ -865,20 +865,20 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                 if (_mv_409.has_value) {
                     __auto_type report = _mv_409.value;
                     {
-                        __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
-                        __auto_type enriched = engine_enrich_validate_report(arena, report, complete_graph, config.validate_ns, validate_class_map, validate_prop_map);
+                        __auto_type reports = ((slop_list_growl_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                        __auto_type enriched = growl_engine_enrich_validate_report(arena, report, complete_graph, config.validate_ns, validate_class_map, validate_prop_map);
                         ({ __auto_type _lst_p = &(reports); __auto_type _item = (enriched); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                        _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
+                        _retval = ((growl_types_ReasonerResult){ .tag = growl_types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
                         goto _slop_post;
                     }
                 } else if (!_mv_409.has_value) {
                     {
-                        __auto_type all_reports = engine_validate_check_all(arena, state.graph, complete_graph, config.validate_ns, validate_class_map, validate_prop_map);
+                        __auto_type all_reports = growl_engine_validate_check_all(arena, state.graph, complete_graph, config.validate_ns, validate_class_map, validate_prop_map);
                         __auto_type _mv_410 = dt_report;
                         if (_mv_410.has_value) {
                             __auto_type dt_r = _mv_410.value;
                             {
-                                __auto_type combined = ((slop_list_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                                __auto_type combined = ((slop_list_growl_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                                 ({ __auto_type _lst_p = &(combined); __auto_type _item = (dt_r); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                 {
                                     __auto_type _coll = all_reports;
@@ -887,15 +887,15 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                                         ({ __auto_type _lst_p = &(combined); __auto_type _item = (r); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
                                     }
                                 }
-                                _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = combined });
+                                _retval = ((growl_types_ReasonerResult){ .tag = growl_types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = combined });
                                 goto _slop_post;
                             }
                         } else if (!_mv_410.has_value) {
                             if (((int64_t)((all_reports).len)) > 0) {
-                                _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = all_reports });
+                                _retval = ((growl_types_ReasonerResult){ .tag = growl_types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = all_reports });
                                 goto _slop_post;
                             } else {
-                                _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_success, .data.reason_success = ((types_ReasonerSuccess){.graph = state.graph, .inferred_count = SLOP_RANGE(int64_t, (rdf_indexed_graph_size(state.graph) - initial_size), 1, 0, 0, 0, "(Int 0 ..) at engine.slop:769:39"), .iterations = state.iteration}) });
+                                _retval = ((growl_types_ReasonerResult){ .tag = growl_types_ReasonerResult_reason_success, .data.reason_success = ((growl_types_ReasonerSuccess){.graph = state.graph, .inferred_count = SLOP_RANGE(int64_t, (rdf_indexed_graph_size(state.graph) - initial_size), 1, 0, 0, 0, "(Int 0 ..) at engine.slop:769:39"), .iterations = state.iteration}) });
                                 goto _slop_post;
                             }
                         }
@@ -908,9 +908,9 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                 if (_mv_411.has_value) {
                     __auto_type report = _mv_411.value;
                     {
-                        __auto_type reports = ((slop_list_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                        __auto_type reports = ((slop_list_growl_types_InconsistencyReport){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                         ({ __auto_type _lst_p = &(reports); __auto_type _item = (report); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-                        _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
+                        _retval = ((growl_types_ReasonerResult){ .tag = growl_types_ReasonerResult_reason_inconsistent, .data.reason_inconsistent = reports });
                         goto _slop_post;
                     }
                 } else if (!_mv_411.has_value) {
@@ -918,9 +918,9 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                         __auto_type final_graph = state.graph;
                         if (config.complete) {
                             {
-                                __auto_type full_delta = engine_make_initial_delta(arena, final_graph);
+                                __auto_type full_delta = growl_engine_make_initial_delta(arena, final_graph);
                                 {
-                                    __auto_type _coll = eq_eq_ref(arena, final_graph, full_delta);
+                                    __auto_type _coll = growl_eq_eq_ref(arena, final_graph, full_delta);
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
                                         __auto_type t = _coll.data[_i];
                                         final_graph = rdf_indexed_graph_add(arena, final_graph, t);
@@ -928,7 +928,7 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
                                 }
                             }
                         }
-                        _retval = ((types_ReasonerResult){ .tag = types_ReasonerResult_reason_success, .data.reason_success = ((types_ReasonerSuccess){.graph = final_graph, .inferred_count = SLOP_RANGE(int64_t, (rdf_indexed_graph_size(final_graph) - initial_size), 1, 0, 0, 0, "(Int 0 ..) at engine.slop:788:33"), .iterations = state.iteration}) });
+                        _retval = ((growl_types_ReasonerResult){ .tag = growl_types_ReasonerResult_reason_success, .data.reason_success = ((growl_types_ReasonerSuccess){.graph = final_graph, .inferred_count = SLOP_RANGE(int64_t, (rdf_indexed_graph_size(final_graph) - initial_size), 1, 0, 0, 0, "(Int 0 ..) at engine.slop:788:33"), .iterations = state.iteration}) });
                         goto _slop_post;
                     }
                 }
@@ -937,20 +937,20 @@ types_ReasonerResult engine_engine_run(slop_arena* arena, types_ReasonerConfig c
         }
     }
     _slop_post: ;
-    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; int _mm = 0; switch (_mv.tag) { case types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); _mm = 1; break; } case types_ReasonerResult_reason_inconsistent: { _mr = 1; _mm = 1; break; } case types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.iterations <= config.max_iterations); _mm = 1; break; }  } if (!_mm) { SLOP_UNREACHABLE(); } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true) ((reason-cancelled s) (<= (. s iterations) (. config max-iterations))))");
+    SLOP_POST((({ __auto_type _mv = _retval; uint8_t _mr = {0}; int _mm = 0; switch (_mv.tag) { case growl_types_ReasonerResult_reason_success: { __auto_type s = _mv.data.reason_success; _mr = (s.iterations <= config.max_iterations); _mm = 1; break; } case growl_types_ReasonerResult_reason_inconsistent: { _mr = 1; _mm = 1; break; } case growl_types_ReasonerResult_reason_cancelled: { __auto_type s = _mv.data.reason_cancelled; _mr = (s.iterations <= config.max_iterations); _mm = 1; break; }  } if (!_mm) { SLOP_UNREACHABLE(); } _mr; })), "(match $result ((reason-success s) (<= (. s iterations) (. config max-iterations))) ((reason-inconsistent _) true) ((reason-cancelled s) (<= (. s iterations) (. config max-iterations))))");
     return _retval;
 }
 
-types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g) {
-    types_Delta _retval = {0};
+growl_types_Delta growl_engine_make_initial_delta(slop_arena* arena, slop_rdf_index_IndexedGraph g) {
+    growl_types_Delta _retval = {0};
     {
-        __auto_type triples_list = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
-        __auto_type by_pred = ({ static const slop_map_desc _d = SLOP_MAP_DESC(rdf_Term, slop_hash_rdf_Term, slop_eq_rdf_Term, SLOP_KEY_HASHED, slop_map*); slop_map_new_ptr(arena, 0, &_d); });
+        __auto_type triples_list = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+        __auto_type by_pred = ({ static const slop_map_desc _d = SLOP_MAP_DESC(slop_rdf_rdf_Term, slop_hash_slop_rdf_rdf_Term, slop_eq_slop_rdf_rdf_Term, SLOP_KEY_HASHED, slop_map*); slop_map_new_ptr(arena, 0, &_d); });
         {
             __auto_type _coll = g.triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
-                ({ __auto_type _lst_p = &(triples_list); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                (void)(({ __auto_type _lst_p = &(triples_list); __auto_type _item = (t); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
                 {
                     __auto_type pred = rdf_triple_predicate(t);
                     __auto_type _mv_413 = ({ void* _ptr = slop_map_get(by_pred, &(pred)); _ptr ? (slop_option_map_ptr){ .has_value = true, .value = *(slop_map**)_ptr } : (slop_option_map_ptr){ .has_value = false }; });
@@ -959,7 +959,7 @@ types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g) {
                         ({ slop_map_put(NULL, pred_set, &(t), NULL, 0); });
                     } else if (!_mv_413.has_value) {
                         {
-                            __auto_type new_set = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Triple, slop_hash_rdf_Triple, slop_eq_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
+                            __auto_type new_set = ({ static const slop_map_desc _d = SLOP_SET_DESC(slop_rdf_rdf_Triple, slop_hash_slop_rdf_rdf_Triple, slop_eq_slop_rdf_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
                             ({ slop_map_put(NULL, new_set, &(t), NULL, 0); });
                             ({ slop_map* _val = new_set; slop_map_put(NULL, by_pred, &(pred), &_val, sizeof(_val)); });
                         }
@@ -967,7 +967,7 @@ types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g) {
                 }
             }
         }
-        _retval = ((types_Delta){.triples = triples_list, .seen = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Triple, slop_hash_rdf_Triple, slop_eq_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); }), .by_predicate = by_pred, .iteration = 0});
+        _retval = ((growl_types_Delta){.triples = triples_list, .seen = ({ static const slop_map_desc _d = SLOP_SET_DESC(slop_rdf_rdf_Triple, slop_hash_slop_rdf_rdf_Triple, slop_eq_slop_rdf_rdf_Triple, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); }), .by_predicate = by_pred, .iteration = 0});
         goto _slop_post;
     }
     _slop_post: ;
@@ -975,15 +975,15 @@ types_Delta engine_make_initial_delta(slop_arena* arena, index_IndexedGraph g) {
     return _retval;
 }
 
-slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, rdf_Term pred) {
+slop_list_slop_rdf_rdf_Triple growl_engine_compute_tc(slop_arena* arena, slop_rdf_index_IndexedGraph g, slop_rdf_rdf_Term pred) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_list_rdf_Triple _retval = {0};
+    slop_list_slop_rdf_rdf_Triple _retval = {0};
     {
-        slop_option_rdf_Term no_term = (slop_option_rdf_Term){.has_value = false};
-        __auto_type result = ((slop_list_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
-        __auto_type all_pred_triples = rdf_indexed_graph_match(arena, g, no_term, (slop_option_rdf_Term){.has_value = 1, .value = pred}, no_term);
-        __auto_type all_subjects = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
-        __auto_type seen_subjects = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Term, slop_hash_rdf_Term, slop_eq_rdf_Term, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
+        slop_option_slop_rdf_rdf_Term no_term = (slop_option_slop_rdf_rdf_Term){.has_value = false};
+        __auto_type result = ((slop_list_slop_rdf_rdf_Triple){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+        __auto_type all_pred_triples = rdf_indexed_graph_match(arena, g, no_term, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = pred}, no_term);
+        __auto_type all_subjects = ((slop_list_slop_rdf_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+        __auto_type seen_subjects = ({ static const slop_map_desc _d = SLOP_SET_DESC(slop_rdf_rdf_Term, slop_hash_slop_rdf_rdf_Term, slop_eq_slop_rdf_rdf_Term, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
         {
             __auto_type _coll = all_pred_triples;
             for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -991,8 +991,8 @@ slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, 
                 {
                     __auto_type s = rdf_triple_subject(t);
                     if (!(slop_map_has(seen_subjects, &(s)))) {
-                        ({ slop_map_put(NULL, seen_subjects, &(s), NULL, 0); });
-                        ({ __auto_type _lst_p = &(all_subjects); __auto_type _item = (s); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                        (void)(({ slop_map_put(NULL, seen_subjects, &(s), NULL, 0); }));
+                        (void)(({ __auto_type _lst_p = &(all_subjects); __auto_type _item = (s); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
                     }
                 }
             }
@@ -1002,10 +1002,10 @@ slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, 
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type start = _coll.data[_i];
                 {
-                    __auto_type bfs_visited = ({ static const slop_map_desc _d = SLOP_SET_DESC(rdf_Term, slop_hash_rdf_Term, slop_eq_rdf_Term, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
-                    __auto_type bfs_queue = ((slop_list_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
+                    __auto_type bfs_visited = ({ static const slop_map_desc _d = SLOP_SET_DESC(slop_rdf_rdf_Term, slop_hash_slop_rdf_rdf_Term, slop_eq_slop_rdf_rdf_Term, SLOP_KEY_HASHED); slop_map_new_ptr(arena, 0, &_d); });
+                    __auto_type bfs_queue = ((slop_list_slop_rdf_rdf_Term){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
                     {
-                        __auto_type direct_parents = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = start}, (slop_option_rdf_Term){.has_value = 1, .value = pred}, no_term);
+                        __auto_type direct_parents = rdf_indexed_graph_match(arena, g, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = start}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = pred}, no_term);
                         {
                             __auto_type _coll = direct_parents;
                             for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -1013,8 +1013,8 @@ slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, 
                                 {
                                     __auto_type parent = rdf_triple_object(t);
                                     if (!(slop_map_has(bfs_visited, &(parent)))) {
-                                        ({ slop_map_put(NULL, bfs_visited, &(parent), NULL, 0); });
-                                        ({ __auto_type _lst_p = &(bfs_queue); __auto_type _item = (parent); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+                                        (void)(({ slop_map_put(NULL, bfs_visited, &(parent), NULL, 0); }));
+                                        (void)(({ __auto_type _lst_p = &(bfs_queue); __auto_type _item = (parent); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
                                     }
                                 }
                             }
@@ -1023,7 +1023,7 @@ slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, 
                     {
                         int64_t qi = 0;
                         while (qi < ((int64_t)((bfs_queue).len))) {
-                            __auto_type _mv_421 = ({ __auto_type _lst = bfs_queue; size_t _idx = (size_t)qi; slop_option_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                            __auto_type _mv_421 = ({ __auto_type _lst = bfs_queue; size_t _idx = (size_t)qi; slop_option_slop_rdf_rdf_Term _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                             if (_mv_421.has_value) {
                                 __auto_type current = _mv_421.value;
                                 {
@@ -1033,7 +1033,7 @@ slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, 
                                     }
                                 }
                                 {
-                                    __auto_type parents = rdf_indexed_graph_match(arena, g, (slop_option_rdf_Term){.has_value = 1, .value = current}, (slop_option_rdf_Term){.has_value = 1, .value = pred}, no_term);
+                                    __auto_type parents = rdf_indexed_graph_match(arena, g, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = current}, (slop_option_slop_rdf_rdf_Term){.has_value = 1, .value = pred}, no_term);
                                     {
                                         __auto_type _coll = parents;
                                         for (size_t _i = 0; _i < _coll.len; _i++) {
@@ -1064,10 +1064,10 @@ slop_list_rdf_Triple engine_compute_tc(slop_arena* arena, index_IndexedGraph g, 
     return _retval;
 }
 
-index_IndexedGraph engine_schema_materialize_fast(slop_arena* arena, index_IndexedGraph g) {
+slop_rdf_index_IndexedGraph growl_engine_schema_materialize_fast(slop_arena* arena, slop_rdf_index_IndexedGraph g) {
     {
         __auto_type graph = g;
-        __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
+        __auto_type subclass_pred = rdf_make_iri(arena, slop_rdf_vocab_RDFS_SUBCLASS_OF);
         {
             #ifdef SLOP_DEBUG
             SLOP_PRE((4194304) > 0, "with-arena size must be positive");
@@ -1078,16 +1078,16 @@ index_IndexedGraph engine_schema_materialize_fast(slop_arena* arena, index_Index
             #endif
             slop_arena* scratch = &_arena_scratch_3;
             {
-                __auto_type full_d = engine_make_initial_delta(scratch, graph);
+                __auto_type full_d = growl_engine_make_initial_delta(scratch, graph);
                 {
-                    __auto_type _coll = scm_scm_eqc1(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_eqc1(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_eqc1b(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_eqc1b(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1097,7 +1097,7 @@ index_IndexedGraph engine_schema_materialize_fast(slop_arena* arena, index_Index
             slop_arena_free(scratch);
         }
         {
-            __auto_type _coll = engine_compute_tc(arena, graph, subclass_pred);
+            __auto_type _coll = growl_engine_compute_tc(arena, graph, subclass_pred);
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type t = _coll.data[_i];
                 graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1107,12 +1107,12 @@ index_IndexedGraph engine_schema_materialize_fast(slop_arena* arena, index_Index
     }
 }
 
-index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config) {
+slop_rdf_index_IndexedGraph growl_engine_schema_materialize(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, growl_types_ReasonerConfig config) {
     {
         __auto_type graph = g;
         __auto_type verbose = config.verbose;
-        __auto_type subclass_pred = rdf_make_iri(arena, vocab_RDFS_SUBCLASS_OF);
-        __auto_type subprop_pred = rdf_make_iri(arena, vocab_RDFS_SUBPROPERTY_OF);
+        __auto_type subclass_pred = rdf_make_iri(arena, slop_rdf_vocab_RDFS_SUBCLASS_OF);
+        __auto_type subprop_pred = rdf_make_iri(arena, slop_rdf_vocab_RDFS_SUBPROPERTY_OF);
         if (verbose) {
             printf("%s\n", "[schema] phased materialization");
         }
@@ -1120,7 +1120,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
             __auto_type t0 = slop_now_ms();
             int64_t count = 0;
             {
-                __auto_type _coll = scm_scm_cls(arena, graph, delta);
+                __auto_type _coll = growl_scm_scm_cls(arena, graph, delta);
                 for (size_t _i = 0; _i < _coll.len; _i++) {
                     __auto_type t = _coll.data[_i];
                     graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1128,7 +1128,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                 }
             }
             {
-                __auto_type _coll = scm_scm_op(arena, graph, delta);
+                __auto_type _coll = growl_scm_scm_op(arena, graph, delta);
                 for (size_t _i = 0; _i < _coll.len; _i++) {
                     __auto_type t = _coll.data[_i];
                     graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1136,7 +1136,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                 }
             }
             {
-                __auto_type _coll = scm_scm_dp(arena, graph, delta);
+                __auto_type _coll = growl_scm_scm_dp(arena, graph, delta);
                 for (size_t _i = 0; _i < _coll.len; _i++) {
                     __auto_type t = _coll.data[_i];
                     graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1147,7 +1147,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                 printf("%s", "[schema] phase 1 (bootstrap): +");
                 printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
                 printf("%s", " triples (");
-                engine_print_ms(arena, (slop_now_ms() - t0));
+                growl_engine_print_ms(arena, (slop_now_ms() - t0));
                 printf("%s\n", ")");
             }
         }
@@ -1162,10 +1162,10 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
             slop_arena* scratch = &_arena_scratch_4;
             {
                 __auto_type t0 = slop_now_ms();
-                __auto_type full_d = engine_make_initial_delta(scratch, graph);
+                __auto_type full_d = growl_engine_make_initial_delta(scratch, graph);
                 int64_t count = 0;
                 {
-                    __auto_type _coll = scm_scm_eqc1(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_eqc1(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1173,7 +1173,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_eqc1b(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_eqc1b(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1181,7 +1181,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_eqp1(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_eqp1(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1189,7 +1189,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_eqp1b(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_eqp1b(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1197,7 +1197,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_int(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_int(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1205,7 +1205,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_uni(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_uni(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1216,7 +1216,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     printf("%s", "[schema] phase 2 (edges): +");
                     printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
                     printf("%s", " triples (");
-                    engine_print_ms(arena, (slop_now_ms() - t0));
+                    growl_engine_print_ms(arena, (slop_now_ms() - t0));
                     printf("%s\n", ")");
                 }
             }
@@ -1226,7 +1226,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
             __auto_type t0 = slop_now_ms();
             int64_t count = 0;
             {
-                __auto_type _coll = engine_compute_tc(arena, graph, subclass_pred);
+                __auto_type _coll = growl_engine_compute_tc(arena, graph, subclass_pred);
                 for (size_t _i = 0; _i < _coll.len; _i++) {
                     __auto_type t = _coll.data[_i];
                     graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1234,7 +1234,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                 }
             }
             {
-                __auto_type _coll = engine_compute_tc(arena, graph, subprop_pred);
+                __auto_type _coll = growl_engine_compute_tc(arena, graph, subprop_pred);
                 for (size_t _i = 0; _i < _coll.len; _i++) {
                     __auto_type t = _coll.data[_i];
                     graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1245,7 +1245,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                 printf("%s", "[schema] phase 3 (TC): +");
                 printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
                 printf("%s", " triples (");
-                engine_print_ms(arena, (slop_now_ms() - t0));
+                growl_engine_print_ms(arena, (slop_now_ms() - t0));
                 printf("%s\n", ")");
             }
         }
@@ -1269,10 +1269,10 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
             slop_arena* scratch = &_arena_scratch_5;
             {
                 __auto_type t0 = slop_now_ms();
-                __auto_type full_d = engine_make_initial_delta(scratch, graph);
+                __auto_type full_d = growl_engine_make_initial_delta(scratch, graph);
                 int64_t count = 0;
                 {
-                    __auto_type _coll = scm_scm_eqc2(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_eqc2(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1280,7 +1280,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_eqp2(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_eqp2(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1291,7 +1291,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     printf("%s", "[schema] phase 3b (mutual-eq): +");
                     printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
                     printf("%s", " triples (");
-                    engine_print_ms(arena, (slop_now_ms() - t0));
+                    growl_engine_print_ms(arena, (slop_now_ms() - t0));
                     printf("%s\n", ")");
                 }
             }
@@ -1308,10 +1308,10 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
             slop_arena* scratch = &_arena_scratch_6;
             {
                 __auto_type t0 = slop_now_ms();
-                __auto_type full_d = engine_make_initial_delta(scratch, graph);
+                __auto_type full_d = growl_engine_make_initial_delta(scratch, graph);
                 int64_t count = 0;
                 {
-                    __auto_type _coll = scm_scm_dom1(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_dom1(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1319,7 +1319,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_dom2(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_dom2(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1327,7 +1327,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_rng1(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_rng1(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1335,7 +1335,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     }
                 }
                 {
-                    __auto_type _coll = scm_scm_rng2(arena, graph, full_d);
+                    __auto_type _coll = growl_scm_scm_rng2(arena, graph, full_d);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1346,7 +1346,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                     printf("%s", "[schema] phase 4 (dom/rng): +");
                     printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
                     printf("%s", " triples (");
-                    engine_print_ms(arena, (slop_now_ms() - t0));
+                    growl_engine_print_ms(arena, (slop_now_ms() - t0));
                     printf("%s\n", ")");
                 }
             }
@@ -1364,54 +1364,54 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
             {
                 uint8_t phase_done = 0;
                 int64_t phase_iter = 0;
-                __auto_type struct_delta = engine_make_initial_delta(scratch, graph);
+                __auto_type struct_delta = growl_engine_make_initial_delta(scratch, graph);
                 while (!(phase_done) && (phase_iter < config.max_iterations)) {
                     {
                         __auto_type t0 = slop_now_ms();
                         int64_t count = 0;
-                        __auto_type new_delta = types_make_delta(arena, 0);
+                        __auto_type new_delta = growl_types_make_delta(arena, 0);
                         {
-                            __auto_type _coll = scm_scm_svf1(arena, graph, struct_delta);
+                            __auto_type _coll = growl_scm_scm_svf1(arena, graph, struct_delta);
                             for (size_t _i = 0; _i < _coll.len; _i++) {
                                 __auto_type t = _coll.data[_i];
                                 graph = rdf_indexed_graph_add(arena, graph, t);
-                                new_delta = types_delta_add(arena, new_delta, t);
+                                new_delta = growl_types_delta_add(arena, new_delta, t);
                                 count = (count + 1);
                             }
                         }
                         {
-                            __auto_type _coll = scm_scm_svf2(arena, graph, struct_delta);
+                            __auto_type _coll = growl_scm_scm_svf2(arena, graph, struct_delta);
                             for (size_t _i = 0; _i < _coll.len; _i++) {
                                 __auto_type t = _coll.data[_i];
                                 graph = rdf_indexed_graph_add(arena, graph, t);
-                                new_delta = types_delta_add(arena, new_delta, t);
+                                new_delta = growl_types_delta_add(arena, new_delta, t);
                                 count = (count + 1);
                             }
                         }
                         {
-                            __auto_type _coll = scm_scm_avf1(arena, graph, struct_delta);
+                            __auto_type _coll = growl_scm_scm_avf1(arena, graph, struct_delta);
                             for (size_t _i = 0; _i < _coll.len; _i++) {
                                 __auto_type t = _coll.data[_i];
                                 graph = rdf_indexed_graph_add(arena, graph, t);
-                                new_delta = types_delta_add(arena, new_delta, t);
+                                new_delta = growl_types_delta_add(arena, new_delta, t);
                                 count = (count + 1);
                             }
                         }
                         {
-                            __auto_type _coll = scm_scm_avf2(arena, graph, struct_delta);
+                            __auto_type _coll = growl_scm_scm_avf2(arena, graph, struct_delta);
                             for (size_t _i = 0; _i < _coll.len; _i++) {
                                 __auto_type t = _coll.data[_i];
                                 graph = rdf_indexed_graph_add(arena, graph, t);
-                                new_delta = types_delta_add(arena, new_delta, t);
+                                new_delta = growl_types_delta_add(arena, new_delta, t);
                                 count = (count + 1);
                             }
                         }
                         {
-                            __auto_type _coll = scm_scm_hv(arena, graph, struct_delta);
+                            __auto_type _coll = growl_scm_scm_hv(arena, graph, struct_delta);
                             for (size_t _i = 0; _i < _coll.len; _i++) {
                                 __auto_type t = _coll.data[_i];
                                 graph = rdf_indexed_graph_add(arena, graph, t);
-                                new_delta = types_delta_add(arena, new_delta, t);
+                                new_delta = growl_types_delta_add(arena, new_delta, t);
                                 count = (count + 1);
                             }
                         }
@@ -1421,7 +1421,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                             printf("%s", "): +");
                             printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
                             printf("%s", " triples (");
-                            engine_print_ms(arena, (slop_now_ms() - t0));
+                            growl_engine_print_ms(arena, (slop_now_ms() - t0));
                             printf("%s\n", ")");
                         }
                         if (count == 0) {
@@ -1431,20 +1431,20 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                                 __auto_type t1 = slop_now_ms();
                                 int64_t tc_count = 0;
                                 {
-                                    __auto_type _coll = engine_compute_tc(arena, graph, subclass_pred);
+                                    __auto_type _coll = growl_engine_compute_tc(arena, graph, subclass_pred);
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
                                         __auto_type t = _coll.data[_i];
                                         graph = rdf_indexed_graph_add(arena, graph, t);
-                                        new_delta = types_delta_add(arena, new_delta, t);
+                                        new_delta = growl_types_delta_add(arena, new_delta, t);
                                         tc_count = (tc_count + 1);
                                     }
                                 }
                                 {
-                                    __auto_type _coll = engine_compute_tc(arena, graph, subprop_pred);
+                                    __auto_type _coll = growl_engine_compute_tc(arena, graph, subprop_pred);
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
                                         __auto_type t = _coll.data[_i];
                                         graph = rdf_indexed_graph_add(arena, graph, t);
-                                        new_delta = types_delta_add(arena, new_delta, t);
+                                        new_delta = growl_types_delta_add(arena, new_delta, t);
                                         tc_count = (tc_count + 1);
                                     }
                                 }
@@ -1452,7 +1452,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                                     printf("%s", "[schema] phase 6 (re-TC): +");
                                     printf("%.*s", (int)(int_to_string(arena, tc_count)).len, (int_to_string(arena, tc_count)).data);
                                     printf("%s", " triples (");
-                                    engine_print_ms(arena, (slop_now_ms() - t1));
+                                    growl_engine_print_ms(arena, (slop_now_ms() - t1));
                                     printf("%s\n", ")");
                                 }
                             }
@@ -1460,7 +1460,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                                 __auto_type t2 = slop_now_ms();
                                 int64_t prop_count = 0;
                                 {
-                                    __auto_type _coll = scm_scm_dom1(arena, graph, new_delta);
+                                    __auto_type _coll = growl_scm_scm_dom1(arena, graph, new_delta);
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
                                         __auto_type t = _coll.data[_i];
                                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1468,7 +1468,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                                     }
                                 }
                                 {
-                                    __auto_type _coll = scm_scm_dom2(arena, graph, new_delta);
+                                    __auto_type _coll = growl_scm_scm_dom2(arena, graph, new_delta);
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
                                         __auto_type t = _coll.data[_i];
                                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1476,7 +1476,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                                     }
                                 }
                                 {
-                                    __auto_type _coll = scm_scm_rng1(arena, graph, new_delta);
+                                    __auto_type _coll = growl_scm_scm_rng1(arena, graph, new_delta);
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
                                         __auto_type t = _coll.data[_i];
                                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1484,7 +1484,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                                     }
                                 }
                                 {
-                                    __auto_type _coll = scm_scm_rng2(arena, graph, new_delta);
+                                    __auto_type _coll = growl_scm_scm_rng2(arena, graph, new_delta);
                                     for (size_t _i = 0; _i < _coll.len; _i++) {
                                         __auto_type t = _coll.data[_i];
                                         graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1495,7 +1495,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                                     printf("%s", "[schema] phase 6 (re-prop): +");
                                     printf("%.*s", (int)(int_to_string(arena, prop_count)).len, (int_to_string(arena, prop_count)).data);
                                     printf("%s", " triples (");
-                                    engine_print_ms(arena, (slop_now_ms() - t2));
+                                    growl_engine_print_ms(arena, (slop_now_ms() - t2));
                                     printf("%s\n", ")");
                                 }
                             }
@@ -1519,10 +1519,10 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                 slop_arena* scratch = &_arena_scratch_8;
                 {
                     __auto_type t0 = slop_now_ms();
-                    __auto_type full_d = engine_make_initial_delta(scratch, graph);
+                    __auto_type full_d = growl_engine_make_initial_delta(scratch, graph);
                     int64_t count = 0;
                     {
-                        __auto_type _coll = scm_scm_eqc2(arena, graph, full_d);
+                        __auto_type _coll = growl_scm_scm_eqc2(arena, graph, full_d);
                         for (size_t _i = 0; _i < _coll.len; _i++) {
                             __auto_type t = _coll.data[_i];
                             graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1530,7 +1530,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                         }
                     }
                     {
-                        __auto_type _coll = scm_scm_eqp2(arena, graph, full_d);
+                        __auto_type _coll = growl_scm_scm_eqp2(arena, graph, full_d);
                         for (size_t _i = 0; _i < _coll.len; _i++) {
                             __auto_type t = _coll.data[_i];
                             graph = rdf_indexed_graph_add(arena, graph, t);
@@ -1541,7 +1541,7 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
                         printf("%s", "[schema] phase 7 (mutual-eq complete): +");
                         printf("%.*s", (int)(int_to_string(arena, count)).len, (int_to_string(arena, count)).data);
                         printf("%s", " triples (");
-                        engine_print_ms(arena, (slop_now_ms() - t0));
+                        growl_engine_print_ms(arena, (slop_now_ms() - t0));
                         printf("%s\n", ")");
                     }
                 }
@@ -1557,29 +1557,29 @@ index_IndexedGraph engine_schema_materialize(slop_arena* arena, index_IndexedGra
     }
 }
 
-slop_result_types_EngineState_types_InconsistencyReport engine_engine_run_iteration(slop_arena* arena, types_EngineState state) {
+slop_result_growl_types_EngineState_growl_types_InconsistencyReport growl_engine_engine_run_iteration(slop_arena* arena, growl_types_EngineState state) {
     SLOP_PRE(((state.iteration >= 0)), "(>= (. state iteration) 0)");
-    slop_result_types_EngineState_types_InconsistencyReport _retval = {0};
-    __auto_type _mv_424 = engine_apply_all_rules(arena, state.graph, state.delta, state.config);
+    slop_result_growl_types_EngineState_growl_types_InconsistencyReport _retval = {0};
+    __auto_type _mv_424 = growl_engine_apply_all_rules(arena, state.graph, state.delta, state.config);
     if (_mv_424.is_ok) {
         __auto_type new_delta = _mv_424.data.ok;
         {
-            __auto_type new_graph = engine_merge_into_graph(arena, state.graph, new_delta);
+            __auto_type new_graph = growl_engine_merge_into_graph(arena, state.graph, new_delta);
             if (!(state.config.fast) && !(state.config.enrich)) {
                 {
-                    __auto_type _coll = eq_eq_ref(arena, new_graph, new_delta);
+                    __auto_type _coll = growl_eq_eq_ref(arena, new_graph, new_delta);
                     for (size_t _i = 0; _i < _coll.len; _i++) {
                         __auto_type t = _coll.data[_i];
                         new_graph = rdf_indexed_graph_add(arena, new_graph, t);
                     }
                 }
             }
-            _retval = ((slop_result_types_EngineState_types_InconsistencyReport){ .is_ok = true, .data.ok = ((types_EngineState){.graph = new_graph, .delta = new_delta, .iteration = (state.iteration + 1), .config = state.config}) });
+            _retval = ((slop_result_growl_types_EngineState_growl_types_InconsistencyReport){ .is_ok = true, .data.ok = ((growl_types_EngineState){.graph = new_graph, .delta = new_delta, .iteration = (state.iteration + 1), .config = state.config}) });
             goto _slop_post;
         }
     } else if (!_mv_424.is_ok) {
         __auto_type report = _mv_424.data.err;
-        _retval = ((slop_result_types_EngineState_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+        _retval = ((slop_result_growl_types_EngineState_growl_types_InconsistencyReport){ .is_ok = false, .data.err = report });
         goto _slop_post;
     }
     SLOP_UNREACHABLE();
@@ -1588,14 +1588,14 @@ slop_result_types_EngineState_types_InconsistencyReport engine_engine_run_iterat
     return _retval;
 }
 
-slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config) {
+slop_result_growl_types_Delta_growl_types_InconsistencyReport growl_engine_apply_all_rules(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, growl_types_ReasonerConfig config) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
+    slop_result_growl_types_Delta_growl_types_InconsistencyReport _retval = {0};
     if ((config.worker_count <= 1) || (delta.iteration == 0)) {
-        _retval = engine_apply_all_rules_sequential(arena, g, delta, config);
+        _retval = growl_engine_apply_all_rules_sequential(arena, g, delta, config);
         goto _slop_post;
     } else {
-        _retval = engine_apply_all_rules_parallel(arena, g, delta, config);
+        _retval = growl_engine_apply_all_rules_parallel(arena, g, delta, config);
         goto _slop_post;
     }
     _slop_post: ;
@@ -1603,48 +1603,48 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules(slop_ar
     return _retval;
 }
 
-slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_sequential(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config) {
+slop_result_growl_types_Delta_growl_types_InconsistencyReport growl_engine_apply_all_rules_sequential(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, growl_types_ReasonerConfig config) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
+    slop_result_growl_types_Delta_growl_types_InconsistencyReport _retval = {0};
     {
         __auto_type next_iter = (delta.iteration + 1);
-        __auto_type combined = types_make_delta(arena, SLOP_RANGE(int64_t, next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1227:43"));
+        __auto_type combined = growl_types_make_delta(arena, SLOP_RANGE(int64_t, next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1227:43"));
         __auto_type verbose = config.verbose;
         __auto_type fast = config.fast;
         __auto_type enrich = config.enrich;
         {
             __auto_type t0 = slop_now_ms();
             __auto_type validate = config.validate;
-            __auto_type _mv_425 = cax_apply_cax_rules(arena, g, delta, fast, validate);
+            __auto_type _mv_425 = growl_cax_apply_cax_rules(arena, g, delta, fast, validate);
             if (_mv_425.is_ok) {
                 __auto_type cax_delta = _mv_425.data.ok;
                 if (verbose) {
                     printf("%s", "  cax: ");
-                    engine_print_ms(arena, (slop_now_ms() - t0));
+                    growl_engine_print_ms(arena, (slop_now_ms() - t0));
                     printf("%s\n", "");
                 }
-                combined = types_delta_merge(arena, combined, cax_delta);
+                combined = growl_types_delta_merge(arena, combined, cax_delta);
             } else if (!_mv_425.is_ok) {
                 __auto_type report = _mv_425.data.err;
-                _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+                _retval = ((slop_result_growl_types_Delta_growl_types_InconsistencyReport){ .is_ok = false, .data.err = report });
                 goto _slop_post;
             }
         }
         {
             __auto_type t0 = slop_now_ms();
             __auto_type validate = config.validate;
-            __auto_type _mv_426 = prp_apply_prp_rules(arena, g, delta, fast, validate, enrich);
+            __auto_type _mv_426 = growl_prp_apply_prp_rules(arena, g, delta, fast, validate, enrich);
             if (_mv_426.is_ok) {
                 __auto_type prp_delta = _mv_426.data.ok;
                 if (verbose) {
                     printf("%s", "  prp: ");
-                    engine_print_ms(arena, (slop_now_ms() - t0));
+                    growl_engine_print_ms(arena, (slop_now_ms() - t0));
                     printf("%s\n", "");
                 }
-                combined = types_delta_merge(arena, combined, prp_delta);
+                combined = growl_types_delta_merge(arena, combined, prp_delta);
             } else if (!_mv_426.is_ok) {
                 __auto_type report = _mv_426.data.err;
-                _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+                _retval = ((slop_result_growl_types_Delta_growl_types_InconsistencyReport){ .is_ok = false, .data.err = report });
                 goto _slop_post;
             }
         }
@@ -1652,18 +1652,18 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_sequent
             {
                 __auto_type t0 = slop_now_ms();
                 __auto_type validate = config.validate;
-                __auto_type _mv_427 = eq_apply_eq_rules(arena, g, delta, fast, validate);
+                __auto_type _mv_427 = growl_eq_apply_eq_rules(arena, g, delta, fast, validate);
                 if (_mv_427.is_ok) {
                     __auto_type eq_delta = _mv_427.data.ok;
                     if (verbose) {
                         printf("%s", "  eq:  ");
-                        engine_print_ms(arena, (slop_now_ms() - t0));
+                        growl_engine_print_ms(arena, (slop_now_ms() - t0));
                         printf("%s\n", "");
                     }
-                    combined = types_delta_merge(arena, combined, eq_delta);
+                    combined = growl_types_delta_merge(arena, combined, eq_delta);
                 } else if (!_mv_427.is_ok) {
                     __auto_type report = _mv_427.data.err;
-                    _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+                    _retval = ((slop_result_growl_types_Delta_growl_types_InconsistencyReport){ .is_ok = false, .data.err = report });
                     goto _slop_post;
                 }
             }
@@ -1672,23 +1672,23 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_sequent
             {
                 __auto_type t0 = slop_now_ms();
                 __auto_type validate = config.validate;
-                __auto_type _mv_428 = cls_apply_cls_rules(arena, g, delta, fast, validate);
+                __auto_type _mv_428 = growl_cls_apply_cls_rules(arena, g, delta, fast, validate);
                 if (_mv_428.is_ok) {
                     __auto_type cls_delta = _mv_428.data.ok;
                     if (verbose) {
                         printf("%s", "  cls: ");
-                        engine_print_ms(arena, (slop_now_ms() - t0));
+                        growl_engine_print_ms(arena, (slop_now_ms() - t0));
                         printf("%s\n", "");
                     }
-                    combined = types_delta_merge(arena, combined, cls_delta);
+                    combined = growl_types_delta_merge(arena, combined, cls_delta);
                 } else if (!_mv_428.is_ok) {
                     __auto_type report = _mv_428.data.err;
-                    _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = report });
+                    _retval = ((slop_result_growl_types_Delta_growl_types_InconsistencyReport){ .is_ok = false, .data.err = report });
                     goto _slop_post;
                 }
             }
         }
-        _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = true, .data.ok = combined });
+        _retval = ((slop_result_growl_types_Delta_growl_types_InconsistencyReport){ .is_ok = true, .data.ok = combined });
         goto _slop_post;
     }
     _slop_post: ;
@@ -1696,15 +1696,15 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_sequent
     return _retval;
 }
 
-slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_parallel(slop_arena* arena, index_IndexedGraph g, types_Delta delta, types_ReasonerConfig config) {
+slop_result_growl_types_Delta_growl_types_InconsistencyReport growl_engine_apply_all_rules_parallel(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, growl_types_ReasonerConfig config) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
     SLOP_PRE(((config.worker_count > 1)), "(> (. config worker-count) 1)");
-    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
+    slop_result_growl_types_Delta_growl_types_InconsistencyReport _retval = {0};
     {
         __auto_type next_iter = (delta.iteration + 1);
         __auto_type fast = config.fast;
         __auto_type enrich = config.enrich;
-        __auto_type result_chan = (slop_chan_engine_WorkerMessage*)thread_chan_buffered(arena, config.channel_buffer);
+        __auto_type result_chan = (slop_chan_growl_engine_WorkerMessage*)std_thread_chan_buffered(arena, config.channel_buffer);
         __auto_type arena_cax_infer = ({ slop_arena* _new_arena = malloc(sizeof(slop_arena)); if (!_new_arena) { fprintf(stderr, "SLOP: arena-new malloc failed\n"); abort(); } *_new_arena = slop_arena_new(1048576); _new_arena; });
         __auto_type arena_cax_check = ({ slop_arena* _new_arena = malloc(sizeof(slop_arena)); if (!_new_arena) { fprintf(stderr, "SLOP: arena-new malloc failed\n"); abort(); } *_new_arena = slop_arena_new(1048576); _new_arena; });
         __auto_type arena_prp_char = ({ slop_arena* _new_arena = malloc(sizeof(slop_arena)); if (!_new_arena) { fprintf(stderr, "SLOP: arena-new malloc failed\n"); abort(); } *_new_arena = slop_arena_new(1048576); _new_arena; });
@@ -1715,9 +1715,9 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_paralle
         __auto_type arena_cls_set = ({ slop_arena* _new_arena = malloc(sizeof(slop_arena)); if (!_new_arena) { fprintf(stderr, "SLOP: arena-new malloc failed\n"); abort(); } *_new_arena = slop_arena_new(((enrich) ? 64 : 1048576)); _new_arena; });
         __auto_type arena_cls_ind = ({ slop_arena* _new_arena = malloc(sizeof(slop_arena)); if (!_new_arena) { fprintf(stderr, "SLOP: arena-new malloc failed\n"); abort(); } *_new_arena = slop_arena_new(((enrich) ? 64 : 1048576)); _new_arena; });
         {
-            __auto_type workers = engine_spawn_rule_workers(arena, g, delta, result_chan, arena_cax_infer, arena_cax_check, arena_prp_char, arena_prp_chain, arena_prp_check, arena_eq_infer, arena_eq_check, arena_cls_set, arena_cls_ind, config.verbose, fast, config.validate, enrich);
+            __auto_type workers = growl_engine_spawn_rule_workers(arena, g, delta, result_chan, arena_cax_infer, arena_cax_check, arena_prp_char, arena_prp_chain, arena_prp_check, arena_eq_infer, arena_eq_check, arena_cls_set, arena_cls_ind, config.verbose, fast, config.validate, enrich);
             {
-                __auto_type result = engine_collect_worker_results(arena, result_chan, workers, SLOP_RANGE(int64_t, next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1325:73"));
+                __auto_type result = growl_engine_collect_worker_results(arena, result_chan, workers, SLOP_RANGE(int64_t, next_iter, 1, 0, 0, 0, "(Int 0 ..) at engine.slop:1325:73"));
                 __auto_type _mv_429 = result;
                 if (_mv_429.is_ok) {
                     __auto_type _ = _mv_429.data.ok;
@@ -1743,9 +1743,9 @@ slop_result_types_Delta_types_InconsistencyReport engine_apply_all_rules_paralle
     return _retval;
 }
 
-index_IndexedGraph engine_merge_into_graph(slop_arena* arena, index_IndexedGraph g, types_Delta d) {
+slop_rdf_index_IndexedGraph growl_engine_merge_into_graph(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta d) {
     SLOP_PRE(((rdf_indexed_graph_size(g) >= 0)), "(>= (indexed-graph-size g) 0)");
-    index_IndexedGraph _retval = {0};
+    slop_rdf_index_IndexedGraph _retval = {0};
     {
         __auto_type result = g;
         {
@@ -1764,63 +1764,63 @@ index_IndexedGraph engine_merge_into_graph(slop_arena* arena, index_IndexedGraph
     return _retval;
 }
 
-slop_list_thread_int_ptr engine_spawn_rule_workers(slop_arena* arena, index_IndexedGraph g, types_Delta delta, slop_chan_engine_WorkerMessage* result_chan, slop_arena* arena_cax_infer, slop_arena* arena_cax_check, slop_arena* arena_prp_char, slop_arena* arena_prp_chain, slop_arena* arena_prp_check, slop_arena* arena_eq_infer, slop_arena* arena_eq_check, slop_arena* arena_cls_set, slop_arena* arena_cls_ind, uint8_t verbose, uint8_t fast, uint8_t validate, uint8_t enrich) {
+slop_list_thread_int_ptr growl_engine_spawn_rule_workers(slop_arena* arena, slop_rdf_index_IndexedGraph g, growl_types_Delta delta, slop_chan_growl_engine_WorkerMessage* result_chan, slop_arena* arena_cax_infer, slop_arena* arena_cax_check, slop_arena* arena_prp_char, slop_arena* arena_prp_chain, slop_arena* arena_prp_check, slop_arena* arena_eq_infer, slop_arena* arena_eq_check, slop_arena* arena_cls_set, slop_arena* arena_cls_ind, uint8_t verbose, uint8_t fast, uint8_t validate, uint8_t enrich) {
     {
         __auto_type workers = ((slop_list_thread_int_ptr){ .data = NULL, .len = 0, .cap = 0, .arena = arena });
         __auto_type next_iter = (delta.iteration + 1);
-        ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_430_env_t* engine__lambda_430_env = (engine__lambda_430_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_430_env_t)); *engine__lambda_430_env = (engine__lambda_430_env_t){ .arena_cax_infer = arena_cax_infer, .next_iter = next_iter, .g = g, .delta = delta, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)engine__lambda_430, (void*)engine__lambda_430_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+        (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_430_env_t* growl_engine__lambda_430_env = (growl_engine__lambda_430_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_430_env_t)); *growl_engine__lambda_430_env = (growl_engine__lambda_430_env_t){ .arena_cax_infer = arena_cax_infer, .next_iter = next_iter, .g = g, .delta = delta, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)growl_engine__lambda_430, (void*)growl_engine__lambda_430_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         if (!(validate)) {
-            ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_431_env_t* engine__lambda_431_env = (engine__lambda_431_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_431_env_t)); *engine__lambda_431_env = (engine__lambda_431_env_t){ .arena_cax_check = arena_cax_check, .g = g, .delta = delta, .result_chan = result_chan, .verbose = verbose }; (slop_closure_t){ (void*)engine__lambda_431, (void*)engine__lambda_431_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+            (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_431_env_t* growl_engine__lambda_431_env = (growl_engine__lambda_431_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_431_env_t)); *growl_engine__lambda_431_env = (growl_engine__lambda_431_env_t){ .arena_cax_check = arena_cax_check, .g = g, .delta = delta, .result_chan = result_chan, .verbose = verbose }; (slop_closure_t){ (void*)growl_engine__lambda_431, (void*)growl_engine__lambda_431_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         }
-        ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_432_env_t* engine__lambda_432_env = (engine__lambda_432_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_432_env_t)); *engine__lambda_432_env = (engine__lambda_432_env_t){ .arena_prp_char = arena_prp_char, .next_iter = next_iter, .g = g, .delta = delta, .enrich = enrich, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)engine__lambda_432, (void*)engine__lambda_432_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
-        ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_433_env_t* engine__lambda_433_env = (engine__lambda_433_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_433_env_t)); *engine__lambda_433_env = (engine__lambda_433_env_t){ .arena_prp_chain = arena_prp_chain, .next_iter = next_iter, .g = g, .delta = delta, .enrich = enrich, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)engine__lambda_433, (void*)engine__lambda_433_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+        (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_432_env_t* growl_engine__lambda_432_env = (growl_engine__lambda_432_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_432_env_t)); *growl_engine__lambda_432_env = (growl_engine__lambda_432_env_t){ .arena_prp_char = arena_prp_char, .next_iter = next_iter, .g = g, .delta = delta, .enrich = enrich, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)growl_engine__lambda_432, (void*)growl_engine__lambda_432_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
+        (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_433_env_t* growl_engine__lambda_433_env = (growl_engine__lambda_433_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_433_env_t)); *growl_engine__lambda_433_env = (growl_engine__lambda_433_env_t){ .arena_prp_chain = arena_prp_chain, .next_iter = next_iter, .g = g, .delta = delta, .enrich = enrich, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)growl_engine__lambda_433, (void*)growl_engine__lambda_433_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         if (!(validate)) {
-            ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_434_env_t* engine__lambda_434_env = (engine__lambda_434_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_434_env_t)); *engine__lambda_434_env = (engine__lambda_434_env_t){ .arena_prp_check = arena_prp_check, .g = g, .delta = delta, .result_chan = result_chan, .verbose = verbose }; (slop_closure_t){ (void*)engine__lambda_434, (void*)engine__lambda_434_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+            (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_434_env_t* growl_engine__lambda_434_env = (growl_engine__lambda_434_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_434_env_t)); *growl_engine__lambda_434_env = (growl_engine__lambda_434_env_t){ .arena_prp_check = arena_prp_check, .g = g, .delta = delta, .result_chan = result_chan, .verbose = verbose }; (slop_closure_t){ (void*)growl_engine__lambda_434, (void*)growl_engine__lambda_434_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         }
         if (!(enrich)) {
-            ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_435_env_t* engine__lambda_435_env = (engine__lambda_435_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_435_env_t)); *engine__lambda_435_env = (engine__lambda_435_env_t){ .arena_eq_infer = arena_eq_infer, .next_iter = next_iter, .g = g, .delta = delta, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)engine__lambda_435, (void*)engine__lambda_435_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+            (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_435_env_t* growl_engine__lambda_435_env = (growl_engine__lambda_435_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_435_env_t)); *growl_engine__lambda_435_env = (growl_engine__lambda_435_env_t){ .arena_eq_infer = arena_eq_infer, .next_iter = next_iter, .g = g, .delta = delta, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)growl_engine__lambda_435, (void*)growl_engine__lambda_435_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         }
         if ((!(fast)) && (!(validate)) && (!(enrich))) {
-            ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_436_env_t* engine__lambda_436_env = (engine__lambda_436_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_436_env_t)); *engine__lambda_436_env = (engine__lambda_436_env_t){ .arena_eq_check = arena_eq_check, .g = g, .delta = delta, .result_chan = result_chan, .verbose = verbose }; (slop_closure_t){ (void*)engine__lambda_436, (void*)engine__lambda_436_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+            (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_436_env_t* growl_engine__lambda_436_env = (growl_engine__lambda_436_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_436_env_t)); *growl_engine__lambda_436_env = (growl_engine__lambda_436_env_t){ .arena_eq_check = arena_eq_check, .g = g, .delta = delta, .result_chan = result_chan, .verbose = verbose }; (slop_closure_t){ (void*)growl_engine__lambda_436, (void*)growl_engine__lambda_436_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         }
         if (!(enrich)) {
-            ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_437_env_t* engine__lambda_437_env = (engine__lambda_437_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_437_env_t)); *engine__lambda_437_env = (engine__lambda_437_env_t){ .arena_cls_set = arena_cls_set, .next_iter = next_iter, .g = g, .delta = delta, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)engine__lambda_437, (void*)engine__lambda_437_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+            (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_437_env_t* growl_engine__lambda_437_env = (growl_engine__lambda_437_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_437_env_t)); *growl_engine__lambda_437_env = (growl_engine__lambda_437_env_t){ .arena_cls_set = arena_cls_set, .next_iter = next_iter, .g = g, .delta = delta, .verbose = verbose, .result_chan = result_chan }; (slop_closure_t){ (void*)growl_engine__lambda_437, (void*)growl_engine__lambda_437_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         }
         if (!(enrich)) {
-            ({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ engine__lambda_438_env_t* engine__lambda_438_env = (engine__lambda_438_env_t*)slop_arena_alloc(_spawn_a, sizeof(engine__lambda_438_env_t)); *engine__lambda_438_env = (engine__lambda_438_env_t){ .arena_cls_ind = arena_cls_ind, .next_iter = next_iter, .g = g, .delta = delta, .fast = fast, .validate = validate, .result_chan = result_chan, .verbose = verbose }; (slop_closure_t){ (void*)engine__lambda_438, (void*)engine__lambda_438_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; });
+            (void)(({ __auto_type _lst_p = &(workers); __auto_type _item = (({ slop_arena* _spawn_a = (arena); slop_closure_t _spawn_cl = ({ growl_engine__lambda_438_env_t* growl_engine__lambda_438_env = (growl_engine__lambda_438_env_t*)slop_arena_alloc(_spawn_a, sizeof(growl_engine__lambda_438_env_t)); *growl_engine__lambda_438_env = (growl_engine__lambda_438_env_t){ .arena_cls_ind = arena_cls_ind, .next_iter = next_iter, .g = g, .delta = delta, .fast = fast, .validate = validate, .result_chan = result_chan, .verbose = verbose }; (slop_closure_t){ (void*)growl_engine__lambda_438, (void*)growl_engine__lambda_438_env }; }); slop_thread_int* _spawn_th = slop_arena_alloc(_spawn_a, sizeof(slop_thread_int)); *_spawn_th = (slop_thread_int){ .func = _spawn_cl.fn, .env = _spawn_cl.env, .done = false }; slop_thread_start(&_spawn_th->id, (void*)slop_thread_int_entry, (void*)_spawn_th); _spawn_th; })); if (_lst_p->len >= _lst_p->cap) { _lst_p->data = (__typeof__(_lst_p->data))slop_list_grow_raw(_lst_p->arena, _lst_p->data, &_lst_p->cap, _lst_p->len, sizeof(*_lst_p->data)); } _lst_p->data[_lst_p->len++] = _item; (void)0; }));
         }
         return workers;
     }
 }
 
-slop_result_types_Delta_types_InconsistencyReport engine_collect_worker_results(slop_arena* arena, slop_chan_engine_WorkerMessage* result_chan, slop_list_thread_int_ptr workers, int64_t next_iter) {
+slop_result_growl_types_Delta_growl_types_InconsistencyReport growl_engine_collect_worker_results(slop_arena* arena, slop_chan_growl_engine_WorkerMessage* result_chan, slop_list_thread_int_ptr workers, int64_t next_iter) {
     SLOP_PRE(((((int64_t)((workers).len)) >= 1)), "(>= (list-len workers) 1)");
     SLOP_PRE(((next_iter >= 1)), "(>= next-iter 1)");
-    slop_result_types_Delta_types_InconsistencyReport _retval = {0};
+    slop_result_growl_types_Delta_growl_types_InconsistencyReport _retval = {0};
     {
-        __auto_type combined = types_make_delta(arena, next_iter);
-        slop_option_types_InconsistencyReport inconsistency = (slop_option_types_InconsistencyReport){.has_value = false};
+        __auto_type combined = growl_types_make_delta(arena, next_iter);
+        slop_option_growl_types_InconsistencyReport inconsistency = (slop_option_growl_types_InconsistencyReport){.has_value = false};
         int64_t done_count = 0;
         __auto_type expected = ((int64_t)((workers).len));
         while (done_count < expected) {
-            __auto_type _mv_439 = thread_recv_slop_chan_engine_WorkerMessage(result_chan);
+            __auto_type _mv_439 = thread_recv_slop_chan_growl_engine_WorkerMessage(result_chan);
             if (_mv_439.is_ok) {
                 __auto_type msg = _mv_439.data.ok;
                 __auto_type _mv_440 = msg;
                 switch (_mv_440.tag) {
-                    case engine_WorkerMessage_msg_delta:
+                    case growl_engine_WorkerMessage_msg_delta:
                     {
                         __auto_type d = _mv_440.data.msg_delta;
-                        combined = types_delta_merge(arena, combined, d);
+                        combined = growl_types_delta_merge(arena, combined, d);
                         break;
                     }
-                    case engine_WorkerMessage_msg_inconsistent:
+                    case growl_engine_WorkerMessage_msg_inconsistent:
                     {
                         __auto_type r = _mv_440.data.msg_inconsistent;
-                        inconsistency = (slop_option_types_InconsistencyReport){.has_value = 1, .value = r};
+                        inconsistency = (slop_option_growl_types_InconsistencyReport){.has_value = 1, .value = r};
                         break;
                     }
-                    case engine_WorkerMessage_msg_done:
+                    case growl_engine_WorkerMessage_msg_done:
                     {
                         __auto_type _ = _mv_440.data.msg_done;
                         done_count = (done_count + 1);
@@ -1836,16 +1836,16 @@ slop_result_types_Delta_types_InconsistencyReport engine_collect_worker_results(
             __auto_type _coll = workers;
             for (size_t _i = 0; _i < _coll.len; _i++) {
                 __auto_type w = _coll.data[_i];
-                thread_join(w);
+                std_thread_join(w);
             }
         }
         __auto_type _mv_441 = inconsistency;
         if (_mv_441.has_value) {
             __auto_type r = _mv_441.value;
-            _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = false, .data.err = r });
+            _retval = ((slop_result_growl_types_Delta_growl_types_InconsistencyReport){ .is_ok = false, .data.err = r });
             goto _slop_post;
         } else if (!_mv_441.has_value) {
-            _retval = ((slop_result_types_Delta_types_InconsistencyReport){ .is_ok = true, .data.ok = combined });
+            _retval = ((slop_result_growl_types_Delta_growl_types_InconsistencyReport){ .is_ok = true, .data.ok = combined });
             goto _slop_post;
         }
         SLOP_UNREACHABLE();

@@ -1,13 +1,13 @@
 #include "../runtime/slop_runtime.h"
 #include "slop_main.h"
 
-void main_print_elapsed(slop_arena* arena, int64_t elapsed);
-slop_string main_argv_to_string(uint8_t** argv, int64_t index);
-main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
-void main_print_usage(void);
+void growl_cli_main_print_elapsed(slop_arena* arena, int64_t elapsed);
+slop_string growl_cli_main_argv_to_string(uint8_t** argv, int64_t index);
+growl_cli_main_CliArgs growl_cli_main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
+void growl_cli_main_print_usage(void);
 int main(int argc, char** _c_argv);
 
-void main_print_elapsed(slop_arena* arena, int64_t elapsed) {
+void growl_cli_main_print_elapsed(slop_arena* arena, int64_t elapsed) {
     printf("%.*s", (int)(int_to_string(arena, (elapsed / 1000))).len, (int_to_string(arena, (elapsed / 1000))).data);
     printf("%s", ".");
     {
@@ -23,14 +23,14 @@ void main_print_elapsed(slop_arena* arena, int64_t elapsed) {
     printf("%s", "s");
 }
 
-slop_string main_argv_to_string(uint8_t** argv, int64_t index) {
+slop_string growl_cli_main_argv_to_string(uint8_t** argv, int64_t index) {
     {
         __auto_type ptr = argv[index];
         return (slop_string){.len = strlen(ptr), .data = ptr};
     }
 }
 
-main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
+growl_cli_main_CliArgs growl_cli_main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
     {
         slop_option_string input = (slop_option_string){.has_value = false};
         slop_option_string emit = (slop_option_string){.has_value = false};
@@ -47,7 +47,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
         int64_t i = 1;
         while (i < argc) {
             {
-                __auto_type arg = main_argv_to_string(argv, i);
+                __auto_type arg = growl_cli_main_argv_to_string(argv, i);
                 if (string_eq(arg, SLOP_STR("--help")) || string_eq(arg, SLOP_STR("-h"))) {
                     help = 1;
                     i = (i + 1);
@@ -71,7 +71,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                     i = (i + 1);
                 } else if (string_eq(arg, SLOP_STR("--validate-ns"))) {
                     if ((i + 1) < argc) {
-                        validate_ns_opt = (slop_option_string){.has_value = 1, .value = main_argv_to_string(argv, (i + 1))};
+                        validate_ns_opt = (slop_option_string){.has_value = 1, .value = growl_cli_main_argv_to_string(argv, (i + 1))};
                         i = (i + 2);
                     } else {
                         printf("%s\n", "Error: --validate-ns requires an IRI prefix");
@@ -80,7 +80,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                     }
                 } else if (string_eq(arg, SLOP_STR("--background")) || string_eq(arg, SLOP_STR("-b"))) {
                     if ((i + 1) < argc) {
-                        background = (slop_option_string){.has_value = 1, .value = main_argv_to_string(argv, (i + 1))};
+                        background = (slop_option_string){.has_value = 1, .value = growl_cli_main_argv_to_string(argv, (i + 1))};
                         i = (i + 2);
                     } else {
                         printf("%s\n", "Error: --background requires a file path");
@@ -89,7 +89,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                     }
                 } else if (string_eq(arg, SLOP_STR("--emit")) || string_eq(arg, SLOP_STR("-o"))) {
                     if ((i + 1) < argc) {
-                        emit = (slop_option_string){.has_value = 1, .value = main_argv_to_string(argv, (i + 1))};
+                        emit = (slop_option_string){.has_value = 1, .value = growl_cli_main_argv_to_string(argv, (i + 1))};
                         i = (i + 2);
                     } else {
                         printf("%s\n", "Error: --emit requires a file path");
@@ -98,7 +98,7 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                     }
                 } else if (string_eq(arg, SLOP_STR("--max-triples"))) {
                     if ((i + 1) < argc) {
-                        __auto_type _mv_476 = strlib_parse_int(main_argv_to_string(argv, (i + 1)));
+                        __auto_type _mv_476 = std_strlib_parse_int(growl_cli_main_argv_to_string(argv, (i + 1)));
                         if (_mv_476.is_ok) {
                             __auto_type val = _mv_476.data.ok;
                             max_tri = ((int64_t)(val));
@@ -119,11 +119,11 @@ main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv) {
                 }
             }
         }
-        return ((main_CliArgs){.input_file = input, .emit_file = emit, .background_file = background, .validate_ns = validate_ns_opt, .quiet = quiet, .fast = fast, .complete = complete, .enrich = enrich, .validate = validate, .show_help = help, .show_version = version, .max_triples = SLOP_RANGE(int64_t, max_tri, 1, 0, 0, 0, "(Int 0 ..) at main.slop:170:22")});
+        return ((growl_cli_main_CliArgs){.input_file = input, .emit_file = emit, .background_file = background, .validate_ns = validate_ns_opt, .quiet = quiet, .fast = fast, .complete = complete, .enrich = enrich, .validate = validate, .show_help = help, .show_version = version, .max_triples = SLOP_RANGE(int64_t, max_tri, 1, 0, 0, 0, "(Int 0 ..) at main.slop:170:22")});
     }
 }
 
-void main_print_usage(void) {
+void growl_cli_main_print_usage(void) {
     printf("%s\n", "growl - OWL 2 RL Reasoner");
     printf("%s\n", "");
     printf("%s\n", "Usage: growl [options] <file.ttl>");
@@ -144,6 +144,7 @@ void main_print_usage(void) {
 
 int main(int argc, char** _c_argv) {
     uint8_t** argv = (uint8_t**)_c_argv;
+    (void)argc; (void)argv;
     {
         #ifdef SLOP_DEBUG
         SLOP_PRE((268435456) > 0, "with-arena size must be positive");
@@ -154,7 +155,7 @@ int main(int argc, char** _c_argv) {
         #endif
         slop_arena* arena = &_arena_10;
         {
-            __auto_type args = main_parse_args(arena, argc, argv);
+            __auto_type args = growl_cli_main_parse_args(arena, argc, argv);
             if (args.show_version) {
                 printf("growl %s\n", GROWL_VERSION);
                 {
@@ -165,7 +166,7 @@ int main(int argc, char** _c_argv) {
             } else {
                 __auto_type _mv_477 = args.input_file;
                 if (!_mv_477.has_value) {
-                    main_print_usage();
+                    growl_cli_main_print_usage();
                     if (args.show_help) {
                         {
                             int _wa_ret = 0;
@@ -182,7 +183,7 @@ int main(int argc, char** _c_argv) {
                 } else if (_mv_477.has_value) {
                     __auto_type input_path = _mv_477.value;
                     if (args.show_help) {
-                        main_print_usage();
+                        growl_cli_main_print_usage();
                         {
                             int _wa_ret = 0;
                             slop_arena_free(&_arena_10);
@@ -192,14 +193,14 @@ int main(int argc, char** _c_argv) {
                         {
                             __auto_type quiet = args.quiet;
                             __auto_type parse_start = slop_now_ms();
-                            __auto_type _mv_478 = ttl_parse_ttl_file(arena, input_path);
+                            __auto_type _mv_478 = slop_rdf_ttl_parse_ttl_file(arena, input_path);
                             if (!_mv_478.is_ok) {
                                 __auto_type e = _mv_478.data.err;
                                 printf("%s", "Error: failed to parse ");
                                 printf("%.*s\n", (int)(input_path).len, (input_path).data);
                                 __auto_type _mv_479 = e;
                                 switch (_mv_479.tag) {
-                                    case ttl_TtlFileError_parse_error:
+                                    case slop_rdf_ttl_TtlFileError_parse_error:
                                     {
                                         __auto_type pe = _mv_479.data.parse_error;
                                         printf("%s", "  at line ");
@@ -210,7 +211,7 @@ int main(int argc, char** _c_argv) {
                                         printf("%.*s\n", (int)(pe.message).len, (pe.message).data);
                                         break;
                                     }
-                                    case ttl_TtlFileError_file_error:
+                                    case slop_rdf_ttl_TtlFileError_file_error:
                                     {
                                         __auto_type _ = _mv_479.data.file_error;
                                         printf("%s\n", "  (file error)");
@@ -229,7 +230,7 @@ int main(int argc, char** _c_argv) {
                                     __auto_type original_size = rdf_graph_size(g);
                                     __auto_type ig = growl_graph_to_indexed(arena, g, annot_set);
                                     __auto_type input_size = rdf_indexed_graph_size(ig);
-                                    __auto_type filtered_count = (original_size - ((rdf_GraphSize)(SLOP_RANGE(rdf_GraphSize, input_size, 1, 0, 0, 0, "GraphSize (Int 0 ..) at main.slop:246:72"))));
+                                    __auto_type filtered_count = (original_size - ((slop_rdf_rdf_GraphSize)(SLOP_RANGE(slop_rdf_rdf_GraphSize, input_size, 1, 0, 0, 0, "GraphSize (Int 0 ..) at main.slop:246:72"))));
                                     __auto_type parse_elapsed = (slop_now_ms() - parse_start);
                                     if (!(quiet)) {
                                         printf("%s", "Parsed ");
@@ -242,7 +243,7 @@ int main(int argc, char** _c_argv) {
                                             printf("%s", " annotations)");
                                         }
                                         printf("%s", " (");
-                                        main_print_elapsed(arena, parse_elapsed);
+                                        growl_cli_main_print_elapsed(arena, parse_elapsed);
                                         printf("%s\n", ")");
                                     }
                                     {
@@ -250,7 +251,7 @@ int main(int argc, char** _c_argv) {
                                         __auto_type _mv_480 = args.background_file;
                                         if (_mv_480.has_value) {
                                             __auto_type bg_path = _mv_480.value;
-                                            __auto_type _mv_481 = ttl_parse_ttl_file(arena, bg_path);
+                                            __auto_type _mv_481 = slop_rdf_ttl_parse_ttl_file(arena, bg_path);
                                             if (!_mv_481.is_ok) {
                                                 __auto_type _ = _mv_481.data.err;
                                                 printf("%s", "Error: failed to parse background file ");
@@ -313,10 +314,10 @@ int main(int argc, char** _c_argv) {
                                             }
                                             {
                                                 __auto_type reason_start = slop_now_ms();
-                                                __auto_type config = ((types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet), .fast = effective_fast, .complete = args.complete, .enrich = args.enrich, .validate = validate_mode, .validate_ns = ns_filter, .cancel_ptr = 0, .max_triples = args.max_triples});
+                                                __auto_type config = ((growl_types_ReasonerConfig){.worker_count = 4, .channel_buffer = 256, .max_iterations = 1000, .verbose = !(quiet), .fast = effective_fast, .complete = args.complete, .enrich = args.enrich, .validate = validate_mode, .validate_ns = ns_filter, .cancel_ptr = 0, .max_triples = args.max_triples});
                                                 __auto_type _mv_482 = growl_reason_with_config(arena, combined_ig, config);
                                                 switch (_mv_482.tag) {
-                                                    case types_ReasonerResult_reason_success:
+                                                    case growl_types_ReasonerResult_reason_success:
                                                     {
                                                         __auto_type s = _mv_482.data.reason_success;
                                                         {
@@ -337,7 +338,7 @@ int main(int argc, char** _c_argv) {
                                                                     printf("%s", " inferred in ");
                                                                     printf("%.*s", (int)(int_to_string(arena, iters)).len, (int_to_string(arena, iters)).data);
                                                                     printf("%s", " iterations (");
-                                                                    main_print_elapsed(arena, reason_elapsed);
+                                                                    growl_cli_main_print_elapsed(arena, reason_elapsed);
                                                                     printf("%s\n", ")");
                                                                     printf("%s", "Total: ");
                                                                     printf("%.*s", (int)(int_to_string(arena, rdf_indexed_graph_size(s.graph))).len, (int_to_string(arena, rdf_indexed_graph_size(s.graph))).data);
@@ -346,9 +347,9 @@ int main(int argc, char** _c_argv) {
                                                                 if (quiet) {
                                                                     printf("%.*s", (int)(input_path).len, (input_path).data);
                                                                     printf("%s", ": ");
-                                                                    main_print_elapsed(arena, parse_elapsed);
+                                                                    growl_cli_main_print_elapsed(arena, parse_elapsed);
                                                                     printf("%s", " parse, ");
-                                                                    main_print_elapsed(arena, reason_elapsed);
+                                                                    growl_cli_main_print_elapsed(arena, reason_elapsed);
                                                                     printf("%s", " reason, ");
                                                                     printf("%.*s", (int)(int_to_string(arena, input_size)).len, (int_to_string(arena, input_size)).data);
                                                                     printf("%s", " -> ");
@@ -375,8 +376,8 @@ int main(int argc, char** _c_argv) {
                                                                         {
                                                                             __auto_type out_graph = growl_indexed_to_graph(arena, out_ig);
                                                                             slop_option_string no_base = (slop_option_string){.has_value = false};
-                                                                            __auto_type config = ((serialize_ttl_SerializeConfig){.prefixes = ttl_make_prefix_map(arena), .base_iri = no_base, .indent_width = 2});
-                                                                            __auto_type _mv_485 = serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
+                                                                            __auto_type config = ((slop_rdf_serialize_ttl_SerializeConfig){.prefixes = slop_rdf_ttl_make_prefix_map(arena), .base_iri = no_base, .indent_width = 2});
+                                                                            __auto_type _mv_485 = slop_rdf_serialize_ttl_serialize_ttl_stream(arena, out_graph, config, emit_path);
                                                                             if (_mv_485.is_ok) {
                                                                                 __auto_type _ = _mv_485.data.ok;
                                                                                 if (!(quiet)) {
@@ -412,7 +413,7 @@ int main(int argc, char** _c_argv) {
                                                             }
                                                         }
                                                     }
-                                                    case types_ReasonerResult_reason_inconsistent:
+                                                    case growl_types_ReasonerResult_reason_inconsistent:
                                                     {
                                                         __auto_type reports = _mv_482.data.reason_inconsistent;
                                                         {
@@ -445,15 +446,15 @@ int main(int argc, char** _c_argv) {
                                                                     return _wa_ret;
                                                                 }
                                                             } else {
-                                                                __auto_type _mv_486 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
+                                                                __auto_type _mv_486 = ({ __auto_type _lst = reports; size_t _idx = (size_t)0; slop_option_growl_types_InconsistencyReport _r = {0}; if (_idx < _lst.len) { _r.has_value = true; _r.value = _lst.data[_idx]; } else { _r.has_value = false; } _r; });
                                                                 if (_mv_486.has_value) {
                                                                     __auto_type report = _mv_486.value;
                                                                     if (quiet) {
                                                                         printf("%.*s", (int)(input_path).len, (input_path).data);
                                                                         printf("%s", ": ");
-                                                                        main_print_elapsed(arena, parse_elapsed);
+                                                                        growl_cli_main_print_elapsed(arena, parse_elapsed);
                                                                         printf("%s", " parse, ");
-                                                                        main_print_elapsed(arena, reason_elapsed);
+                                                                        growl_cli_main_print_elapsed(arena, reason_elapsed);
                                                                         printf("%s", " reason, ");
                                                                         printf("%.*s", (int)(int_to_string(arena, input_size)).len, (int_to_string(arena, input_size)).data);
                                                                         printf("%s\n", " triples [INCONSISTENT]");
@@ -478,7 +479,7 @@ int main(int argc, char** _c_argv) {
                                                             }
                                                         }
                                                     }
-                                                    case types_ReasonerResult_reason_cancelled:
+                                                    case growl_types_ReasonerResult_reason_cancelled:
                                                     {
                                                         __auto_type s = _mv_482.data.reason_cancelled;
                                                         printf("%s\n", "[CANCELLED] Reasoning was cancelled");

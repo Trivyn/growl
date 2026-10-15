@@ -2,6 +2,11 @@
 #define SLOP_main_H
 
 #include "../runtime/slop_runtime.h"
+#ifndef SLOP_RUNTIME_ABI
+#error "this module was generated for SLOP runtime ABI 2026-1 (SLOP_RUNTIME_ABI 202601), but slop_runtime.h predates runtime ABI versioning: use the slop_runtime.h of the SLOP release that generated this code"
+#elif SLOP_RUNTIME_ABI != 202601
+#error "this module was generated for SLOP runtime ABI 2026-1 (SLOP_RUNTIME_ABI 202601), which this slop_runtime.h does not provide (SLOP_RUNTIME_ABI differs): regenerate the C with the SLOP release that matches the runtime, or use the slop_runtime.h of the release that generated it"
+#endif
 #include <stdint.h>
 #include <stdbool.h>
 #include "slop_rdf.h"
@@ -14,9 +19,9 @@
 #include <string.h>
 #include "../runtime/slop_runtime.h"
 
-typedef struct main_CliArgs main_CliArgs;
+typedef struct growl_cli_main_CliArgs growl_cli_main_CliArgs;
 
-struct main_CliArgs {
+struct growl_cli_main_CliArgs {
     slop_option_string input_file;
     slop_option_string emit_file;
     slop_option_string background_file;
@@ -30,22 +35,22 @@ struct main_CliArgs {
     uint8_t show_version;
     int64_t max_triples;
 };
-typedef struct main_CliArgs main_CliArgs;
+typedef struct growl_cli_main_CliArgs growl_cli_main_CliArgs;
 
-#ifndef SLOP_OPTION_MAIN_CLIARGS_DEFINED
-#define SLOP_OPTION_MAIN_CLIARGS_DEFINED
-SLOP_OPTION_DEFINE(main_CliArgs, slop_option_main_CliArgs)
+#ifndef SLOP_OPTION_GROWL_CLI_MAIN_CLIARGS_DEFINED
+#define SLOP_OPTION_GROWL_CLI_MAIN_CLIARGS_DEFINED
+SLOP_OPTION_DEFINE(growl_cli_main_CliArgs, slop_option_growl_cli_main_CliArgs)
 #endif
 
-void main_print_elapsed(slop_arena* arena, int64_t elapsed);
-slop_string main_argv_to_string(uint8_t** argv, int64_t index);
-main_CliArgs main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
-void main_print_usage(void);
+void growl_cli_main_print_elapsed(slop_arena* arena, int64_t elapsed);
+slop_string growl_cli_main_argv_to_string(uint8_t** argv, int64_t index);
+growl_cli_main_CliArgs growl_cli_main_parse_args(slop_arena* arena, int64_t argc, uint8_t** argv);
+void growl_cli_main_print_usage(void);
 int main(int argc, char** _c_argv);
 
-#ifndef SLOP_OPTION_MAIN_CLIARGS_DEFINED
-#define SLOP_OPTION_MAIN_CLIARGS_DEFINED
-SLOP_OPTION_DEFINE(main_CliArgs, slop_option_main_CliArgs)
+#ifndef SLOP_OPTION_GROWL_CLI_MAIN_CLIARGS_DEFINED
+#define SLOP_OPTION_GROWL_CLI_MAIN_CLIARGS_DEFINED
+SLOP_OPTION_DEFINE(growl_cli_main_CliArgs, slop_option_growl_cli_main_CliArgs)
 #endif
 
 

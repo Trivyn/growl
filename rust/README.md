@@ -14,13 +14,13 @@ The generated C uses GNU extensions (statement expressions, `__auto_type`), so t
 
 Windows support in the crate is preliminary. The C build and the shared slop-sys crates have been tested on Windows, but the crate's own test suite has not yet passed there end to end.
 
-The shared SLOP runtime, std and RDF modules come from the [`slop-std-sys`](https://crates.io/crates/slop-std-sys) and [`slop-rdf-sys`](https://crates.io/crates/slop-rdf-sys) crates.
+The shared SLOP runtime, std and RDF modules come from the [`slop-std-sys`](https://crates.io/crates/slop-std-sys) and [`slop-rdf-sys`](https://crates.io/crates/slop-rdf-sys) crates. growl 0.10 pins slop-std-sys 0.5.0 and slop-rdf-sys 0.6.0 exactly (generated with SLOP 0.5.0). A crate that also depends on them directly must use those same versions.
 
 ## Installation
 
 ```toml
 [dependencies]
-growl = "0.9"
+growl = "0.10"
 ```
 
 ## Quick Start
