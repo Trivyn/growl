@@ -8,6 +8,16 @@ Growl implements the [OWL 2 RL profile](https://www.w3.org/TR/owl2-profiles/#OWL
 
 Growl is being developed as the reasoning engine for [Trivyn](https://trivyn.io), a knowledge graph platform.
 
+### Sibling projects
+
+Growl is one of a family of SLOP-based semantic web tools from Trivyn. Each one handles a different job, and they work together by exchanging RDF.
+
+**[HOWL](https://github.com/Trivyn/howl)** is a description-logic reasoner. Where Growl *materializes* OWL 2 RL by forward chaining, HOWL *classifies* OWL 2 EL (and, under `--profile sriq`, the SRIQ object fragment): it computes the complete subsumption hierarchy, finds every unsatisfiable class, and reports whether the ontology is coherent. That includes subsumptions that follow from *defined* classes (e.g. `Mother ⊑ Parent` where `Parent ≡ Person ⊓ ∃hasChild.Person`), which RL rules structurally cannot derive.
+
+To use them together, run HOWL to classify, then feed its inferred `rdfs:subClassOf` axioms to Growl for enrichment.
+
+**[SNARL](https://github.com/Trivyn/snarl)** is a SHACL Core validator. It checks an RDF data graph against a SHACL shapes graph and produces a W3C-conformant validation report. Growl reasons under the open-world assumption: it infers new facts and flags logical contradictions. SNARL checks closed-world data constraints such as cardinality, datatypes and value ranges. Running SNARL on Growl's materialized output (`--emit`) means shapes are checked against inferred facts as well as asserted ones.
+
 ## Features
 
 - **Z3-Verified Contracts**: Every inference function has machine-checked pre/postconditions; soundness properties prove each output triple is justified by a delta/graph premise (see [Verification](#verification) for scope)
@@ -139,6 +149,8 @@ Use `--validate-ns` to scope validation to a specific namespace. This is importa
 Use `--background` to load a background ontology that provides reasoning context (e.g. class hierarchy, property declarations) without being validated itself. Background triples participate in inference but are not targets for synthetic instance injection.
 
 Note: `--validate` overrides `--fast`, since schema materialization is required for validation to work correctly.
+
+Validate mode only catches unsatisfiability that OWL 2 RL rules can derive. To also catch classes made unsatisfiable through defined classes or existentials, use [HOWL](#sibling-projects), which checks coherence completely within its profiles.
 
 ```bash
 # Validate all classes/properties in an ontology
