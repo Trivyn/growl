@@ -43,9 +43,9 @@ jobs:
 
       # slop.toml resolves rdf/index/vocab/... from a sibling ../slop-rdf; use
       # the tag slop-rdf-sys vendors so the examples match the shipped C.
-      - name: Check out slop-rdf v0.6.0
+      - name: Check out slop-rdf v0.6.1
         if: runner.os == 'Linux'
-        run: git clone --depth 1 --branch v0.6.0 https://github.com/slop-lang/slop-rdf ../slop-rdf
+        run: git clone --depth 1 --branch v0.6.1 https://github.com/slop-lang/slop-rdf ../slop-rdf
 
       - name: Run SLOP @examples
         if: runner.os == 'Linux'
