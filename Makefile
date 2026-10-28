@@ -120,7 +120,7 @@ dist:
 
 # --- Rust crate targets ---
 
-# These modules are provided by slop-std-sys v0.5.0 / slop-rdf-sys v0.6.0 (slop-sys).
+# These modules are provided by slop-std-sys v0.5.0 / slop-rdf-sys v0.6.1 (slop-sys).
 # The Rust crate must not vendor its own copy, or consumers linking both copies
 # will collide on duplicate symbols.
 SHARED_MODULES := common file index list rdf serialize_ttl strlib thread ttl vocab xsd
