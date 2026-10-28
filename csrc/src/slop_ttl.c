@@ -16,9 +16,10 @@ slop_string slop_rdf_ttl_input_slice(slop_string input, int64_t start, int64_t l
 slop_rdf_common_ParseState slop_rdf_ttl_scan_pn_name(slop_rdf_common_ParseState state);
 slop_rdf_common_ParseWhileResult slop_rdf_ttl_parse_pn_name(slop_arena* arena, slop_rdf_common_ParseState state);
 slop_string slop_rdf_ttl_concat_base_slice(slop_arena* arena, slop_string base, slop_string input, int64_t start, int64_t len);
+slop_string slop_rdf_ttl_concat_base_local(slop_arena* arena, slop_string base, slop_string input, int64_t start, int64_t len, int64_t escapes);
 slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_iri_ref(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
 slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_iri_ref_string(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
-slop_rdf_common_ParseState slop_rdf_ttl_scan_pn_local(slop_rdf_common_ParseState state);
+slop_result_slop_rdf_ttl_PnLocalScan_slop_rdf_common_ParseError slop_rdf_ttl_scan_pn_local(slop_arena* arena, slop_rdf_common_ParseState state);
 slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_prefixed_name(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
 slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_prefixed_name_string(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
 slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_blank_node_extended(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
@@ -57,6 +58,10 @@ slop_result_slop_rdf_rdf_Graph_slop_rdf_ttl_TtlFileError slop_rdf_ttl_parse_ttl_
 slop_result_int_slop_rdf_ttl_TtlFileError slop_rdf_ttl_parse_ttl_file_for_each_triple(slop_arena* arena, slop_string path, slop_closure_t callback);
 uint8_t slop_rdf_ttl_is_pn_chars_base(uint8_t c);
 uint8_t slop_rdf_ttl_is_pn_chars(uint8_t c);
+uint8_t slop_rdf_ttl_is_hex_digit(uint8_t c);
+uint8_t slop_rdf_ttl_is_pn_local_esc(uint8_t c);
+uint8_t slop_rdf_ttl_is_pn_local_first(uint8_t c);
+uint8_t slop_rdf_ttl_is_pn_local_mid(uint8_t c);
 
 static uint8_t _wrap_slop_rdf_ttl_is_pn_chars(void* _env, uint8_t _p0) { return slop_rdf_ttl_is_pn_chars(_p0); }
 
@@ -98,7 +103,7 @@ slop_option_string slop_rdf_ttl_prefix_map_lookup(slop_rdf_ttl_PrefixMap pm, slo
 }
 
 void slop_rdf_ttl_blank_labels_add(slop_arena* arena, slop_map* ids, slop_string label, int64_t id) {
-    (void)(({ slop_string _key_442 = (std_strlib_substring(arena, label, 0, SLOP_RANGE(int64_t, string_len(label), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:170:43"))); int64_t _val = id; slop_map_put(NULL, ids, &_key_442, &_val, sizeof(_val)); }));
+    (void)(({ slop_string _key_442 = (std_strlib_substring(arena, label, 0, SLOP_RANGE(int64_t, string_len(label), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:180:43"))); int64_t _val = id; slop_map_put(NULL, ids, &_key_442, &_val, sizeof(_val)); }));
 }
 
 slop_rdf_ttl_TtlParseContext slop_rdf_ttl_make_ttl_context(slop_arena* arena, slop_string input) {
@@ -183,25 +188,25 @@ slop_rdf_common_ParseState slop_rdf_ttl_scan_pn_name(slop_rdf_common_ParseState 
         uint8_t done = 0;
         while (!(done) && (offset < len)) {
             {
-                __auto_type c = std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:273:33"));
+                __auto_type c = std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:283:33"));
                 if (slop_rdf_ttl_is_pn_chars(c)) {
-                    offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:277:30");
-                    end = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:278:27");
+                    offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:287:30");
+                    end = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:288:27");
                 } else if (c == 46) {
-                    offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:279:37");
+                    offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:289:37");
                 } else {
                     done = 1;
                 }
             }
         }
-        return ((slop_rdf_common_ParseState){.input = input, .offset = SLOP_RANGE(int64_t, end, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:283:17"), .line = state.line, .column = SLOP_RANGE(int64_t, (state.column + (end - state.offset)), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:285:17")});
+        return ((slop_rdf_common_ParseState){.input = input, .offset = SLOP_RANGE(int64_t, end, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:293:17"), .line = state.line, .column = SLOP_RANGE(int64_t, (state.column + (end - state.offset)), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:295:17")});
     }
 }
 
 slop_rdf_common_ParseWhileResult slop_rdf_ttl_parse_pn_name(slop_arena* arena, slop_rdf_common_ParseState state) {
     {
         __auto_type s1 = slop_rdf_ttl_scan_pn_name(state);
-        return ((slop_rdf_common_ParseWhileResult){.result = std_strlib_substring(arena, state.input, state.offset, SLOP_RANGE(int64_t, (s1.offset - state.offset), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:293:67")), .state = s1});
+        return ((slop_rdf_common_ParseWhileResult){.result = std_strlib_substring(arena, state.input, state.offset, SLOP_RANGE(int64_t, (s1.offset - state.offset), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:303:67")), .state = s1});
     }
 }
 
@@ -217,6 +222,35 @@ slop_string slop_rdf_ttl_concat_base_slice(slop_arena* arena, slop_string base, 
             memcpy(((void*)((buf + blen))), ((void*)((input.data + start))), ((uint64_t)(len)));
         }
         return (slop_string){.len = ((uint64_t)(total)), .data = ((uint8_t*)(buf))};
+    }
+}
+
+slop_string slop_rdf_ttl_concat_base_local(slop_arena* arena, slop_string base, slop_string input, int64_t start, int64_t len, int64_t escapes) {
+    SLOP_PRE(((len >= escapes)), "(>= len escapes)");
+    if (escapes == 0) {
+        return slop_rdf_ttl_concat_base_slice(arena, base, input, start, len);
+    } else {
+        {
+            __auto_type blen = ((int64_t)(base.len));
+            __auto_type total = ((blen + len) - escapes);
+            __auto_type buf = ({ __auto_type _alloc = (uint8_t*)slop_arena_alloc(arena, (total + 1)); if (_alloc == NULL) { fprintf(stderr, "SLOP: arena alloc failed at %s:%d\n", __FILE__, __LINE__); abort(); } _alloc; });
+            __auto_type end = (start + len);
+            int64_t i = start;
+            int64_t j = blen;
+            if (blen > 0) {
+                memcpy(((void*)(buf)), ((void*)(base.data)), ((uint64_t)(blen)));
+            }
+            while (i < end) {
+                if (std_strlib_char_at(input, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:339:34")) == 92) {
+                    i = SLOP_RANGE(int64_t, (i + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:340:21");
+                } else {
+                    buf[j] = input.data[i];
+                    i = SLOP_RANGE(int64_t, (i + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:343:23");
+                    j = (j + 1);
+                }
+            }
+            return (slop_string){.len = ((uint64_t)(total)), .data = ((uint8_t*)(buf))};
+        }
     }
 }
 
@@ -242,38 +276,59 @@ slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_pa
     }
 }
 
-slop_rdf_common_ParseState slop_rdf_ttl_scan_pn_local(slop_rdf_common_ParseState state) {
+slop_result_slop_rdf_ttl_PnLocalScan_slop_rdf_common_ParseError slop_rdf_ttl_scan_pn_local(slop_arena* arena, slop_rdf_common_ParseState state) {
     {
+        __auto_type input = state.input;
         __auto_type len = string_len(state.input);
+        __auto_type start = state.offset;
         int64_t offset = state.offset;
         int64_t column = state.column;
+        int64_t escapes = 0;
         uint8_t done = 0;
-        while (!(done)) {
-            if (offset >= len) {
-                done = 1;
-            } else {
-                {
-                    __auto_type c = std_strlib_char_at(state.input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:351:45"));
-                    if (slop_rdf_ttl_is_pn_chars(c)) {
-                        offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:355:32");
-                        column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:356:32");
-                    } else if ((c == 46) && ((offset + 1) < len)) {
-                        {
-                            __auto_type c2 = std_strlib_char_at(state.input, SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:358:52"));
-                            if (slop_rdf_ttl_is_pn_chars(c2)) {
-                                offset = SLOP_RANGE(int64_t, (offset + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:361:36");
-                                column = SLOP_RANGE(int64_t, (column + 2), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:362:36");
-                            } else {
-                                done = 1;
-                            }
-                        }
-                    } else {
+        while (!(done) && (offset < len)) {
+            {
+                __auto_type c = std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:401:33"));
+                if (slop_rdf_ttl_is_pn_local_mid(c)) {
+                    if ((offset == start) && !(slop_rdf_ttl_is_pn_local_first(c))) {
                         done = 1;
+                    } else {
+                        offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:407:32");
+                        column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:408:32");
                     }
+                } else if (c == 37) {
+                    if (((offset + 2) < len) && (slop_rdf_ttl_is_hex_digit(std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:411:58"))) && slop_rdf_ttl_is_hex_digit(std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:412:58"))))) {
+                        offset = SLOP_RANGE(int64_t, (offset + 3), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:414:32");
+                        column = SLOP_RANGE(int64_t, (column + 3), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:415:32");
+                    } else {
+                        return ((slop_result_slop_rdf_ttl_PnLocalScan_slop_rdf_common_ParseError){ .is_ok = false, .data.err = slop_rdf_common_make_parse_error(arena, slop_rdf_common_ParseErrorKind_invalid_escape, SLOP_STR("Expected two hex digits after '%' in prefixed name"), ((slop_rdf_common_Position){.line = state.line, .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:417:70"), .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:417:86")})) });
+                    }
+                } else if (c == 92) {
+                    if (((offset + 1) < len) && slop_rdf_ttl_is_pn_local_esc(std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:419:77")))) {
+                        escapes = (escapes + 1);
+                        offset = SLOP_RANGE(int64_t, (offset + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:422:32");
+                        column = SLOP_RANGE(int64_t, (column + 2), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:423:32");
+                    } else {
+                        return ((slop_result_slop_rdf_ttl_PnLocalScan_slop_rdf_common_ParseError){ .is_ok = false, .data.err = slop_rdf_common_make_parse_error(arena, slop_rdf_common_ParseErrorKind_invalid_escape, SLOP_STR("Invalid escape in prefixed name"), ((slop_rdf_common_Position){.line = state.line, .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:425:70"), .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:425:86")})) });
+                    }
+                } else if ((c == 46) && (offset > start)) {
+                    {
+                        int64_t j = offset;
+                        while ((j < len) && (std_strlib_char_at(input, SLOP_RANGE(int64_t, j, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:428:58")) == 46)) {
+                            j = SLOP_RANGE(int64_t, (j + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:429:27");
+                        }
+                        if ((j < len) && (slop_rdf_ttl_is_pn_local_mid(std_strlib_char_at(input, SLOP_RANGE(int64_t, j, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:431:62"))) || ((std_strlib_char_at(input, SLOP_RANGE(int64_t, j, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:432:53")) == 37) || (std_strlib_char_at(input, SLOP_RANGE(int64_t, j, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:432:79")) == 92)))) {
+                            column = SLOP_RANGE(int64_t, (column + (j - offset)), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:434:34");
+                            offset = SLOP_RANGE(int64_t, j, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:435:34");
+                        } else {
+                            done = 1;
+                        }
+                    }
+                } else {
+                    done = 1;
                 }
             }
         }
-        return ((slop_rdf_common_ParseState){.input = state.input, .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:367:17"), .line = state.line, .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:369:17")});
+        return ((slop_result_slop_rdf_ttl_PnLocalScan_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_PnLocalScan){.escapes = SLOP_RANGE(int64_t, escapes, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:439:18"), .state = ((slop_rdf_common_ParseState){.input = input, .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:442:19"), .line = state.line, .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:444:19")})}) });
     }
 }
 
@@ -289,13 +344,14 @@ slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_pa
         __auto_type s0 = ctx.state;
         __auto_type s1 = slop_rdf_ttl_scan_pn_name(s0);
         __auto_type s2 = ({ __auto_type _tmp = slop_rdf_common_expect_char(arena, s1, 58); if (!_tmp.is_ok) return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = _tmp.data.err }); _tmp.data.ok; });
-        __auto_type s3 = slop_rdf_ttl_scan_pn_local(s2);
+        __auto_type scan = ({ __auto_type _tmp = slop_rdf_ttl_scan_pn_local(arena, s2); if (!_tmp.is_ok) return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = _tmp.data.err }); _tmp.data.ok; });
+        __auto_type s3 = scan.state;
         __auto_type input = s0.input;
-        __auto_type lookup = slop_rdf_ttl_prefix_map_lookup(ctx.prefixes, slop_rdf_ttl_input_slice(input, s0.offset, SLOP_RANGE(int64_t, (s1.offset - s0.offset), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:396:54")));
+        __auto_type lookup = slop_rdf_ttl_prefix_map_lookup(ctx.prefixes, slop_rdf_ttl_input_slice(input, s0.offset, SLOP_RANGE(int64_t, (s1.offset - s0.offset), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:473:54")));
         __auto_type _mv_444 = lookup;
         if (_mv_444.has_value) {
             __auto_type base_iri = _mv_444.value;
-            return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StringResult){.value = slop_rdf_ttl_concat_base_slice(arena, base_iri, input, SLOP_RANGE(int64_t, s2.offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:400:60"), SLOP_RANGE(int64_t, (s3.offset - s2.offset), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:400:74")), .ctx = slop_rdf_ttl_ctx_with_state(ctx, s3)}) });
+            return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StringResult){.value = slop_rdf_ttl_concat_base_local(arena, base_iri, input, SLOP_RANGE(int64_t, s2.offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:477:60"), SLOP_RANGE(int64_t, (s3.offset - s2.offset), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:477:74"), SLOP_RANGE(int64_t, scan.escapes, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:477:106")), .ctx = slop_rdf_ttl_ctx_with_state(ctx, s3)}) });
         } else if (!_mv_444.has_value) {
             return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = slop_rdf_common_make_parse_error(arena, slop_rdf_common_ParseErrorKind_unknown_prefix, SLOP_STR("Unknown prefix"), ((slop_rdf_common_Position){.line = s1.line, .column = s1.column, .offset = s1.offset})) });
         }
@@ -334,7 +390,7 @@ slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError slop_rdf_t
             {
                 __auto_type s3 = ({ __auto_type _tmp = slop_rdf_common_expect_char(arena, slop_rdf_common_state_advance(arena, ctx.state), 58); if (!_tmp.is_ok) return ((slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = _tmp.data.err }); _tmp.data.ok; });
                 __auto_type s4 = slop_rdf_ttl_scan_pn_name(s3);
-                __auto_type label = slop_rdf_ttl_input_slice(s3.input, SLOP_RANGE(int64_t, s3.offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:441:48"), SLOP_RANGE(int64_t, (s4.offset - s3.offset), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:441:62"));
+                __auto_type label = slop_rdf_ttl_input_slice(s3.input, SLOP_RANGE(int64_t, s3.offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:518:48"), SLOP_RANGE(int64_t, (s4.offset - s3.offset), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:518:62"));
                 __auto_type tbl = ctx.blank_labels;
                 __auto_type _mv_446 = ({ void* _ptr = slop_map_get(tbl.ids, &(label)); _ptr ? (slop_option_int){ .has_value = true, .value = *(int64_t*)_ptr } : (slop_option_int){ .has_value = false }; });
                 if (_mv_446.has_value) {
@@ -367,8 +423,8 @@ slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_pa
         __auto_type slop_long = ((slop_rdf_common_state_peek_n(s0, 1) == q) && (slop_rdf_common_state_peek_n(s0, 2) == q));
         __auto_type skip = ((slop_long) ? 3 : 1);
         __auto_type start = (s0.offset + skip);
-        __auto_type scan = ({ __auto_type _tmp = slop_rdf_ttl_scan_string_body(arena, ((slop_rdf_common_ParseState){.input = s0.input, .offset = SLOP_RANGE(int64_t, start, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:493:32"), .line = s0.line, .column = SLOP_RANGE(int64_t, (s0.column + skip), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:495:32")}), SLOP_RANGE(uint8_t, q, 1, 1, 0, 255, "(Int 0 .. 255) at ttl.slop:496:22"), slop_long); if (!_tmp.is_ok) return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = _tmp.data.err }); _tmp.data.ok; });
-        return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StringResult){.value = slop_rdf_ttl_decode_string_body(arena, s0.input, SLOP_RANGE(int64_t, start, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:498:55"), SLOP_RANGE(int64_t, scan.end, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:498:61"), SLOP_RANGE(int64_t, scan.escapes, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:498:74")), .ctx = slop_rdf_ttl_ctx_with_state(ctx, scan.state)}) });
+        __auto_type scan = ({ __auto_type _tmp = slop_rdf_ttl_scan_string_body(arena, ((slop_rdf_common_ParseState){.input = s0.input, .offset = SLOP_RANGE(int64_t, start, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:570:32"), .line = s0.line, .column = SLOP_RANGE(int64_t, (s0.column + skip), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:572:32")}), SLOP_RANGE(uint8_t, q, 1, 1, 0, 255, "(Int 0 .. 255) at ttl.slop:573:22"), slop_long); if (!_tmp.is_ok) return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = _tmp.data.err }); _tmp.data.ok; });
+        return ((slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StringResult){.value = slop_rdf_ttl_decode_string_body(arena, s0.input, SLOP_RANGE(int64_t, start, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:575:55"), SLOP_RANGE(int64_t, scan.end, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:575:61"), SLOP_RANGE(int64_t, scan.escapes, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:575:74")), .ctx = slop_rdf_ttl_ctx_with_state(ctx, scan.state)}) });
     }
 }
 
@@ -402,34 +458,34 @@ slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError slop_rdf_ttl_scan
         uint8_t done = 0;
         while (!(done) && (offset < len)) {
             {
-                __auto_type c = std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:533:33"));
+                __auto_type c = std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:610:33"));
                 if (c == 92) {
-                    if (slop_rdf_ttl_escape_value(std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:536:52"))) == 0) {
-                        return ((slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError){ .is_ok = false, .data.err = slop_rdf_common_make_parse_error(arena, slop_rdf_common_ParseErrorKind_invalid_escape, SLOP_STR("Invalid escape sequence"), ((slop_rdf_common_Position){.line = SLOP_RANGE(int64_t, line, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:538:46"), .column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:538:60"), .offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:538:82")})) });
+                    if (slop_rdf_ttl_escape_value(std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:613:52"))) == 0) {
+                        return ((slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError){ .is_ok = false, .data.err = slop_rdf_common_make_parse_error(arena, slop_rdf_common_ParseErrorKind_invalid_escape, SLOP_STR("Invalid escape sequence"), ((slop_rdf_common_Position){.line = SLOP_RANGE(int64_t, line, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:615:46"), .column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:615:60"), .offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:615:82")})) });
                     } else {
                         escapes = (escapes + 1);
-                        offset = SLOP_RANGE(int64_t, (offset + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:541:32");
-                        column = SLOP_RANGE(int64_t, (column + 2), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:542:32");
+                        offset = SLOP_RANGE(int64_t, (offset + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:618:32");
+                        column = SLOP_RANGE(int64_t, (column + 2), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:619:32");
                     }
-                } else if ((c == q) && (!(slop_long) || ((std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:544:56")) == q) && (std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:544:92")) == q)))) {
+                } else if ((c == q) && (!(slop_long) || ((std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:621:56")) == q) && (std_strlib_char_at(input, SLOP_RANGE(int64_t, (offset + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:621:92")) == q)))) {
                     end = offset;
-                    offset = SLOP_RANGE(int64_t, (offset + ((slop_long) ? 3 : 1)), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:547:30");
-                    column = SLOP_RANGE(int64_t, (column + ((slop_long) ? 3 : 1)), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:548:30");
+                    offset = SLOP_RANGE(int64_t, (offset + ((slop_long) ? 3 : 1)), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:624:30");
+                    column = SLOP_RANGE(int64_t, (column + ((slop_long) ? 3 : 1)), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:625:30");
                     done = 1;
                 } else if (c == 10) {
-                    offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:552:30");
-                    line = SLOP_RANGE(int64_t, (line + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:553:28");
+                    offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:629:30");
+                    line = SLOP_RANGE(int64_t, (line + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:630:28");
                     column = 1;
                 } else {
-                    offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:557:30");
-                    column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:558:30");
+                    offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:634:30");
+                    column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:635:30");
                 }
             }
         }
         if (done) {
-            return ((slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StringScan){.end = SLOP_RANGE(int64_t, end, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:561:16"), .escapes = SLOP_RANGE(int64_t, escapes, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:562:20"), .state = ((slop_rdf_common_ParseState){.input = input, .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:563:63"), .line = SLOP_RANGE(int64_t, line, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:563:77"), .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:563:91")})}) });
+            return ((slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StringScan){.end = SLOP_RANGE(int64_t, end, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:638:16"), .escapes = SLOP_RANGE(int64_t, escapes, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:639:20"), .state = ((slop_rdf_common_ParseState){.input = input, .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:640:63"), .line = SLOP_RANGE(int64_t, line, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:640:77"), .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:640:91")})}) });
         } else {
-            return ((slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError){ .is_ok = false, .data.err = slop_rdf_common_make_parse_error(arena, slop_rdf_common_ParseErrorKind_unterminated_string, ((slop_long) ? SLOP_STR("Unterminated triple-quoted string") : SLOP_STR("Unterminated string")), ((slop_rdf_common_Position){.line = SLOP_RANGE(int64_t, line, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:566:38"), .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:566:52"), .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:566:68")})) });
+            return ((slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError){ .is_ok = false, .data.err = slop_rdf_common_make_parse_error(arena, slop_rdf_common_ParseErrorKind_unterminated_string, ((slop_long) ? SLOP_STR("Unterminated triple-quoted string") : SLOP_STR("Unterminated string")), ((slop_rdf_common_Position){.line = SLOP_RANGE(int64_t, line, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:643:38"), .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:643:52"), .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:643:68")})) });
         }
     }
 }
@@ -437,7 +493,7 @@ slop_result_slop_rdf_ttl_StringScan_slop_rdf_common_ParseError slop_rdf_ttl_scan
 slop_string slop_rdf_ttl_decode_string_body(slop_arena* arena, slop_string input, int64_t start, int64_t end, int64_t escapes) {
     SLOP_PRE(((end >= start)), "(>= end start)");
     if (escapes == 0) {
-        return std_strlib_substring(arena, input, start, SLOP_RANGE(int64_t, (end - start), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:574:36"));
+        return std_strlib_substring(arena, input, start, SLOP_RANGE(int64_t, (end - start), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:651:36"));
     } else {
         {
             __auto_type out_len = ((end - start) - escapes);
@@ -446,13 +502,13 @@ slop_string slop_rdf_ttl_decode_string_body(slop_arena* arena, slop_string input
             int64_t j = 0;
             while (i < end) {
                 {
-                    __auto_type c = std_strlib_char_at(input, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:581:37"));
+                    __auto_type c = std_strlib_char_at(input, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:658:37"));
                     if (c == 92) {
-                        buf[j] = ((uint8_t)(slop_rdf_ttl_escape_value(std_strlib_char_at(input, SLOP_RANGE(int64_t, (i + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:585:75")))));
-                        i = SLOP_RANGE(int64_t, (i + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:586:29");
+                        buf[j] = ((uint8_t)(slop_rdf_ttl_escape_value(std_strlib_char_at(input, SLOP_RANGE(int64_t, (i + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:662:75")))));
+                        i = SLOP_RANGE(int64_t, (i + 2), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:663:29");
                     } else {
                         buf[j] = input.data[i];
-                        i = SLOP_RANGE(int64_t, (i + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:589:29");
+                        i = SLOP_RANGE(int64_t, (i + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:666:29");
                     }
                     j = (j + 1);
                 }
@@ -473,11 +529,11 @@ slop_result_slop_rdf_ttl_EscapeResult_slop_rdf_common_ParseError slop_rdf_ttl_pa
                 {
                     __auto_type new_ctx = ((slop_rdf_ttl_TtlParseContext){.prefixes = ctx.prefixes, .base_iri = ctx.base_iri, .blank_labels = ctx.blank_labels, .blank_counter = ctx.blank_counter, .state = s2});
                     {
-                        __auto_type v = slop_rdf_ttl_escape_value(SLOP_RANGE(uint8_t, c, 1, 1, 0, 255, "(Int 0 .. 255) at ttl.slop:615:36"));
+                        __auto_type v = slop_rdf_ttl_escape_value(SLOP_RANGE(uint8_t, c, 1, 1, 0, 255, "(Int 0 .. 255) at ttl.slop:692:36"));
                         if (v == 0) {
                             return ((slop_result_slop_rdf_ttl_EscapeResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = slop_rdf_common_make_parse_error(arena, slop_rdf_common_ParseErrorKind_invalid_escape, SLOP_STR("Invalid escape sequence"), ((slop_rdf_common_Position){.line = s1.line, .column = s1.column, .offset = s1.offset})) });
                         } else {
-                            return ((slop_result_slop_rdf_ttl_EscapeResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_EscapeResult){.slop_char = SLOP_RANGE(uint8_t, v, 1, 1, 0, 255, "(Int 0 .. 255) at ttl.slop:622:52"), .ctx = new_ctx}) });
+                            return ((slop_result_slop_rdf_ttl_EscapeResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_EscapeResult){.slop_char = SLOP_RANGE(uint8_t, v, 1, 1, 0, 255, "(Int 0 .. 255) at ttl.slop:699:52"), .ctx = new_ctx}) });
                         }
                     }
                 }
@@ -542,40 +598,40 @@ slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_pars
         int64_t column = ctx.state.column;
         uint8_t has_dot = 0;
         uint8_t has_e = 0;
-        if ((offset < len) && ((std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:694:56")) == 43) || (std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:694:87")) == 45))) {
-            offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:696:24");
-            column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:697:24");
+        if ((offset < len) && ((std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:771:56")) == 43) || (std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:771:87")) == 45))) {
+            offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:773:24");
+            column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:774:24");
         }
-        while ((offset < len) && std_strlib_is_digit(std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:699:59")))) {
-            offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:701:24");
-            column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:702:24");
+        while ((offset < len) && std_strlib_is_digit(std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:776:59")))) {
+            offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:778:24");
+            column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:779:24");
         }
-        if ((offset < len) && (std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:704:52")) == 46)) {
+        if ((offset < len) && (std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:781:52")) == 46)) {
             has_dot = 1;
-            offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:706:22");
-            column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:707:22");
-            while ((offset < len) && std_strlib_is_digit(std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:708:61")))) {
-                offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:710:26");
-                column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:711:26");
+            offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:783:22");
+            column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:784:22");
+            while ((offset < len) && std_strlib_is_digit(std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:785:61")))) {
+                offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:787:26");
+                column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:788:26");
             }
         }
-        if ((offset < len) && ((std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:713:56")) == 101) || (std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:713:88")) == 69))) {
+        if ((offset < len) && ((std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:790:56")) == 101) || (std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:790:88")) == 69))) {
             has_e = 1;
-            offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:715:22");
-            column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:716:22");
-            if ((offset < len) && ((std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:717:58")) == 43) || (std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:717:89")) == 45))) {
-                offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:719:26");
-                column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:720:26");
+            offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:792:22");
+            column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:793:22");
+            if ((offset < len) && ((std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:794:58")) == 43) || (std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:794:89")) == 45))) {
+                offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:796:26");
+                column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:797:26");
             }
-            while ((offset < len) && std_strlib_is_digit(std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:721:61")))) {
-                offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:723:26");
-                column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:724:26");
+            while ((offset < len) && std_strlib_is_digit(std_strlib_char_at(input, SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:798:61")))) {
+                offset = SLOP_RANGE(int64_t, (offset + 1), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:800:26");
+                column = SLOP_RANGE(int64_t, (column + 1), 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:801:26");
             }
         }
         {
-            __auto_type val = std_strlib_substring(arena, input, SLOP_RANGE(int64_t, start, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:725:41"), SLOP_RANGE(int64_t, (offset - start), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:725:47"));
+            __auto_type val = std_strlib_substring(arena, input, SLOP_RANGE(int64_t, start, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:802:41"), SLOP_RANGE(int64_t, (offset - start), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:802:47"));
             __auto_type dt = (has_e ? SLOP_STR("http://www.w3.org/2001/XMLSchema#double") : (has_dot ? SLOP_STR("http://www.w3.org/2001/XMLSchema#decimal") : SLOP_STR("http://www.w3.org/2001/XMLSchema#integer")));
-            return ((slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_TermResult){.term = rdf_make_literal(arena, val, (slop_option_string){.has_value = 1, .value = dt}, ((slop_option_string){.has_value = false})), .ctx = ((slop_rdf_ttl_TtlParseContext){.prefixes = ctx.prefixes, .base_iri = ctx.base_iri, .blank_labels = ctx.blank_labels, .blank_counter = ctx.blank_counter, .state = ((slop_rdf_common_ParseState){.input = input, .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:739:23"), .line = ctx.state.line, .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:741:23")})})}) });
+            return ((slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_TermResult){.term = rdf_make_literal(arena, val, (slop_option_string){.has_value = 1, .value = dt}, ((slop_option_string){.has_value = false})), .ctx = ((slop_rdf_ttl_TtlParseContext){.prefixes = ctx.prefixes, .base_iri = ctx.base_iri, .blank_labels = ctx.blank_labels, .blank_counter = ctx.blank_counter, .state = ((slop_rdf_common_ParseState){.input = input, .offset = SLOP_RANGE(int64_t, offset, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:816:23"), .line = ctx.state.line, .column = SLOP_RANGE(int64_t, column, 1, 0, 1, 0, "(Int 1 ..) at ttl.slop:818:23")})})}) });
         }
     }
 }
@@ -614,7 +670,7 @@ slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_pars
                 __auto_type c3 = slop_rdf_common_state_peek_n(ctx.state, 2);
                 __auto_type c4 = slop_rdf_common_state_peek_n(ctx.state, 3);
                 __auto_type c5 = slop_rdf_common_state_peek_n(ctx.state, 4);
-                if ((c2 == 114) && ((c3 == 117) && ((c4 == 101) && !((std_strlib_is_alnum(SLOP_RANGE(std_strlib_Byte, c5, 1, 1, 0, 255, "Byte (Int 0 .. 255) at ttl.slop:801:38")) || ((c5 == 58) || ((c5 == 95) || (c5 == 45)))))))) {
+                if ((c2 == 114) && ((c3 == 117) && ((c4 == 101) && !((std_strlib_is_alnum(SLOP_RANGE(std_strlib_Byte, c5, 1, 1, 0, 255, "Byte (Int 0 .. 255) at ttl.slop:878:38")) || ((c5 == 58) || ((c5 == 95) || (c5 == 45)))))))) {
                     return slop_rdf_ttl_parse_boolean_literal(arena, ctx);
                 } else {
                     return slop_rdf_ttl_parse_prefixed_name(arena, ctx);
@@ -627,7 +683,7 @@ slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_pars
                 __auto_type c4 = slop_rdf_common_state_peek_n(ctx.state, 3);
                 __auto_type c5 = slop_rdf_common_state_peek_n(ctx.state, 4);
                 __auto_type c6 = slop_rdf_common_state_peek_n(ctx.state, 5);
-                if ((c2 == 97) && ((c3 == 108) && ((c4 == 115) && ((c5 == 101) && !((std_strlib_is_alnum(SLOP_RANGE(std_strlib_Byte, c6, 1, 1, 0, 255, "Byte (Int 0 .. 255) at ttl.slop:814:38")) || ((c6 == 58) || ((c6 == 95) || (c6 == 45))))))))) {
+                if ((c2 == 97) && ((c3 == 108) && ((c4 == 115) && ((c5 == 101) && !((std_strlib_is_alnum(SLOP_RANGE(std_strlib_Byte, c6, 1, 1, 0, 255, "Byte (Int 0 .. 255) at ttl.slop:891:38")) || ((c6 == 58) || ((c6 == 95) || (c6 == 45))))))))) {
                     return slop_rdf_ttl_parse_boolean_literal(arena, ctx);
                 } else {
                     return slop_rdf_ttl_parse_prefixed_name(arena, ctx);
@@ -984,7 +1040,7 @@ int64_t slop_rdf_ttl_emit_triples(slop_list_slop_rdf_rdf_Triple triples, slop_cl
                 count = (count + 1);
             }
         }
-        return SLOP_RANGE(int64_t, count, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:1158:7");
+        return SLOP_RANGE(int64_t, count, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:1235:7");
     }
 }
 
@@ -1031,7 +1087,7 @@ slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError slop_rdf
                 }
             }
         }
-        return ((slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StreamTriplesResult){.count = SLOP_RANGE(int64_t, count, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:1191:50"), .ctx = cur_ctx}) });
+        return ((slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StreamTriplesResult){.count = SLOP_RANGE(int64_t, count, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:1268:50"), .ctx = cur_ctx}) });
     }
 }
 
@@ -1065,7 +1121,7 @@ slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError slop_rdf
                 }
             }
         }
-        return ((slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StreamTriplesResult){.count = SLOP_RANGE(int64_t, count, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:1218:50"), .ctx = cur_ctx}) });
+        return ((slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StreamTriplesResult){.count = SLOP_RANGE(int64_t, count, 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:1295:50"), .ctx = cur_ctx}) });
     }
 }
 
@@ -1122,7 +1178,7 @@ slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError slop_rdf
         __auto_type n_extra = slop_rdf_ttl_emit_triples(sr.extra_triples, callback);
         __auto_type polr = ({ __auto_type _tmp = slop_rdf_ttl_parse_predicate_object_list_for_each_triple(arena, sr.ctx, sr.term, callback); if (!_tmp.is_ok) return ((slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = _tmp.data.err }); _tmp.data.ok; });
         __auto_type s5 = ({ __auto_type _tmp = slop_rdf_common_expect_char(arena, slop_rdf_common_skip_whitespace(arena, polr.ctx.state), 46); if (!_tmp.is_ok) return ((slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError){ .is_ok = false, .data.err = _tmp.data.err }); _tmp.data.ok; });
-        return ((slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StreamTriplesResult){.count = SLOP_RANGE(int64_t, (n_extra + polr.count), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:1282:16"), .ctx = slop_rdf_ttl_ctx_with_state(polr.ctx, s5)}) });
+        return ((slop_result_slop_rdf_ttl_StreamTriplesResult_slop_rdf_common_ParseError){ .is_ok = true, .data.ok = ((slop_rdf_ttl_StreamTriplesResult){.count = SLOP_RANGE(int64_t, (n_extra + polr.count), 1, 0, 0, 0, "(Int 0 ..) at ttl.slop:1359:16"), .ctx = slop_rdf_ttl_ctx_with_state(polr.ctx, s5)}) });
     }
 }
 
@@ -1247,5 +1303,21 @@ uint8_t slop_rdf_ttl_is_pn_chars_base(uint8_t c) {
 
 uint8_t slop_rdf_ttl_is_pn_chars(uint8_t c) {
     return (slop_rdf_ttl_is_pn_chars_base(c) || (std_strlib_is_digit(c) || ((c == 95) || (c == 45))));
+}
+
+uint8_t slop_rdf_ttl_is_hex_digit(uint8_t c) {
+    return (std_strlib_is_digit(c) || (((c >= 65) && (c <= 70)) || ((c >= 97) && (c <= 102))));
+}
+
+uint8_t slop_rdf_ttl_is_pn_local_esc(uint8_t c) {
+    return ((c == 33) || (((c >= 35) && (c <= 47)) || ((c == 59) || ((c == 61) || ((c == 63) || ((c == 64) || ((c == 95) || (c == 126))))))));
+}
+
+uint8_t slop_rdf_ttl_is_pn_local_first(uint8_t c) {
+    return (slop_rdf_ttl_is_pn_chars_base(c) || ((c == 95) || ((c == 58) || std_strlib_is_digit(c))));
+}
+
+uint8_t slop_rdf_ttl_is_pn_local_mid(uint8_t c) {
+    return (slop_rdf_ttl_is_pn_chars(c) || (c == 58));
 }
 

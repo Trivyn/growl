@@ -1,6 +1,6 @@
 [package]
 name = "growl"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2021"
 description = "Rust bindings for the Growl OWL 2 RL reasoner"
 license = "Apache-2.0"
@@ -21,7 +21,7 @@ include = [
 
 [dependencies]
 slop-std-sys = "=0.5.0"
-slop-rdf-sys = "=0.6.0"
+slop-rdf-sys = "=0.6.1"
 
 [build-dependencies]
 # 1.2.35 adds prefer_clang_cl_over_msvc

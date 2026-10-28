@@ -23,6 +23,7 @@ typedef struct slop_rdf_ttl_GenBlankResult slop_rdf_ttl_GenBlankResult;
 typedef struct slop_rdf_ttl_TermResult slop_rdf_ttl_TermResult;
 typedef struct slop_rdf_ttl_StringResult slop_rdf_ttl_StringResult;
 typedef struct slop_rdf_ttl_StringScan slop_rdf_ttl_StringScan;
+typedef struct slop_rdf_ttl_PnLocalScan slop_rdf_ttl_PnLocalScan;
 typedef struct slop_rdf_ttl_EscapeResult slop_rdf_ttl_EscapeResult;
 typedef struct slop_rdf_ttl_TripleResult slop_rdf_ttl_TripleResult;
 typedef struct slop_rdf_ttl_TriplesResult slop_rdf_ttl_TriplesResult;
@@ -109,6 +110,17 @@ typedef struct slop_rdf_ttl_StringScan slop_rdf_ttl_StringScan;
 #ifndef SLOP_OPTION_SLOP_RDF_TTL_STRINGSCAN_DEFINED
 #define SLOP_OPTION_SLOP_RDF_TTL_STRINGSCAN_DEFINED
 SLOP_OPTION_DEFINE(slop_rdf_ttl_StringScan, slop_option_slop_rdf_ttl_StringScan)
+#endif
+
+struct slop_rdf_ttl_PnLocalScan {
+    int64_t escapes;
+    slop_rdf_common_ParseState state;
+};
+typedef struct slop_rdf_ttl_PnLocalScan slop_rdf_ttl_PnLocalScan;
+
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_PNLOCALSCAN_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_PNLOCALSCAN_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_PnLocalScan, slop_option_slop_rdf_ttl_PnLocalScan)
 #endif
 
 typedef enum {
@@ -254,6 +266,11 @@ typedef struct { bool is_ok; union { slop_rdf_ttl_TermResult ok; slop_rdf_common
 typedef struct { bool is_ok; union { slop_rdf_ttl_StringResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError;
 #endif
 
+#ifndef SLOP_RESULT_SLOP_RDF_TTL_PNLOCALSCAN_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+#define SLOP_RESULT_SLOP_RDF_TTL_PNLOCALSCAN_SLOP_RDF_COMMON_PARSEERROR_DEFINED
+typedef struct { bool is_ok; union { slop_rdf_ttl_PnLocalScan ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_PnLocalScan_slop_rdf_common_ParseError;
+#endif
+
 #ifndef SLOP_RESULT_SLOP_RDF_TTL_TERMTRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
 #define SLOP_RESULT_SLOP_RDF_TTL_TERMTRIPLESRESULT_SLOP_RDF_COMMON_PARSEERROR_DEFINED
 typedef struct { bool is_ok; union { slop_rdf_ttl_TermTriplesResult ok; slop_rdf_common_ParseError err; } data; } slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError;
@@ -334,9 +351,10 @@ slop_string slop_rdf_ttl_input_slice(slop_string input, int64_t start, int64_t l
 slop_rdf_common_ParseState slop_rdf_ttl_scan_pn_name(slop_rdf_common_ParseState state);
 slop_rdf_common_ParseWhileResult slop_rdf_ttl_parse_pn_name(slop_arena* arena, slop_rdf_common_ParseState state);
 slop_string slop_rdf_ttl_concat_base_slice(slop_arena* arena, slop_string base, slop_string input, int64_t start, int64_t len);
+slop_string slop_rdf_ttl_concat_base_local(slop_arena* arena, slop_string base, slop_string input, int64_t start, int64_t len, int64_t escapes);
 slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_iri_ref(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
 slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_iri_ref_string(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
-slop_rdf_common_ParseState slop_rdf_ttl_scan_pn_local(slop_rdf_common_ParseState state);
+slop_result_slop_rdf_ttl_PnLocalScan_slop_rdf_common_ParseError slop_rdf_ttl_scan_pn_local(slop_arena* arena, slop_rdf_common_ParseState state);
 slop_result_slop_rdf_ttl_TermResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_prefixed_name(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
 slop_result_slop_rdf_ttl_StringResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_prefixed_name_string(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
 slop_result_slop_rdf_ttl_TermTriplesResult_slop_rdf_common_ParseError slop_rdf_ttl_parse_blank_node_extended(slop_arena* arena, slop_rdf_ttl_TtlParseContext ctx);
@@ -375,6 +393,10 @@ slop_result_slop_rdf_rdf_Graph_slop_rdf_ttl_TtlFileError slop_rdf_ttl_parse_ttl_
 slop_result_int_slop_rdf_ttl_TtlFileError slop_rdf_ttl_parse_ttl_file_for_each_triple(slop_arena* arena, slop_string path, slop_closure_t callback);
 uint8_t slop_rdf_ttl_is_pn_chars_base(uint8_t c);
 uint8_t slop_rdf_ttl_is_pn_chars(uint8_t c);
+uint8_t slop_rdf_ttl_is_hex_digit(uint8_t c);
+uint8_t slop_rdf_ttl_is_pn_local_esc(uint8_t c);
+uint8_t slop_rdf_ttl_is_pn_local_first(uint8_t c);
+uint8_t slop_rdf_ttl_is_pn_local_mid(uint8_t c);
 
 #ifndef SLOP_OPTION_SLOP_RDF_TTL_PREFIXBINDING_DEFINED
 #define SLOP_OPTION_SLOP_RDF_TTL_PREFIXBINDING_DEFINED
@@ -414,6 +436,11 @@ SLOP_OPTION_DEFINE(slop_rdf_ttl_StringResult, slop_option_slop_rdf_ttl_StringRes
 #ifndef SLOP_OPTION_SLOP_RDF_TTL_STRINGSCAN_DEFINED
 #define SLOP_OPTION_SLOP_RDF_TTL_STRINGSCAN_DEFINED
 SLOP_OPTION_DEFINE(slop_rdf_ttl_StringScan, slop_option_slop_rdf_ttl_StringScan)
+#endif
+
+#ifndef SLOP_OPTION_SLOP_RDF_TTL_PNLOCALSCAN_DEFINED
+#define SLOP_OPTION_SLOP_RDF_TTL_PNLOCALSCAN_DEFINED
+SLOP_OPTION_DEFINE(slop_rdf_ttl_PnLocalScan, slop_option_slop_rdf_ttl_PnLocalScan)
 #endif
 
 #ifndef SLOP_OPTION_SLOP_RDF_TTL_ESCAPERESULT_DEFINED

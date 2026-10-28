@@ -105,24 +105,31 @@ uint8_t slop_rdf_serialize_ttl_string_contains_newline(slop_string s) {
 uint8_t slop_rdf_serialize_ttl_valid_pn_local(slop_string s) {
     {
         __auto_type len = string_len(s);
-        if (len == 0) {
-            return 1;
-        } else {
+        uint8_t ok = 1;
+        int64_t i = 0;
+        while ((i < len) && ok) {
             {
-                uint8_t ok = 1;
-                int64_t i = 0;
-                while ((i < len) && ok) {
-                    {
-                        __auto_type c = std_strlib_char_at(s, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:130:33"));
-                        if (!(slop_rdf_ttl_is_pn_chars(c))) {
-                            ok = 0;
-                        }
+                __auto_type c = std_strlib_char_at(s, SLOP_RANGE(int64_t, i, 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:140:29"));
+                if (slop_rdf_ttl_is_pn_local_mid(c)) {
+                    if ((i == 0) && !(slop_rdf_ttl_is_pn_local_first(c))) {
+                        ok = 0;
+                    } else {
                         i = (i + 1);
                     }
+                } else if (c == 46) {
+                    if ((i == 0) || ((i + 1) == len)) {
+                        ok = 0;
+                    } else {
+                        i = (i + 1);
+                    }
+                } else if ((c == 37) && (((i + 2) < len) && (slop_rdf_ttl_is_hex_digit(std_strlib_char_at(s, SLOP_RANGE(int64_t, (i + 1), 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:152:54"))) && slop_rdf_ttl_is_hex_digit(std_strlib_char_at(s, SLOP_RANGE(int64_t, (i + 2), 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:152:89")))))) {
+                    i = (i + 3);
+                } else {
+                    ok = 0;
                 }
-                return ok;
             }
         }
+        return ok;
     }
 }
 
@@ -144,7 +151,7 @@ slop_string slop_rdf_serialize_ttl_serialize_iri(slop_arena* arena, slop_rdf_rdf
                         __auto_type prefix_iri = b.iri;
                         if (std_strlib_starts_with(iri_val, prefix_iri)) {
                             {
-                                __auto_type local = std_strlib_substring(arena, iri_val, SLOP_RANGE(int64_t, string_len(prefix_iri), 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:160:55"), SLOP_RANGE(int64_t, (string_len(iri_val) - string_len(prefix_iri)), 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:161:32"));
+                                __auto_type local = std_strlib_substring(arena, iri_val, SLOP_RANGE(int64_t, string_len(prefix_iri), 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:181:55"), SLOP_RANGE(int64_t, (string_len(iri_val) - string_len(prefix_iri)), 1, 0, 0, 0, "(Int 0 ..) at serialize-ttl.slop:182:32"));
                                 if (slop_rdf_serialize_ttl_valid_pn_local(local)) {
                                     compressed = (slop_option_string){.has_value = 1, .value = string_concat(arena, string_concat(arena, b.prefix, SLOP_STR(":")), local)};
                                 }
