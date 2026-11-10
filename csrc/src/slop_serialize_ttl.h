@@ -119,6 +119,7 @@ slop_string slop_rdf_serialize_ttl_escape_string(slop_arena* arena, slop_string 
 uint8_t slop_rdf_serialize_ttl_string_contains_newline(slop_string s);
 uint8_t slop_rdf_serialize_ttl_valid_pn_local(slop_string s);
 slop_string slop_rdf_serialize_ttl_serialize_iri(slop_arena* arena, slop_rdf_rdf_IRI iri, slop_rdf_ttl_PrefixMap prefixes);
+int64_t slop_rdf_serialize_ttl_turtle_number_kind(slop_string s);
 slop_string slop_rdf_serialize_ttl_serialize_literal(slop_arena* arena, slop_rdf_rdf_Literal lit);
 slop_string slop_rdf_serialize_ttl_serialize_blank(slop_arena* arena, slop_rdf_rdf_BlankNode node);
 slop_string slop_rdf_serialize_ttl_serialize_term(slop_arena* arena, slop_rdf_rdf_Term t, slop_rdf_ttl_PrefixMap prefixes);
